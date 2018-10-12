@@ -71,7 +71,7 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 
 void JS_ReaScriptAPI_Version(double* versionOut)
 {
-	*versionOut = 0.90;
+	*versionOut = 0.93;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -179,7 +179,7 @@ void* JS_Window_GetRelated(void* windowHWND, const char* relation)
 	#define GW_CHILD            5
 	*/
 	int intMode;
-	if (strstr(relation, "FIRST"))		intMode = GW_HWNDFIRST;
+	if		(strstr(relation, "FIRST"))	intMode = GW_HWNDFIRST;
 	else if (strstr(relation, "LAST"))	intMode = GW_HWNDLAST;
 	else if (strstr(relation, "NEXT"))	intMode = GW_HWNDNEXT;
 	else if (strstr(relation, "PREV"))	intMode = GW_HWNDPREV;
@@ -225,9 +225,28 @@ void  JS_Window_Destroy(void* windowHWND)
 	DestroyWindow((HWND)windowHWND);
 }
 
-void  JS_Window_Show(void* windowHWND, int state)
+void  JS_Window_Show(void* windowHWND, const char* state)
 {
-	ShowWindow((HWND)windowHWND, state);
+	/*
+	#define SW_HIDE 0
+	#define SW_SHOWNA 1        // 8 on win32
+	#define SW_SHOW 2          // 1 on win32
+	#define SW_SHOWMINIMIZED 3 // 2 on win32
+
+	// aliases (todo implement these as needed)
+	#define SW_SHOWNOACTIVATE SW_SHOWNA
+	#define SW_NORMAL SW_SHOW
+	#define SW_SHOWNORMAL SW_SHOW
+	#define SW_SHOWMAXIMIZED SW_SHOW
+	#define SW_SHOWDEFAULT SW_SHOWNORMAL
+	#define SW_RESTORE SW_SHOWNA
+	*/
+	int intState;
+	if		(strstr(state, "SHOWNA"))	intState = SW_SHOWNA;
+	else if (strstr(state, "MINI"))		intState = SW_SHOWMINIMIZED;
+	else if (strstr(state, "HIDE"))		intState = SW_HIDE;
+	else intState = SW_SHOW;
+	ShowWindow((HWND)windowHWND, intState);
 }
 
 bool JS_Window_IsVisible(void* windowHWND)
@@ -253,7 +272,7 @@ void  JS_Window_ReleaseCapture()
 }
 
 
-void* JS_Window_GetInfoPtr(void* windowHWND, const char* info)
+void* JS_Window_GetLongPtr(void* windowHWND, const char* info)
 {
 	int intMode;
 #ifdef _WIN32
@@ -283,7 +302,7 @@ void* JS_Window_GetInfoPtr(void* windowHWND, const char* info)
 BOOL CALLBACK JS_Window_Find_Callback_Child(HWND hwnd, LPARAM structPtr)
 {
 	using namespace Julian;
-	EnumWindowsStruct* s = reinterpret_cast<EnumWindowsStruct*>(structPtr);
+	sEnumWindows* s = reinterpret_cast<sEnumWindows*>(structPtr);
 	int len = GetWindowText(hwnd, s->temp, s->tempLen);
 	s->temp[s->tempLen - 1] = '\0'; // Make sure that loooong titles are properly terminated.
 	for (int i = 0; (s->temp[i] != '\0') && (i < len); i++) s->temp[i] = (char)tolower(s->temp[i]); // FindWindow is case-insensitive, so this implementation is too
@@ -300,7 +319,7 @@ BOOL CALLBACK JS_Window_Find_Callback_Child(HWND hwnd, LPARAM structPtr)
 BOOL CALLBACK JS_Window_Find_Callback_Top(HWND hwnd, LPARAM structPtr)
 {
 	using namespace Julian;
-	EnumWindowsStruct* s = reinterpret_cast<EnumWindowsStruct*>(structPtr);
+	sEnumWindows* s = reinterpret_cast<sEnumWindows*>(structPtr);
 	int len = GetWindowText(hwnd, s->temp, s->tempLen);
 	s->temp[s->tempLen-1] = '\0'; // Make sure that loooong titles are properly terminated.
 	for (int i = 0; (s->temp[i] != '\0') && (i < len); i++) s->temp[i] = (char)tolower(s->temp[i]); // FindWindow is case-insensitive, so this implementation is too
@@ -318,14 +337,14 @@ BOOL CALLBACK JS_Window_Find_Callback_Top(HWND hwnd, LPARAM structPtr)
 	}
 }
 
+// Cockos SWELL doesn't provide FindWindow, and FindWindowEx doesn't provide the NULL, NULL top-level mode,
+//		so must code own implementation...
+// This implemetation adds two features:
+//		* Searches child windows as well, so that script GUIs can be found even if docked.
+//		* Optionally matches substrings.
 void* JS_Window_Find(const char* title, bool exact)
 {
 	using namespace Julian;
-	// Cockos SWELL doesn't provide FindWindow, and FindWindowEx doesn't provide the NULL, NULL top-level mode,
-	//		so must code own implementation...
-	// This implemetation adds two features:
-	//		* Searches child windows as well, so that script GUIs can be found even if docked.
-	//		* Optionally matches substrings.
 
 	// FindWindow is case-insensitive, so this implementation is too. 
 	// Must first convert title to lowercase:
@@ -334,19 +353,19 @@ void* JS_Window_Find(const char* title, bool exact)
 	for (; (title[i] != '\0') && (i < API_LEN - 1); i++) titleLower[i] = (char)tolower(title[i]); // Convert to lowercase
 	titleLower[i] = '\0';
 
-	// To communicate with callback functions, use an EnumWindowsStruct:
+	// To communicate with callback functions, use an sEnumWindows:
 	char temp[API_LEN] = ""; // Will temprarily store titles as well as pointer string, so must be longer than TEMP_LEN.
-	EnumWindowsStruct e{ titleLower, exact, temp, sizeof(temp), NULL, NULL }; // "", 0 };
+	sEnumWindows e{ titleLower, exact, temp, sizeof(temp), NULL, NULL, 0, NULL };
 	EnumWindows(JS_Window_Find_Callback_Top, reinterpret_cast<LPARAM>(&e));
 	return e.hwnd;
 }
 
 
 
-BOOL CALLBACK JS_Window_ListFind_Callback_Child(HWND hwnd, LPARAM structPtr)
+BOOL CALLBACK JS_Window_ArrayFind_Callback_Child(HWND hwnd, LPARAM structPtr)
 {
 	using namespace Julian;
-	EnumWindowsStruct* s = reinterpret_cast<EnumWindowsStruct*>(structPtr);
+	sEnumWindows* s = reinterpret_cast<sEnumWindows*>(structPtr);
 	char title[TEMP_LEN] = "";
 	int len = GetWindowText(hwnd, title, TEMP_LEN);
 	title[TEMP_LEN - 1] = '\0'; // Make sure that loooong titles are properly terminated.
@@ -376,10 +395,10 @@ BOOL CALLBACK JS_Window_ListFind_Callback_Child(HWND hwnd, LPARAM structPtr)
 	return TRUE;
 }
 
-BOOL CALLBACK JS_Window_ListFind_Callback_Top(HWND hwnd, LPARAM structPtr)
+BOOL CALLBACK JS_Window_ArrayFind_Callback_Top(HWND hwnd, LPARAM structPtr)
 {
 	using namespace Julian;
-	EnumWindowsStruct* s = reinterpret_cast<EnumWindowsStruct*>(structPtr);
+	sEnumWindows* s = reinterpret_cast<sEnumWindows*>(structPtr);
 	char title[TEMP_LEN] = "";
 	int len = GetWindowText(hwnd, title, TEMP_LEN);
 	title[TEMP_LEN - 1] = '\0'; // Make sure that loooong titles are properly terminated.
@@ -407,19 +426,19 @@ BOOL CALLBACK JS_Window_ListFind_Callback_Top(HWND hwnd, LPARAM structPtr)
 		*/
 	}
 	// Now search all child windows before returning
-	EnumChildWindows(hwnd, JS_Window_ListFind_Callback_Child, structPtr);
+	EnumChildWindows(hwnd, JS_Window_ArrayFind_Callback_Child, structPtr);
 	return TRUE;
 }
 
-void JS_Window_ListFind(const char* title, bool exact, double* reaperarray) //const char* section, const char* key)
+// Cockos SWELL doesn't provide FindWindow, and FindWindowEx doesn't provide the NULL, NULL top-level mode,
+//		so must code own implementation...
+// This implemetation adds three features:
+//		* Searches child windows as well, so that script GUIs can be found even if docked.
+//		* Optionally matches substrings.
+//		* Finds ALL windows that match title.
+void JS_Window_ArrayFind(const char* title, bool exact, double* reaperarray) //const char* section, const char* key)
 {
 	using namespace Julian;
-	// Cockos SWELL doesn't provide FindWindow, and FindWindowEx doesn't provide the NULL, NULL top-level mode,
-	//		so must code own implementation...
-	// This implemetation adds three features:
-	//		* Searches child windows as well, so that script GUIs can be found even if docked.
-	//		* Optionally matches substrings.
-	//		* Finds ALL windows that match title.
 
  	// FindWindow is case-insensitive, so this implementation is too. 
 	// Must first convert title to lowercase:
@@ -429,13 +448,11 @@ void JS_Window_ListFind(const char* title, bool exact, double* reaperarray) //co
 		else				  { titleLower[i] = (char)tolower(title[i]); }
 	titleLower[API_LEN-1] = '\0'; // Make sure that loooong titles are properly terminated.
 
-	// To communicate with callback functions, use an EnumWindowsStruct:
+	// To communicate with callback functions, use an sEnumWindows:
 	char temp[API_LEN] = ""; // Will temporarily store pointer strings, as well as titles.
-	//char hwndString[EXT_LEN] = ""; // Concatenate all pointer strings into this long string.
-	//EnumWindowsStruct e{ titleLower, exact, temp, sizeof(temp), NULL, hwndString, sizeof(hwndString) }; // All the info that will be passed to the Enum callback functions.
-	EnumWindowsStruct e{ titleLower, exact, temp, sizeof(temp), NULL, reaperarray }; // All the info that will be passed to the Enum callback functions.
+	sEnumWindows e{ titleLower, exact, temp, sizeof(temp), NULL, NULL, 0, reaperarray }; // All the info that will be passed to the Enum callback functions.
 
-	EnumWindows(JS_Window_ListFind_Callback_Top, reinterpret_cast<LPARAM>(&e));
+	EnumWindows(JS_Window_ArrayFind_Callback_Top, reinterpret_cast<LPARAM>(&e));
 	
 	//SetExtState(section, key, (const char*)hwndString, false);
 }
@@ -445,7 +462,7 @@ void JS_Window_ListFind(const char* title, bool exact, double* reaperarray) //co
 BOOL CALLBACK JS_Window_FindChild_Callback(HWND hwnd, LPARAM structPtr)
 {
 	using namespace Julian;
-	EnumWindowsStruct* s = reinterpret_cast<EnumWindowsStruct*>(structPtr);
+	sEnumWindows* s = reinterpret_cast<sEnumWindows*>(structPtr);
 	int len = GetWindowText(hwnd, s->temp, s->tempLen);
 	for (int i = 0; (s->temp[i] != '\0') && (i < len); i++) s->temp[i] = (char)tolower(s->temp[i]); // Convert to lowercase
 	if (     (s->exact  && (strcmp(s->temp, s->target) == 0))
@@ -458,13 +475,13 @@ BOOL CALLBACK JS_Window_FindChild_Callback(HWND hwnd, LPARAM structPtr)
 		return TRUE;
 }
 
+// Cockos SWELL doesn't provide fully-functional FindWindowEx, so rather code own implementation.
+// This implemetation adds two features:
+//		* Searches child windows as well, so that script GUIs can be found even if docked.
+//		* Optionally matches substrings.
 void* JS_Window_FindChild(void* parentHWND, const char* title, bool exact)
 {
 	using namespace Julian;
-	// Cockos SWELL doesn't provide fully-functional FindWindowEx, so rather code own implementation.
-	// This implemetation adds two features:
-	//		* Searches child windows as well, so that script GUIs can be found even if docked.
-	//		* Optionally matches substrings.
 
 	// FindWindow is case-insensitive, so this implementation is too. 
 	// Must first convert title to lowercase:
@@ -473,16 +490,16 @@ void* JS_Window_FindChild(void* parentHWND, const char* title, bool exact)
 		if (title[i] == '\0') { titleLower[i] = '\0'; break; }
 		else				  { titleLower[i] = (char)tolower(title[i]); }
 
-	// To communicate with callback functions, use an EnumWindowsStruct:
+	// To communicate with callback functions, use an sEnumWindows:
 	char temp[TEMP_LEN];
-	EnumWindowsStruct e{ titleLower, exact, temp, sizeof(temp), nullptr, nullptr }; //"", 0 };
+	sEnumWindows e{ titleLower, exact, temp, sizeof(temp), NULL, NULL, 0, NULL };
 	EnumChildWindows((HWND)parentHWND, JS_Window_FindChild_Callback, reinterpret_cast<LPARAM>(&e));
 	return e.hwnd;
 }
 
 
 
-BOOL CALLBACK JS_Window_ListAllChild_Callback(HWND hwnd, LPARAM ptr) //strPtr)
+BOOL CALLBACK JS_Window_ArrayAllChild_Callback(HWND hwnd, LPARAM ptr) //strPtr)
 {
 	using namespace Julian;
 	double* reaperarray = reinterpret_cast<double*>(ptr);
@@ -510,18 +527,18 @@ BOOL CALLBACK JS_Window_ListAllChild_Callback(HWND hwnd, LPARAM ptr) //strPtr)
 	*/
 }
 
-void JS_Window_ListAllChild(void* parentHWND, double* reaperarray) // const char* section, const char* key) //char* buf, int buf_sz)
+void JS_Window_ArrayAllChild(void* parentHWND, double* reaperarray) // const char* section, const char* key) //char* buf, int buf_sz)
 {
 	using namespace Julian;
 	//HWND hwnd = (HWND)parentHWND;
 	//char hwndString[EXT_LEN] = "";
-	EnumChildWindows((HWND)parentHWND, JS_Window_ListAllChild_Callback, reinterpret_cast<LPARAM>(reaperarray)); //hwndString));
+	EnumChildWindows((HWND)parentHWND, JS_Window_ArrayAllChild_Callback, reinterpret_cast<LPARAM>(reaperarray)); //hwndString));
 	//SetExtState(section, key, (const char*)hwndString, false);
 }
 
 
 
-BOOL CALLBACK JS_Window_ListAllTop_Callback(HWND hwnd, LPARAM lParam)
+BOOL CALLBACK JS_Window_ArrayAllTop_Callback(HWND hwnd, LPARAM lParam)
 {
 	using namespace Julian;
 	double* reaperarray = reinterpret_cast<double*>(lParam);
@@ -549,17 +566,17 @@ BOOL CALLBACK JS_Window_ListAllTop_Callback(HWND hwnd, LPARAM lParam)
 	*/
 }
 
-void JS_Window_ListAllTop(double* reaperarray) //const char* section, const char* key) //char* buf, int buf_sz)
+void JS_Window_ArrayAllTop(double* reaperarray) //const char* section, const char* key) //char* buf, int buf_sz)
 {
 	using namespace Julian;
 	//char hwndString[EXT_LEN] = "";
-	EnumWindows(JS_Window_ListAllTop_Callback, reinterpret_cast<LPARAM>(reaperarray)); //hwndString));
+	EnumWindows(JS_Window_ArrayAllTop_Callback, reinterpret_cast<LPARAM>(reaperarray)); //hwndString));
 	//SetExtState(section, key, (const char*)hwndString, false);
 }
 
 
 
-BOOL CALLBACK JS_MIDIEditor_ListAll_Callback_Child(HWND hwnd, LPARAM lParam)
+BOOL CALLBACK JS_MIDIEditor_ArrayAll_Callback_Child(HWND hwnd, LPARAM lParam)
 {
 	using namespace Julian;
 	if (MIDIEditor_GetMode(hwnd) != -1) // Is MIDI editor?
@@ -595,7 +612,7 @@ BOOL CALLBACK JS_MIDIEditor_ListAll_Callback_Child(HWND hwnd, LPARAM lParam)
 		return TRUE;
 }
 
-BOOL CALLBACK JS_MIDIEditor_ListAll_Callback_Top(HWND hwnd, LPARAM lParam)
+BOOL CALLBACK JS_MIDIEditor_ArrayAll_Callback_Top(HWND hwnd, LPARAM lParam)
 {
 	using namespace Julian;
 	if (MIDIEditor_GetMode(hwnd) != -1) // Is MIDI editor?
@@ -630,21 +647,219 @@ BOOL CALLBACK JS_MIDIEditor_ListAll_Callback_Top(HWND hwnd, LPARAM lParam)
 	// Current window is not MIDI editor, so check if any child windows are. For example if docked in docker or main window.
 	else 
 	{
-		EnumChildWindows(hwnd, JS_MIDIEditor_ListAll_Callback_Child, lParam);
+		EnumChildWindows(hwnd, JS_MIDIEditor_ArrayAll_Callback_Child, lParam);
 		return TRUE;
 	}
 }
 
-void JS_MIDIEditor_ListAll(double* reaperarray) // char* buf, int buf_sz)
+void JS_MIDIEditor_ArrayAll(double* reaperarray) // char* buf, int buf_sz)
 {
 	using namespace Julian;
 	//char hwndString[API_LEN] = "";
 	// To find docked editors, must also enumerate child windows.
-	EnumWindows(JS_MIDIEditor_ListAll_Callback_Top, reinterpret_cast<LPARAM>(reaperarray));
+	EnumWindows(JS_MIDIEditor_ArrayAll_Callback_Top, reinterpret_cast<LPARAM>(reaperarray));
 	//strcpy_s(buf, buf_sz, hwndString);
 }
 
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// The following functions are "List" versions of the "Array" functions, and return the list as an ExtState string
+
+
+BOOL CALLBACK JS_Window_ListFind_Callback_Child(HWND hwnd, LPARAM structPtr)
+{
+	using namespace Julian;
+	sEnumWindows* s = reinterpret_cast<sEnumWindows*>(structPtr);
+	int len = GetWindowText(hwnd, s->temp, s->tempLen);
+	s->temp[s->tempLen - 1] = '\0'; // Make sure that loooong titles are properly terminated.
+	
+	// FindWindow is case-insensitive, so this implementation is too. Convert to lowercase.
+	for (int i = 0; (s->temp[i] != '\0') && (i < len); i++) s->temp[i] = (char)tolower(s->temp[i]);
+
+	// If exact, match entire title, otherwise substring
+	if (	 (s->exact  && (strcmp(s->temp, s->target) == 0))
+		|| (!(s->exact) && (strstr(s->temp, s->target) != NULL)))
+	{
+		// Convert pointer to string (leaving two spaces for 0x, and add comma separator)
+		snprintf(s->temp, s->tempLen - 1, "0x%llX,", (unsigned long long int)hwnd);
+		// Concatenate to hwndString
+		if (strlen(s->hwndString) + strlen(s->temp) < s->hwndLen - 1)
+		{
+			strcat(s->hwndString, s->temp);
+		}
+		else
+			return FALSE;
+	}
+	return TRUE;
+}
+
+BOOL CALLBACK JS_Window_ListFind_Callback_Top(HWND hwnd, LPARAM structPtr)
+{
+	using namespace Julian;
+	sEnumWindows* s = reinterpret_cast<sEnumWindows*>(structPtr);
+	int len = GetWindowText(hwnd, s->temp, s->tempLen);
+	s->temp[s->tempLen - 1] = '\0'; // Make sure that loooong titles are properly terminated.
+									// FindWindow is case-insensitive, so this implementation is too. Convert to lowercase.
+	for (int i = 0; (s->temp[i] != '\0') && (i < len); i++) s->temp[i] = (char)tolower(s->temp[i]);
+	// If exact, match entire title, otherwise substring
+	if (	 (s->exact  && (strcmp(s->temp, s->target) == 0))
+		|| (!(s->exact) && (strstr(s->temp, s->target) != NULL)))
+	{
+		// Convert pointer to string (leaving two spaces for 0x, and add comma separator)
+		snprintf(s->temp, s->tempLen - 1, "0x%llX,", (unsigned long long int)hwnd);
+		// Concatenate to hwndString
+		if (strlen(s->hwndString) + strlen(s->temp) < s->hwndLen - 1)
+		{
+			strcat(s->hwndString, s->temp);
+		}
+		else
+			return FALSE;
+	}
+	// Now search all child windows before returning
+	EnumChildWindows(hwnd, JS_Window_ListFind_Callback_Child, structPtr);
+	return TRUE;
+}
+
+// Cockos SWELL doesn't provide FindWindow, and FindWindowEx doesn't provide the NULL, NULL top-level mode,
+//		so must code own implementation...
+// This implemetation adds three features:
+//		* Searches child windows as well, so that script GUIs can be found even if docked.
+//		* Optionally matches substrings.
+//		* Finds ALL windows that match title.
+void JS_Window_ListFind(const char* title, bool exact, const char* section, const char* key)
+{
+	using namespace Julian;
+
+	// FindWindow is case-insensitive, so this implementation is too. 
+	// Must first convert title to lowercase:
+	char titleLower[API_LEN];
+	for (int i = 0; i < API_LEN; i++)
+	{
+		if (title[i] == '\0') { titleLower[i] = '\0'; break; }
+		else				  { titleLower[i] = (char)tolower(title[i]); }
+	}
+	titleLower[API_LEN - 1] = '\0'; // Make sure that loooong titles are properly terminated.
+									// To communicate with callback functions, use an sEnumWindows:
+	char temp[API_LEN] = ""; // Will temporarily store pointer strings, as well as titles.
+	char hwndString[EXT_LEN] = ""; // Concatenate all pointer strings into this long string.
+	sEnumWindows e{ titleLower, exact, temp, sizeof(temp), NULL, hwndString, sizeof(hwndString), NULL }; // All the info that will be passed to the Enum callback functions.
+
+	EnumWindows(JS_Window_ListFind_Callback_Top, reinterpret_cast<LPARAM>(&e));
+
+	SetExtState(section, key, (const char*)hwndString, false);
+}
+
+
+
+BOOL CALLBACK JS_Window_ListAllChild_Callback(HWND hwnd, LPARAM strPtr)
+{
+	using namespace Julian;
+	char* hwndString = reinterpret_cast<char*>(strPtr);
+	char temp[TEMP_LEN] = "";
+	snprintf(temp, TEMP_LEN - 1, "0x%llX,", (unsigned long long int)hwnd); // Print with leading 0x so that Lua tonumber will automatically notice that it is hexadecimal.
+	if (strlen(hwndString) + strlen(temp) < EXT_LEN - 1)
+	{
+		strcat(hwndString, temp);
+		return TRUE;
+	}
+	else
+		return FALSE;
+}
+
+void JS_Window_ListAllChild(void* parentHWND, const char* section, const char* key) //char* buf, int buf_sz)
+{
+	using namespace Julian;
+	HWND hwnd = (HWND)parentHWND;
+	char hwndString[EXT_LEN] = "";
+	EnumChildWindows(hwnd, JS_Window_ListAllChild_Callback, reinterpret_cast<LPARAM>(hwndString));
+	SetExtState(section, key, (const char*)hwndString, false);
+}
+
+
+
+BOOL CALLBACK JS_Window_ListAllTop_Callback(HWND hwnd, LPARAM strPtr)
+{
+	using namespace Julian;
+	char* hwndString = reinterpret_cast<char*>(strPtr);
+	char temp[TEMP_LEN] = "";
+	snprintf(temp, TEMP_LEN - 1, "0x%llX,", (unsigned long long int)hwnd); // Print with leading 0x so that Lua tonumber will automatically notice that it is hexadecimal.
+	if (strlen(hwndString) + strlen(temp) < EXT_LEN - 1)
+	{
+		strcat(hwndString, temp);
+		return TRUE;
+	}
+	else
+		return FALSE;
+}
+
+void JS_Window_ListAllTop(const char* section, const char* key) //char* buf, int buf_sz)
+{
+	using namespace Julian;
+	char hwndString[EXT_LEN] = "";
+	EnumWindows(JS_Window_ListAllTop_Callback, reinterpret_cast<LPARAM>(hwndString));
+	SetExtState(section, key, (const char*)hwndString, false);
+}
+
+
+
+BOOL CALLBACK JS_MIDIEditor_ListAll_Callback_Child(HWND hwnd, LPARAM lParam)
+{
+	using namespace Julian;
+	if (MIDIEditor_GetMode(hwnd) != -1) // Is MIDI editor?
+	{
+		char* hwndString = reinterpret_cast<char*>(lParam);
+		char temp[TEMP_LEN] = "";
+		snprintf(temp, TEMP_LEN - 1, "0x%llX,", (unsigned long long int)hwnd); // Print with leading 0x so that Lua tonumber will automatically notice that it is hexadecimal.
+		if (strstr(hwndString, temp) == NULL) // Match with bounding 0x and comma
+		{
+			if ((strlen(hwndString) + strlen(temp)) < API_LEN - 1)
+			{
+				strcat(hwndString, temp);
+			}
+			else
+				return FALSE;
+		}
+	}
+	return TRUE; // Always search further, unless hwndString is getting too long
+}
+
+BOOL CALLBACK JS_MIDIEditor_ListAll_Callback_Top(HWND hwnd, LPARAM lParam)
+{
+	using namespace Julian;
+	if (MIDIEditor_GetMode(hwnd) != -1) // Is MIDI editor?
+	{
+		char* hwndString = reinterpret_cast<char*>(lParam);
+		char temp[TEMP_LEN] = "";
+		snprintf(temp, TEMP_LEN - 1, "0x%llX,", (unsigned long long int)hwnd);
+		if (strstr(hwndString, temp) == NULL) // Match with bounding 0x and comma
+		{
+			if ((strlen(hwndString) + strlen(temp)) < API_LEN - 1)
+			{
+				strcat(hwndString, temp);
+			}
+			else
+				return FALSE;
+		}
+	}
+	else // Check if any child windows are MIDI editor. For example if docked in docker or main window.
+	{
+		EnumChildWindows(hwnd, JS_MIDIEditor_ListAll_Callback_Child, lParam);
+	}
+	return TRUE; // Always search further, unless hwndString is getting too long
+}
+
+void JS_MIDIEditor_ListAll(char* buf, int buf_sz)
+{
+	using namespace Julian;
+	char hwndString[API_LEN] = "";
+	// To find docked editors, must also enumerate child windows.
+	EnumWindows(JS_MIDIEditor_ListAll_Callback_Top, reinterpret_cast<LPARAM>(hwndString));
+	strncpy(buf, hwndString, buf_sz);
+	buf[buf_sz - 1] = '\0';
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
 Some functions using SetWindowLongPtr...
@@ -718,7 +933,7 @@ void* JS_Window_HandleFromAddress(double address)
 	// Casting to intptr_t removes fractions and, in case of 32-bit systems, truncates too large addresses.
 	//		This provides easy way to check whether address was valid.
 	intptr_t intAddress = (intptr_t)address;
-	if (intAddress == address)
+	if ((double)intAddress == address)
 		return (void*)intAddress;
 	else
 		return nullptr;
@@ -862,11 +1077,11 @@ bool JS_WindowMessage_Peek(void* windowHWND, const char* message, bool* passedTh
 			sMsgData& m = w.messages[uMsg];
 
 			*passedThroughOut = m.passthrough;
-			*timeOut = m.time;
-			*lParamLowOut = GET_X_LPARAM(m.lParam);
-			*lParamHighOut = GET_Y_LPARAM(m.lParam);
-			*wParamLowOut = GET_KEYSTATE_WPARAM(m.wParam);
-			*wParamHighOut = GET_WHEEL_DELTA_WPARAM(m.wParam);
+			*timeOut		= m.time;
+			*lParamLowOut	= GET_X_LPARAM(m.lParam);
+			*lParamHighOut	= GET_Y_LPARAM(m.lParam);
+			*wParamLowOut	= GET_KEYSTATE_WPARAM(m.wParam);
+			*wParamHighOut	= GET_WHEEL_DELTA_WPARAM(m.wParam);
 
 			return true;
 		}
@@ -1291,6 +1506,17 @@ void JS_GDI_Line(void* deviceHDC, int x1, int y1, int x2, int y2)
 	LineTo((HDC)deviceHDC, x2, y2);
 }
 
+void JS_GDI_Polyline(void* deviceHDC, const char* packedX, const char* packedY, int numPoints)
+// If we assume that POINT structs are always being packed into 8-byte chunks,
+//		we could have used a single packed string of x1, y1, x2, y2, etc.
+{
+    std::vector<POINT> p(numPoints);
+	for (int i = 0; i < numPoints; i++)
+		p[i] = { ((int32_t*)packedX)[i], ((int32_t*)packedY)[i] };
+	DWORD n[1] = { (DWORD)numPoints };
+	PolyPolyline((HDC)deviceHDC, p.data(), n, 1);
+}
+
 void JS_GDI_FillEllipse(void* deviceHDC, int x1, int y1, int x2, int y2)
 {
 	Ellipse((HDC)deviceHDC, x1, y1, x2, y2);
@@ -1310,20 +1536,17 @@ void JS_GDI_FillPolygon(void* deviceHDC, const char* packedX, const char* packed
 // If we assume that POINT structs are always being packed into 8-byte chunks,
 //		we could have used a single packed string of x1, y1, x2, y2, etc.
 {
-	int32_t* x = (int32_t*)packedX;
-	int32_t* y = (int32_t*)packedY;
-	POINT* p = new POINT[numPoints];
+    std::vector<POINT> p(numPoints);
 	for (int i = 0; i < numPoints; i++)
-		p[i] = { x[1], y[1] };
-	Polygon((HDC)deviceHDC, p, (uint32_t)numPoints);
-	delete p;
+		p[i] = { ((int32_t*)packedX)[i], ((int32_t*)packedY)[i] };
+	Polygon((HDC)deviceHDC, p.data(), (uint32_t)numPoints);
 }
 
 
 int JS_GDI_GetSysColor(const char* GUIElement)
 {
 	int intMode = COLOR_WINDOW;
-	if (strstr(GUIElement, "3DSHADOW"))			intMode = COLOR_3DSHADOW;
+	if		(strstr(GUIElement, "3DSHADOW"))	intMode = COLOR_3DSHADOW;
 	else if (strstr(GUIElement, "3DHILIGHT"))	intMode = COLOR_3DHILIGHT;
 	else if (strstr(GUIElement, "3DFACE"))		intMode = COLOR_3DFACE;
 	else if (strstr(GUIElement, "BTNTEXT"))		intMode = COLOR_BTNTEXT;
@@ -1361,19 +1584,19 @@ int JS_GDI_GetTextColor(void* deviceHDC)
 
 int JS_GDI_DrawText(void* deviceHDC, const char *text, int len, int left, int top, int right, int bottom, const char* align)
 {
-	int intMode = 0;
-	//if(strstr(align, "TOP"))			intMode = DT_TOP ;
-	if (strstr(align, "VCEN"))			intMode = intMode | DT_VCENTER ;
-		//else if (strstr(align, "LEFT"))	intMode = intMode | DT_LEFT ;
-	else if (strstr(align, "CENT"))		intMode = intMode | DT_CENTER;
-	else if (strstr(align, "RIGH"))		intMode = intMode | DT_RIGHT ;
-	else if (strstr(align, "BOTT"))		intMode = intMode | DT_BOTTOM ;
-	else if (strstr(align, "WORD"))		intMode = intMode | DT_WORDBREAK ;
-	else if (strstr(align, "SINGLE"))	intMode = intMode | DT_SINGLELINE ;
-	else if (strstr(align, "NOCLIP"))	intMode = intMode | DT_NOCLIP ;
-	else if (strstr(align, "RECT"))		intMode = intMode | DT_CALCRECT ;
-	else if (strstr(align, "NOPRE"))	intMode = intMode | DT_NOPREFIX ;
-	else if (strstr(align, "ELLIP"))	intMode = intMode | DT_END_ELLIPSIS ;
+	int intMode = DT_TOP | DT_LEFT; // = 0;
+	//if(strstr(align, "TOP"))		intMode = DT_TOP ;
+	//if (strstr(align, "LEFT"))	intMode = intMode | DT_LEFT ;
+	if (strstr(align, "HCEN"))		intMode = intMode | DT_CENTER; // This function uses "HCENTER" instead of just "CENTER".
+	if (strstr(align, "RIGH"))		intMode = intMode | DT_RIGHT ;
+	if (strstr(align, "VCEN"))		intMode = intMode | DT_VCENTER;
+	if (strstr(align, "BOTT"))		intMode = intMode | DT_BOTTOM ;
+	if (strstr(align, "BREA"))		intMode = intMode | DT_WORDBREAK ;
+	if (strstr(align, "SING"))		intMode = intMode | DT_SINGLELINE ;
+	if (strstr(align, "NOCLIP"))	intMode = intMode | DT_NOCLIP ;
+	if (strstr(align, "RECT"))		intMode = intMode | DT_CALCRECT ;
+	if (strstr(align, "NOPRE"))		intMode = intMode | DT_NOPREFIX ;
+	if (strstr(align, "ELLI"))		intMode = intMode | DT_END_ELLIPSIS ;
 
 	RECT r{ left, top, right, bottom };
 	return DrawText((HDC)deviceHDC, text, len, &r, intMode);
@@ -1461,39 +1684,43 @@ void JS_LICE_DestroyBitmap(void* bitmap)
 	LICE__Destroy((LICE_IBitmap*)bitmap);
 }
 
-void JS_LICE_Blit(void* destBitmap, int dstx, int dsty, void* sourceBitmap, int srcx, int srcy, int width, int height, double alpha, int mode)
-{
-	/*
-	#define LICE_BLIT_MODE_MASK 0xff
-	#define LICE_BLIT_MODE_COPY 0
-	#define LICE_BLIT_MODE_ADD 1
-	#define LICE_BLIT_MODE_DODGE 2
-	#define LICE_BLIT_MODE_MUL 3
-	#define LICE_BLIT_MODE_OVERLAY 4
-	#define LICE_BLIT_MODE_HSVADJ 5
-	#define LICE_BLIT_MODE_CHANCOPY 0xf0 // in this mode, only available for LICE_Blit(), the low nibble is 2 bits of source channel (low 2), 2 bits of dest channel (high 2)
-	#define LICE_BLIT_USE_ALPHA 0x10000 // use source's alpha channel
-	
-	//int intMode = LICE_BLIT_MODE_COPY;
-	if (strstr(mode, "MASK"))		intMode = LICE_BLIT_MODE_MASK;
-	else if (strstr(mode, "ADD"))	intMode = LICE_BLIT_MODE_ADD;
-	else if (strstr(mode, "DODGE")) intMode = LICE_BLIT_MODE_DODGE;
-	else if (strstr(mode, "MUL"))	intMode = LICE_BLIT_MODE_MUL;
-	else if (strstr(mode, "OVERLAY")) intMode = LICE_BLIT_MODE_OVERLAY;
-	else if (strstr(mode, "HSVADJ")) intMode = LICE_BLIT_MODE_HSVADJ;
-	if (strstr(mode, "ALPHA"))		intMode |= LICE_BLIT_USE_ALPHA;
-	*/
-	LICE_Blit((LICE_IBitmap*)destBitmap, (LICE_IBitmap*)sourceBitmap, dstx, dsty, srcx, srcy, width, height, (float)alpha, mode);
+#define LICE_BLIT_MODE_MASK 0xff
+#define LICE_BLIT_MODE_COPY 0
+#define LICE_BLIT_MODE_ADD 1
+#define LICE_BLIT_MODE_DODGE 2
+#define LICE_BLIT_MODE_MUL 3
+#define LICE_BLIT_MODE_OVERLAY 4
+#define LICE_BLIT_MODE_HSVADJ 5
+#define LICE_BLIT_MODE_CHANCOPY 0xf0 // in this mode, only available for LICE_Blit(), the low nibble is 2 bits of source channel (low 2), 2 bits of dest channel (high 2)
+#define LICE_BLIT_USE_ALPHA 0x10000 // use source's alpha channel
+
+
+#define GETINTMODE 	int intMode = LICE_BLIT_MODE_COPY; \
+					if ((strlen(mode) == 0) || strstr(mode, "COPY")); \
+					else if (strstr(mode, "MASK"))		intMode = LICE_BLIT_MODE_MASK; \
+					else if (strstr(mode, "ADD"))		intMode = LICE_BLIT_MODE_ADD; \
+					else if (strstr(mode, "DODGE"))		intMode = LICE_BLIT_MODE_DODGE; \
+					else if (strstr(mode, "MUL"))		intMode = LICE_BLIT_MODE_MUL; \
+					else if (strstr(mode, "OVERLAY"))	intMode = LICE_BLIT_MODE_OVERLAY; \
+					else if (strstr(mode, "HSVADJ"))	intMode = LICE_BLIT_MODE_HSVADJ; \
+					if (strstr(mode, "ALPHA"))	intMode |= LICE_BLIT_USE_ALPHA;
+
+void JS_LICE_Blit(void* destBitmap, int dstx, int dsty, void* sourceBitmap, int srcx, int srcy, int width, int height, double alpha, const char* mode)
+{	
+	GETINTMODE
+	LICE_Blit((LICE_IBitmap*)destBitmap, (LICE_IBitmap*)sourceBitmap, dstx, dsty, srcx, srcy, width, height, (float)alpha, intMode);
 }
 
-void JS_LICE_RotatedBlit(void* destBitmap, int dstx, int dsty, int dstw, int dsth, void* sourceBitmap, double srcx, double srcy, double srcw, double srch, double angle, bool cliptosourcerect, double alpha, int mode, double rotxcent, double rotycent)
+void JS_LICE_RotatedBlit(void* destBitmap, int dstx, int dsty, int dstw, int dsth, void* sourceBitmap, double srcx, double srcy, double srcw, double srch, double angle, double rotxcent, double rotycent, bool cliptosourcerect, double alpha, const char* mode)
 {
-	LICE_RotatedBlit((LICE_IBitmap*)destBitmap, (LICE_IBitmap*)sourceBitmap, dstx, dsty, dstw, dsth, (float)srcx, (float)srcy, (float)srcw, (float)srch, (float)angle, cliptosourcerect, (float)alpha, mode, (float)rotxcent, (float)rotycent);
+	GETINTMODE	
+	LICE_RotatedBlit((LICE_IBitmap*)destBitmap, (LICE_IBitmap*)sourceBitmap, dstx, dsty, dstw, dsth, (float)srcx, (float)srcy, (float)srcw, (float)srch, (float)angle, cliptosourcerect, (float)alpha, intMode, (float)rotxcent, (float)rotycent);
 }
 
-void JS_LICE_ScaledBlit(void* destBitmap, int dstx, int dsty, int dstw, int dsth, void* sourceBitmap, double srcx, double srcy, double srcw, double srch, double alpha, int mode)
+void JS_LICE_ScaledBlit(void* destBitmap, int dstx, int dsty, int dstw, int dsth, void* sourceBitmap, double srcx, double srcy, double srcw, double srch, double alpha, const char* mode)
 {
-	LICE_ScaledBlit((LICE_IBitmap*)destBitmap, (LICE_IBitmap*)sourceBitmap, dstx, dsty, dstw, dsth, (float)srcx, (float)srcy, (float)srcw, (float)srch, (float)alpha, mode);
+	GETINTMODE
+	LICE_ScaledBlit((LICE_IBitmap*)destBitmap, (LICE_IBitmap*)sourceBitmap, dstx, dsty, dstw, dsth, (float)srcx, (float)srcy, (float)srcw, (float)srch, (float)alpha, intMode);
 }
 
 void* JS_LICE_LoadPNG(const char* filename)
@@ -1501,9 +1728,10 @@ void* JS_LICE_LoadPNG(const char* filename)
 	return LICE_LoadPNG(filename, NULL); // In order to force the use of SysBitmaps, use must supply bitmap
 }
 
-void JS_LICE_Circle(void* bitmap, double cx, double cy, double r, int color, double alpha, int mode, bool antialias)
+void JS_LICE_Circle(void* bitmap, double cx, double cy, double r, int color, double alpha, const char* mode, bool antialias)
 {
-	LICE_Circle((LICE_IBitmap*)bitmap, (float)cx, (float)cy, (float)r, (LICE_pixel)color, (float)alpha, mode, antialias);
+	GETINTMODE
+	LICE_Circle((LICE_IBitmap*)bitmap, (float)cx, (float)cy, (float)r, (LICE_pixel)color, (float)alpha, intMode, antialias);
 }
 
 bool JS_LICE_IsFlipped(void* bitmap)
@@ -1516,9 +1744,10 @@ bool JS_LICE_Resize(void* bitmap, int width, int height)
 	return LICE__resize((LICE_IBitmap*)bitmap, width, height);
 }
 
-void JS_LICE_Arc(void* bitmap, double cx, double cy, double r, double minAngle, double maxAngle, int color, double alpha, int mode, bool antialias)
+void JS_LICE_Arc(void* bitmap, double cx, double cy, double r, double minAngle, double maxAngle, int color, double alpha, const char* mode, bool antialias)
 {
-	LICE_Arc((LICE_IBitmap*)bitmap, (float)cx, (float)cy, (float)r, (float)minAngle, (float)maxAngle, (LICE_pixel)color, (float)alpha, mode, antialias);
+	GETINTMODE
+	LICE_Arc((LICE_IBitmap*)bitmap, (float)cx, (float)cy, (float)r, (float)minAngle, (float)maxAngle, (LICE_pixel)color, (float)alpha, intMode, antialias);
 }
 
 void JS_LICE_Clear(void* bitmap, int color)
@@ -1533,7 +1762,7 @@ void* JS_LICE_CreateFont()
 	return LICE_CreateFont();
 }
 
-void JS_LICE_SetFontFromGDI(void* LICEFont, void* GDIFont, const char* flags)
+void JS_LICE_SetFontFromGDI(void* LICEFont, void* GDIFont, const char* moreFormats)
 {
 	#define LICE_FONT_FLAG_VERTICAL 1 // rotate text to vertical (do not set the windows font to vertical though)
 	#define LICE_FONT_FLAG_VERTICAL_BOTTOMUP 2
@@ -1548,15 +1777,15 @@ void JS_LICE_SetFontFromGDI(void* LICEFont, void* GDIFont, const char* flags)
 	#define LICE_FONT_FLAG_OWNS_HFONT 512
 	
 	int intMode = LICE_FONT_FLAG_PRECALCALL;
-	if		(strstr(flags, "VERTI"))intMode = intMode | LICE_FONT_FLAG_VERTICAL;
-	else if (strstr(flags, "BOTT"))	intMode = intMode | LICE_FONT_FLAG_VERTICAL_BOTTOMUP;
-	else if (strstr(flags, "PRE"))	intMode = intMode | LICE_FONT_FLAG_PRECALCALL;
-	else if (strstr(flags, "NATI"))	intMode = intMode | LICE_FONT_FLAG_FORCE_NATIVE;
-	else if (strstr(flags, "BLUR")) intMode = intMode | LICE_FONT_FLAG_FX_BLUR;
-	else if (strstr(flags, "INVE")) intMode = intMode | LICE_FONT_FLAG_FX_INVERT;
-	else if (strstr(flags, "MONO")) intMode = intMode | LICE_FONT_FLAG_FX_MONO;
-	else if (strstr(flags, "SHAD"))	intMode = intMode | LICE_FONT_FLAG_FX_SHADOW;
-	else if (strstr(flags, "OUT"))	intMode = intMode | LICE_FONT_FLAG_FX_OUTLINE;
+	if (strstr(moreFormats, "VERTI"))	intMode |= LICE_FONT_FLAG_VERTICAL;
+	if (strstr(moreFormats, "BOTT"))	intMode |= LICE_FONT_FLAG_VERTICAL_BOTTOMUP;
+	if (strstr(moreFormats, "PRE"))		intMode |= LICE_FONT_FLAG_PRECALCALL;
+	if (strstr(moreFormats, "NATI"))	intMode |= LICE_FONT_FLAG_FORCE_NATIVE;
+	if (strstr(moreFormats, "BLUR"))	intMode |= LICE_FONT_FLAG_FX_BLUR;
+	if (strstr(moreFormats, "INVE"))	intMode |= LICE_FONT_FLAG_FX_INVERT;
+	if (strstr(moreFormats, "MONO"))	intMode |= LICE_FONT_FLAG_FX_MONO;
+	if (strstr(moreFormats, "SHAD"))	intMode |= LICE_FONT_FLAG_FX_SHADOW;
+	if (strstr(moreFormats, "OUT"))		intMode |= LICE_FONT_FLAG_FX_OUTLINE;
 
 	LICE__SetFromHFont((LICE_IFont*)LICEFont, (HFONT)GDIFont, intMode);
 }
@@ -1582,9 +1811,10 @@ int JS_LICE_DrawText(void* bitmap, void* LICEFont, const char* text, int textLen
 	return LICE__DrawText((LICE_IFont*)LICEFont, (LICE_IBitmap*)bitmap, text, textLen, &r, 0); // I don't know what UINT dtFlags does, so make 0.
 }
 
-void JS_LICE_DrawChar(void* bitmap, int x, int y, char c, int color, double alpha, int mode)
+void JS_LICE_DrawChar(void* bitmap, int x, int y, char c, int color, double alpha, const char* mode)
 {
-	LICE_DrawChar((LICE_IBitmap*)bitmap, x, y, c, (LICE_pixel)color, (float)alpha, mode);
+	GETINTMODE
+	LICE_DrawChar((LICE_IBitmap*)bitmap, x, y, c, (LICE_pixel)color, (float)alpha, intMode);
 }
 
 void JS_LICE_MeasureText(const char* string, int* widthOut, int* heightOut)
@@ -1593,35 +1823,54 @@ void JS_LICE_MeasureText(const char* string, int* widthOut, int* heightOut)
 }
 
 
-void JS_LICE_FillRect(void* bitmap, int x, int y, int w, int h, int color, double alpha, int mode)
+void JS_LICE_FillRect(void* bitmap, int x, int y, int w, int h, int color, double alpha, const char* mode)
 {
-	LICE_FillRect((LICE_IBitmap*)bitmap, x, y, w, h, (LICE_pixel)color, (float)alpha, mode);
+	GETINTMODE
+	LICE_FillRect((LICE_IBitmap*)bitmap, x, y, w, h, (LICE_pixel)color, (float)alpha, intMode);
 }
 
-void JS_LICE_RoundRect(void* bitmap, double x, double y, double w, double h, int cornerradius, int color, double alpha, int mode, bool antialias)
+void JS_LICE_RoundRect(void* bitmap, double x, double y, double w, double h, int cornerradius, int color, double alpha, const char* mode, bool antialias)
 {
-	LICE_RoundRect((LICE_IBitmap*)bitmap, (float)x, (float)y, (float)w, (float)h, cornerradius, color, (float)alpha, mode, antialias);
-}
-
-void JS_LICE_FillTriangle(void* bitmap, int x1, int y1, int x2, int y2, int x3, int y3, int color, double alpha, int mode)
-{
-	LICE_FillTriangle((LICE_IBitmap*)bitmap, x1, y1, x2, y2, x3, y3, color, (float)alpha, mode);
-}
-
-void JS_LICE_FillPolygon(void* bitmap, const char* packedX, const char* packedY, int numPoints, int color, double alpha, int mode)
-{
-	LICE_FillConvexPolygon((LICE_IBitmap*)bitmap, (int32_t*)packedX, (int32_t*)packedY, numPoints, color, (float)alpha, mode);
-}
-
-void JS_LICE_FillCircle(void* bitmap, double cx, double cy, double r, int color, double alpha, int mode, bool antialias)
-{
-	LICE_FillCircle((LICE_IBitmap*)bitmap, (float)cx, (float)cy, (float)r, color, (float)alpha, mode, antialias);
+	GETINTMODE
+	LICE_RoundRect((LICE_IBitmap*)bitmap, (float)x, (float)y, (float)w, (float)h, cornerradius, color, (float)alpha, intMode, antialias);
 }
 
 
-void JS_LICE_Line(void* bitmap, double x1, double y1, double x2, double y2, int color, double alpha, int mode, bool antialias)
+void JS_LICE_GradRect(void* bitmap, int dstx, int dsty, int dstw, int dsth, double ir, double ig, double ib, double ia, double drdx, double dgdx, double dbdx, double dadx, double drdy, double dgdy, double dbdy, double dady, const char* mode)
 {
-	LICE_Line((LICE_IBitmap*)bitmap, (float)x1, (float)y1, (float)x2, (float)y2, (LICE_pixel)color, (float)alpha, mode, antialias);
+	GETINTMODE
+	LICE_GradRect((LICE_IBitmap*)bitmap, dstx, dsty, dstw, dsth, (float)ir, (float)ig, (float)ib, (float)ia, (float)drdx, (float)dgdx, (float)dbdx, (float)dadx, (float)drdy, (float)dgdy, (float)dbdy, (float)dady, intMode);
+}
+
+void JS_LICE_FillTriangle(void* bitmap, int x1, int y1, int x2, int y2, int x3, int y3, int color, double alpha, const char* mode)
+{
+	GETINTMODE
+	LICE_FillTriangle((LICE_IBitmap*)bitmap, x1, y1, x2, y2, x3, y3, color, (float)alpha, intMode);
+}
+
+void JS_LICE_FillPolygon(void* bitmap, const char* packedX, const char* packedY, int numPoints, int color, double alpha, const char* mode)
+{
+	GETINTMODE
+	LICE_FillConvexPolygon((LICE_IBitmap*)bitmap, (int32_t*)packedX, (int32_t*)packedY, numPoints, color, (float)alpha, intMode);
+}
+
+void JS_LICE_FillCircle(void* bitmap, double cx, double cy, double r, int color, double alpha, const char* mode, bool antialias)
+{
+	GETINTMODE
+	LICE_FillCircle((LICE_IBitmap*)bitmap, (float)cx, (float)cy, (float)r, color, (float)alpha, intMode, antialias);
+}
+
+
+void JS_LICE_Line(void* bitmap, double x1, double y1, double x2, double y2, int color, double alpha, const char* mode, bool antialias)
+{
+	GETINTMODE
+	LICE_Line((LICE_IBitmap*)bitmap, (float)x1, (float)y1, (float)x2, (float)y2, (LICE_pixel)color, (float)alpha, intMode, antialias);
+}
+
+void JS_LICE_Bezier(void* bitmap, double xstart, double ystart, double xctl1, double yctl1, double xctl2, double yctl2, double xend, double yend, double tol, int color, double alpha, const char* mode, bool antialias)
+{
+	GETINTMODE
+	LICE_DrawCBezier((LICE_IBitmap*)bitmap, xstart, ystart, xctl1, yctl1, xctl2, yctl2, xend, yend, (LICE_pixel)color, (float)alpha, intMode, antialias, tol);
 }
 
 
@@ -1630,9 +1879,10 @@ int JS_LICE_GetPixel(void* bitmap, int x, int y)
 	return (int)LICE_GetPixel((LICE_IBitmap*)bitmap, x, y);
 }
 
-void JS_LICE_PutPixel(void* bitmap, int x, int y, int color, double alpha, int mode)
+void JS_LICE_PutPixel(void* bitmap, int x, int y, int color, double alpha, const char* mode)
 {
-	LICE_PutPixel((LICE_IBitmap*)bitmap, x, y, (LICE_pixel)color, (float)alpha, mode);
+	GETINTMODE
+	LICE_PutPixel((LICE_IBitmap*)bitmap, x, y, (LICE_pixel)color, (float)alpha, intMode);
 }
 
 
@@ -1675,3 +1925,6 @@ void JS_Double(void* address, int offset, double* doubleOut)
 {
 	*doubleOut = ((double*)address)[offset];
 }
+
+
+////////////////////////////////////////////////////////////////
