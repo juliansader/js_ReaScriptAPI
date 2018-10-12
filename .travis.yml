@@ -1,7 +1,7 @@
 os: osx
 language: cpp
 compiler: g++
-script: g++ -fPIC -shared js_ReaScriptAPI.cpp swell-modstub.mm -std=gnu++11 -Wall -o reaper_js_ReaScriptAPI64.dylib
+script: g++ -fPIC -dynamiclib -lc++ -framework AppKit js_ReaScriptAPI.cpp swell-modstub.mm -std=c++17 -Wall -o reaper_js_ReaScriptAPI64.dylib
 deploy:
   provider: releases
   api_key: 
