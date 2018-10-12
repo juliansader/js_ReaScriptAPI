@@ -7,5 +7,3 @@ deploy:
   api_key: $GH_TOKEN
   file: 'reaper_js_ReaScriptAPI324.so'
   skip_cleanup: true
-  on:
-    tags: true
