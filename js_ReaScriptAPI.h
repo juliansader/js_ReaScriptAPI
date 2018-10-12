@@ -1,5 +1,4 @@
-#ifndef JS_REASCRIPTAPI_H
-#define JS_REASCRIPTAPI_H
+#pragma once
 
 extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance, reaper_plugin_info_t *rec);
 
@@ -18,16 +17,20 @@ void* JS_Window_GetRelated(void* windowHWND, const char* relation);
 
 void* JS_Window_Find(const char* title, bool exact);
 void* JS_Window_FindChild(void* parentHWND, const char* title, bool exact);
-void  JS_Window_ListAllChild(void* parentHWND, double* reaperarray); // const char* section, const char* key);
-void  JS_Window_ListAllTop(double* reaperarray); // const char* section, const char* key);
-void  JS_Window_ListFind(const char* title, bool exact, double* reaperarray); // const char* section, const char* key);
-void  JS_MIDIEditor_ListAll(double* reaperarray); // char* buf, int buf_sz);
+void  JS_Window_ArrayAllChild(void* parentHWND, double* reaperarray);
+void  JS_Window_ArrayAllTop(double* reaperarray);
+void  JS_Window_ArrayFind(const char* title, bool exact, double* reaperarray);
+void  JS_MIDIEditor_ArrayAll(double* reaperarray);
+void  JS_Window_ListAllChild(void* parentHWND, const char* section, const char* key);
+void  JS_Window_ListAllTop(const char* section, const char* key);
+void  JS_Window_ListFind(const char* title, bool exact, const char* section, const char* key);
+void  JS_MIDIEditor_ListAll(char* buf, int buf_sz);
 
 void  JS_Window_Move(void* windowHWND, int left, int top);
 void  JS_Window_Resize(void* windowHWND, int width, int height);
 void  JS_Window_SetPosition(void* windowHWND, int left, int top, int width, int height);
 void  JS_Window_SetZOrder(void* windowHWND, const char* ZOrder, void* insertAfterHWND);
-void* JS_Window_GetInfoPtr(void* windowHWND, const char* info);
+void* JS_Window_GetLongPtr(void* windowHWND, const char* info);
 
 void  JS_Window_SetFocus(void* windowHWND);
 void* JS_Window_GetFocus();
@@ -36,7 +39,7 @@ void* JS_Window_GetForeground();
 
 void  JS_Window_Enable(void* windowHWND, bool enable);
 void  JS_Window_Destroy(void* windowHWND);
-void  JS_Window_Show(void* windowHWND, int state);
+void  JS_Window_Show(void* windowHWND, const char* state);
 bool  JS_Window_IsVisible(void* windowHWND);
 
 bool  JS_Window_SetTitle(void* windowHWND, const char* title);
@@ -90,6 +93,7 @@ void  JS_GDI_FillEllipse(void* deviceHDC, int left, int top, int right, int bott
 
 void  JS_GDI_SetPixel(void* deviceHDC, int x, int y, int color);
 void  JS_GDI_Line(void* deviceHDC, int x1, int y1, int x2, int y2);
+void  JS_GDI_Polyline(void* deviceHDC, const char* packedX, const char* packedY, int numPoints);
 
 void  JS_GDI_Blit(void* destHDC, int dstx, int dsty, void* sourceHDC, int srcx, int srcy, int width, int height);
 void  JS_GDI_StretchBlit(void* destHDC, int dstx, int dsty, int dstw, int dsth, void* sourceHDC, int srcx, int srcy, int srcw, int srch);
@@ -100,9 +104,9 @@ int   JS_LICE_GetWidth(void* bitmap);
 void* JS_LICE_GetDC(void* bitmap);
 void  JS_LICE_DestroyBitmap(void* bitmap);
 
-void  JS_LICE_Blit(void* destBitmap, int dstx, int dsty, void* sourceBitmap, int srcx, int srcy, int width, int height, double alpha, int mode);
-void  JS_LICE_RotatedBlit(void* destBitmap, int dstx, int dsty, int dstw, int dsth, void* sourceBitmap, double srcx, double srcy, double srcw, double srch, double angle, bool cliptosourcerect, double alpha, int mode, double rotxcent, double rotycent);
-void  JS_LICE_ScaledBlit(void* destBitmap, int dstx, int dsty, int dstw, int dsth, void* sourceBitmap, double srcx, double srcy, double srcw, double srch, double alpha, int mode);
+void  JS_LICE_Blit(void* destBitmap, int dstx, int dsty, void* sourceBitmap, int srcx, int srcy, int width, int height, double alpha, const char* mode);
+void  JS_LICE_RotatedBlit(void* destBitmap, int dstx, int dsty, int dstw, int dsth, void* sourceBitmap, double srcx, double srcy, double srcw, double srch, double angle, double rotxcent, double rotycent, bool cliptosourcerect, double alpha, const char* mode);
+void  JS_LICE_ScaledBlit(void* destBitmap, int dstx, int dsty, int dstw, int dsth, void* sourceBitmap, double srcx, double srcy, double srcw, double srch, double alpha, const char* mode);
 
 void* JS_LICE_LoadPNG(const char* filename);
 bool  JS_LICE_IsFlipped(void* bitmap);
@@ -111,27 +115,27 @@ void  JS_LICE_Clear(void* bitmap, int color);
 
 void* JS_LICE_CreateFont();
 void  JS_LICE_DestroyFont(void* LICEFont);
-void  JS_LICE_SetFontFromGDI(void* LICEFont, void* GDIFont, const char* flags);
+void  JS_LICE_SetFontFromGDI(void* LICEFont, void* GDIFont, const char* moreFormats);
 void  JS_LICE_SetFontBkColor(void* LICEFont, int color);
 void  JS_LICE_SetFontColor(void* LICEFont, int color);
 int   JS_LICE_DrawText(void* bitmap, void* LICEFont, const char* text, int textLen, int x1, int y1, int x2, int y2);
-void  JS_LICE_DrawChar(void* bitmap, int x, int y, char c, int color, double alpha, int mode);
+void  JS_LICE_DrawChar(void* bitmap, int x, int y, char c, int color, double alpha, const char* mode);
 void  JS_LICE_MeasureText(const char* string, int* widthOut, int* heightOut);
 
-void  JS_LICE_FillRect(void* bitmap, int x, int y, int w, int h, int color, double alpha, int mode);
-void  JS_LICE_FillTriangle(void* bitmap, int x1, int y1, int x2, int y2, int x3, int y3, int color, double alpha, int mode);
-void  JS_LICE_FillPolygon(void* bitmap, const char* packedX, const char* packedY, int numPoints, int color, double alpha, int mode);
-void  JS_LICE_FillCircle(void* bitmap, double cx, double cy, double r, int color, double alpha, int mode, bool antialias);
+void  JS_LICE_GradRect(void* bitmap, int dstx, int dsty, int dstw, int dsth, double ir, double ig, double ib, double ia, double drdx, double dgdx, double dbdx, double dadx, double drdy, double dgdy, double dbdy, double dady, const char* mode);
+void  JS_LICE_FillRect(void* bitmap, int x, int y, int w, int h, int color, double alpha, const char* mode);
+void  JS_LICE_FillTriangle(void* bitmap, int x1, int y1, int x2, int y2, int x3, int y3, int color, double alpha, const char* mode);
+void  JS_LICE_FillPolygon(void* bitmap, const char* packedX, const char* packedY, int numPoints, int color, double alpha, const char* mode);
+void  JS_LICE_FillCircle(void* bitmap, double cx, double cy, double r, int color, double alpha, const char* mode, bool antialias);
 
-void  JS_LICE_Line(void* bitmap, double x1, double y1, double x2, double y2, int color, double alpha, int mode, bool antialias);
-void  JS_LICE_Arc(void* bitmap, double cx, double cy, double r, double minAngle, double maxAngle, int color, double alpha, int mode, bool antialias);
-void  JS_LICE_Circle(void* bitmap, double cx, double cy, double r, int color, double alpha, int mode, bool antialias);
-void  JS_LICE_RoundRect(void* bitmap, double x, double y, double w, double h, int cornerradius, int color, double alpha, int mode, bool antialias);
+void  JS_LICE_Line(void* bitmap, double x1, double y1, double x2, double y2, int color, double alpha, const char* mode, bool antialias);
+void  JS_LICE_Bezier(void* bitmap, double xstart, double ystart, double xctl1, double yctl1, double xctl2, double yctl2, double xend, double yend, double tol, int color, double alpha, const char* mode, bool antialias);
+void  JS_LICE_Arc(void* bitmap, double cx, double cy, double r, double minAngle, double maxAngle, int color, double alpha, const char* mode, bool antialias);
+void  JS_LICE_Circle(void* bitmap, double cx, double cy, double r, int color, double alpha, const char* mode, bool antialias);
+void  JS_LICE_RoundRect(void* bitmap, double x, double y, double w, double h, int cornerradius, int color, double alpha, const char* mode, bool antialias);
 
 int   JS_LICE_GetPixel(void* bitmap, int x, int y);
-void  JS_LICE_PutPixel(void* bitmap, int x, int y, int color, double alpha, int mode);
-
-//void  JS_LICE_Circle(void* dest, float cx, float cy, float r, int color, float alpha, int mode, bool aa);
+void  JS_LICE_PutPixel(void* bitmap, int x, int y, int color, double alpha, const char* mode);
 
 void  JS_Window_AttachTopmostPin(void* windowHWND);
 void  JS_Window_AttachResizeGrip(void* windowHWND);
@@ -141,5 +145,3 @@ void* JS_PtrFromStr(const char* s);
 void  JS_Int(void* address, int offset, int* intOut);
 void  JS_Byte(void* address, int offset, int* byteOut);
 void  JS_Double(void* address, int offset, double* doubleOut);
-
-#endif
