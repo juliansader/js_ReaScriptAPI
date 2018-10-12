@@ -3,6 +3,9 @@ language: cpp
 compiler: g++
 script: g++ -fPIC -shared js_ReaScriptAPI.cpp swell-modstub-generic.cpp -std=gnu++11 -Wall -o reaper_js_ReaScriptAPI324.so
 deploy:
-        provider: releases
-        api_key: $GITHUB_OAUTH_TOKEN
-        skip_cleanup: true
+  provider: releases
+  api_key: $GH_TOKEN
+  file: 'reaper_js_ReaScriptAPI324.so'
+  skip_cleanup: true
+  on:
+    tags: true
