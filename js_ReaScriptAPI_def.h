@@ -1,5 +1,4 @@
-#ifndef JS_REASCRIPTAPI_DEF
-#define JS_REACSRIPTAPI_DEF
+#pragma once
 
 #include "js_ReaScriptAPI.h"
 
@@ -93,7 +92,7 @@ APIdef aAPIdefs[] =
 	{ APIFUNC(JS_Window_ScreenToClient), "void", "void*,int,int,int*,int*", "windowHWND,x,y,xOut,yOut", "Converts the screen coordinates of a specified point on the screen to client-area coordinates.", },
 	{ APIFUNC(JS_Window_ClientToScreen), "void", "void*,int,int,int*,int*", "windowHWND,x,y,xOut,yOut", "Converts the client-area coordinates of a specified point to screen coordinates.", },
 	{ APIFUNC(JS_Window_GetClientRect), "bool", "void*,int*,int*,int*,int*", "windowHWND,leftOut,topOut,rightOut,bottomOut", "Retrieves the coordinates of the client area rectangle of the specified window. The dimensions are given in screen coordinates relative to the upper-left corner of the screen.\nNOTE 1: Unlike the C++ function GetClientRect, this function returns the actual coordinates, not the width and height.\nNOTE 2: The pixel at (right, bottom) lies immediately outside the rectangle.", },
-	
+
 	{ APIFUNC(JS_Window_FromPoint), "void*", "int,int", "x,y", "Retrieves a HWND to the window that contains the specified point.", },
 	{ APIFUNC(JS_Window_GetParent), "void*", "void*", "windowHWND", "Retrieves a HWND to the specified window's parent or owner.\nReturns NULL if the window is unowned or if the function otherwise fails.", },
 	{ APIFUNC(JS_Window_IsChild), "bool", "void*,void*", "parentHWND,childHWND", "Determines whether a window is a child window or descendant window of a specified parent window.", },
@@ -106,24 +105,28 @@ APIdef aAPIdefs[] =
 
 	{ APIFUNC(JS_Window_Enable), "void", "void*,bool", "windowHWND,enable", "Enables or disables mouse and keyboard input to the specified window or control.", },
 	{ APIFUNC(JS_Window_Destroy), "void", "void*", "windowHWND", "Destroys the specified window.", },
-	{ APIFUNC(JS_Window_Show), "void", "void*,int", "windowHWND,state", "Sets the specified window's show state.\nstate: Refer to documentation for Win32 C++ function ShowWindow.", },
+	{ APIFUNC(JS_Window_Show), "void", "void*,const char*", "windowHWND,state", "Sets the specified window's show state.\n\nParameters:\n * state: Either \"SHOW\", \"SHOWNA\", \"SHOWMINIMIZED\",  or \"HIDE\".", },
 	{ APIFUNC(JS_Window_IsVisible), "bool", "void*", "windowHWND", "Determines the visibility state of the window.", },
 	{ APIFUNC(JS_Window_IsWindow), "bool", "void*", "windowHWND", "Determines whether the specified window handle identifies an existing window.", },
 
 	{ APIFUNC(JS_Window_Find), "void*", "const char*,bool", "title,exact", "Returns a HWND to the top-level window whose title matches the specified string. This function does not search child window, and is not case sensitive.\n\nParameters:\n * exact: Match entire title exactly, or match substring of title.", },
 	{ APIFUNC(JS_Window_FindChild), "void*", "void*,const char*,bool", "parentHWND,title,exact", "Returns a HWND to the child window whose title matches the specified string.\n\nParameters:\n * exact: Match entire title exactly, or match substring of title.", },
-	{ APIFUNC(JS_Window_ListAllChild), "void", "void*,void*", "parentHWND,reaperarray", "Returns all child windows of the specified parent.\n\nThe addresses are stored in the provided reaper.array, and can be converted to REAPER objects (HWNDs) by the function JS_Window_HandleFromAddress.", },
-	{ APIFUNC(JS_Window_ListAllTop), "void", "void*", "reaperarray", "Returns all top-level windows.\n\nThe addresses are stored in the provided reaper.array, and can be converted to REAPER objects (HWNDs) by the function JS_Window_HandleFromAddress.", },
-	{ APIFUNC(JS_Window_ListFind), "void", "const char*,bool,void*", "title,exact,reaperarray", "Returns all windows, whether top-level or child, whose titles match the specified string.\n\nThe addresses are stored in the provided reaper.array, and can be converted to REAPER objects (HWNDs) by the function JS_Window_HandleFromAddress.\n\n * exact: Match entire title exactly, or match substring of title.", },
+	{ APIFUNC(JS_Window_ArrayAllChild), "void", "void*,void*", "parentHWND,reaperarray", "Returns all child windows of the specified parent.\n\nThe addresses are stored in the provided reaper.array, and can be converted to REAPER objects (HWNDs) by the function JS_Window_HandleFromAddress.", },
+	{ APIFUNC(JS_Window_ArrayAllTop), "void", "void*", "reaperarray", "Returns all top-level windows.\n\nThe addresses are stored in the provided reaper.array, and can be converted to REAPER objects (HWNDs) by the function JS_Window_HandleFromAddress.", },
+	{ APIFUNC(JS_Window_ArrayFind), "void", "const char*,bool,void*", "title,exact,reaperarray", "Returns all windows, whether top-level or child, whose titles match the specified string.\n\nThe addresses are stored in the provided reaper.array, and can be converted to REAPER objects (HWNDs) by the function JS_Window_HandleFromAddress.\n\nParameters: * exact: Match entire title exactly, or match substring of title.", },
+	{ APIFUNC(JS_Window_ListAllChild), "void", "void*,const char*,const char*", "parentHWND,section,key", "Returns a list of HWNDs of all child windows of the specified parent.\nThe list is formatted as a comma-separated (and terminated) string of hexadecimal values.\nEach value is an address that can be converted to a HWND by the function Window_HandleFromAddress.\n\nParameters:\n * section, key: Since the list string can sometimes be much longer than the maximum length of strings that can be returned by the Lua API, the list will instead by stored as a temporary ExtState specified by section and key.", },
+	{ APIFUNC(JS_Window_ListAllTop), "void", "const char*,const char*", "section,key", "Returns a list of HWNDs of all top-level windows.\nThe list is formatted as a comma-separated (and terminated) string of hexadecimal values.\nEach value is an address that can be converted to a HWND by the function Window_HandleFromAddress.\n\nParameters:\n * section, key: Since the list string can sometimes be much longer than the maximum length of strings that can be returned by the Lua API, the list will instead by stored as a temporary ExtState specified by section and key.", },
+	{ APIFUNC(JS_Window_ListFind), "void", "const char*,bool,const char*,const char*", "title,exact,section,key", "Returns a list of HWNDs of all windows (whether top-level or child) whose titles match the specified string.\nThe list is formatted as a comma-separated (and terminated) string of hexadecimal values.\nEach value is an address that can be converted to a HWND by the function Window_HandleFromAddress.\n\nParameters:\n * section, key: Since the list string can sometimes be much longer than the maximum length of strings that can be returned by the Lua API, the list will instead by stored as a temporary ExtState specified by section and key.\n * exact: Match entire title exactly, or match substring of title.", },
 
-	{ APIFUNC(JS_MIDIEditor_ListAll), "void", "void*", "reaperarray", "Returns the addresses of all open MIDI windows (whether docked or not).\n * The addresses are stored in the provided reaper.array.\n * Each address can be converted to a REAPER object (HWND) by the function JS_Window_HandleFromAddress.", },
+	{ APIFUNC(JS_MIDIEditor_ListAll), "void", "char*,int", "buf,buf_sz", "Returns a list of HWNDs of all open MIDI windows (whether docked or not).\n * The list is formatted as a comma-separated (and terminated) string of hexadecimal values.\n * Each value is an address that can be converted to a HWND by the function Window_HandleFromAddress.", },
+	{ APIFUNC(JS_MIDIEditor_ArrayAll), "void", "void*", "reaperarray", "Returns the addresses of all open MIDI windows (whether docked or not).\n * The addresses are stored in the provided reaper.array.\n * Each address can be converted to a REAPER object (HWND) by the function JS_Window_HandleFromAddress.", },
 
 	{ APIFUNC(JS_Window_Resize), "void", "void*,int,int", "windowHWND,width,height", "Changes the dimensions of the specified window, keeping the top left corner position constant.\n * If resizing script GUIs, call gfx.update() after resizing.", },
 	{ APIFUNC(JS_Window_Move), "void", "void*,int,int", "windowHWND,left,top", "Changes the position of the specified window, keeping its size constant.\n * For a top-level window, the position is relative to the upper-left corner of the screen.\n * For a child window, they are relative to the upper-left corner of the parent window's client area.", },
 	{ APIFUNC(JS_Window_SetPosition), "void", "void*,int,int,int,int", "windowHWND,left,top,width,height", "Sets the window position and size.", },
 	{ APIFUNC(JS_Window_SetZOrder), "void", "void*,const char*,void*", "windowHWND,ZOrder,insertAfterHWND", "Sets the window Z order.\n\nParameters:\n * ZOrder: \"INSERT_AFTER\", \"BOTTOM\", \"TOPMOST\", \"NOTOPMOST\" or \"TOP\" ).\n * InsertAfterHWND: If ZOrder is INSERT_AFTER, insertAfterHWND must be a handle to the window to precede windowHWND in the Z order; otherwise, insertAfterHWND is ignored.", },
-	{ APIFUNC(JS_Window_GetInfoPtr), "void*", "void*,const char*", "windowHWND,info", "Returns information about the specified window.\n\ninfo: \"USERDATA\", \"WNDPROC\", \"DLGPROC\", \"ID\", \"EXSTYLE\" or \"STYLE\".\n\nFor documentation about the types of information returned, refer to the Win32 function GetWindowLongPtr."},
-	
+	{ APIFUNC(JS_Window_GetLongPtr), "void*", "void*,const char*", "windowHWND,info", "Returns information about the specified window.\n\ninfo: \"USERDATA\", \"WNDPROC\", \"DLGPROC\", \"ID\", \"EXSTYLE\" or \"STYLE\".\n\nFor documentation about the types of information returned, refer to the Win32 function GetWindowLongPtr."},
+
 	{ APIFUNC(JS_Window_GetTitle), "void", "void*,char*,int", "windowHWND,buf,buf_sz", "Returns the title (if any) of the specified window.", },
 	{ APIFUNC(JS_Window_SetTitle), "bool", "void*,const char*", "windowHWND,title", "Changes the title of the specified window. Returns true if successful.", },
 
@@ -140,8 +143,8 @@ APIdef aAPIdefs[] =
 	{ APIFUNC(JS_WindowMessage_Release), "int", "void*,const char*", "windowHWND,messages", "Release intercepts of specified message types.\n\nParameters:\n * messages: \"WM_SETCURSOR,WM_MOUSEHWHEEL\" or \"0x0020,0x020E\", for example.", },
 	{ APIFUNC(JS_WindowMessage_ReleaseWindow), "void", "void*", "windowHWND", "Release script intercepts of window messages for specified window.", },
 	{ APIFUNC(JS_WindowMessage_ReleaseAll), "void", "", "", "Release script intercepts of window messages for all windows.", },
-	
-	{ APIFUNC(JS_Mouse_GetState), "int", "int", "flags", "Retrieves the states of mouse buttons and modifiers keys.\nflags, state: The parameter and the return value both use the same format as gfx.mouse_cap. I.e., to get the states of the left mouse button and the ctrl key, use flags = 0b00000101.", },
+
+	{ APIFUNC(JS_Mouse_GetState), "int", "int", "flags", "Retrieves the states of mouse buttons and modifiers keys.\n\nParameters:\n * flags, state: The parameter and the return value both use the same format as gfx.mouse_cap. I.e., to get the states of the left mouse button and the ctrl key, use flags = 0b00000101.", },
 	{ APIFUNC(JS_Mouse_SetPosition), "bool", "int,int", "x,y", "Moves the mouse cursor to the specified coordinates.", },
 	{ APIFUNC(JS_Mouse_LoadCursor), "void*", "int", "cursorNumber", "Loads a cursor by number.\ncursorNumber: Same as used for gfx.setcursor, and includes some of Windows' predefined cursors (with numbers > 32000; refer to documentation for the Win32 C++ function LoadCursor), and REAPER's own cursors (with numbers < 2000). \nIf successful, returns a handle to the cursor, which can be used in JS_Mouse_SetCursor.", },
 	{ APIFUNC(JS_Mouse_LoadCursorFromFile), "void*", "const char*", "pathAndFileName", "Loads a cursor from a .cur file.\nIf successful, returns a handle to the cursor, which can be used in JS_Mouse_SetCursor.", },
@@ -153,17 +156,17 @@ APIdef aAPIdefs[] =
 	{ APIFUNC(JS_GDI_GetClientDC), "void*", "void*", "windowHWND", "Returns the device context for the client area of the specified window.", },
 	{ APIFUNC(JS_GDI_GetWindowDC), "void*", "void*", "windowHWND", "Returns the device context for the entire window, including title bar and frame.", },
 	{ APIFUNC(JS_GDI_GetScreenDC), "void*", "", "", "Returns a device context for the entire screen.\n\nWARNING: Only available on Windows, not Linux or MacOS.", },
-	{ APIFUNC(JS_GDI_ReleaseDC), "", "void*,void*", "windowHWND,deviceHDC", "", },
+	{ APIFUNC(JS_GDI_ReleaseDC), "void", "void*,void*", "windowHWND,deviceHDC", "", },
 
 	{ APIFUNC(JS_GDI_CreateFillBrush), "void*", "int", "color", "", },
 	{ APIFUNC(JS_GDI_CreatePen), "void*", "int,int", "width,color", "", },
 	{ APIFUNC(JS_GDI_CreateFont), "void*", "int,int,int,bool,bool,bool,const char*", "height,weight,angle,italic,underline,strikeOut,fontName", "Parameters:\n * weight: 0 - 1000, with 0 = auto, 400 = normal and 700 = bold.\n * angle: the angle, in tenths of degrees, between the text and the x-axis of the device.\n * fontName: If empty string \"\", uses first font that matches the other specified attributes.\n\nNote: Text color must be set separately.", },
-	{ APIFUNC(JS_GDI_SelectObject), "void*", "void*,void*", "deviceHDC,GDIObject", "Activates a pen, brush or font for subsequent drawing in the specified device context.", },
-	{ APIFUNC(JS_GDI_DeleteObject), "", "void*", "GDIObject", "", },
+	{ APIFUNC(JS_GDI_SelectObject), "void*", "void*,void*", "deviceHDC,GDIObject", "Activates a font, pen, or fill brush for subsequent drawing in the specified device context.", },
+	{ APIFUNC(JS_GDI_DeleteObject), "void", "void*", "GDIObject", "", },
 
 	{ APIFUNC(JS_GDI_FillRect), "void", "void*,int,int,int,int", "deviceHDC,left,top,right,bottom", "", },
 	{ APIFUNC(JS_GDI_FillRoundRect), "void", "void*,int,int,int,int,int,int", "deviceHDC,left,top,right,bottom,xrnd,yrnd", "", },
-	{ APIFUNC(JS_GDI_FillPolygon), "void", "void*,const char*,const char*,int", "deviceHDC,packedX,packedY,numPoints", "packedX ad packedY are strings of points, each packed as \"<i4\".", },
+	{ APIFUNC(JS_GDI_FillPolygon), "void", "void*,const char*,const char*,int", "deviceHDC,packedX,packedY,numPoints", "packedX and packedY are strings of points, each packed as \"<i4\".", },
 	{ APIFUNC(JS_GDI_FillEllipse), "void", "void*,int,int,int,int", "deviceHDC,left,top,right,bottom", "", },
 
 	{ APIFUNC(JS_GDI_GetSysColor), "int", "const char*", "GUIElement", "", },
@@ -171,48 +174,52 @@ APIdef aAPIdefs[] =
 	{ APIFUNC(JS_GDI_SetTextBkColor), "void", "void*,int", "deviceHDC,color", "", },
 	{ APIFUNC(JS_GDI_SetTextColor), "void", "void*,int", "deviceHDC,color", "", },
 	{ APIFUNC(JS_GDI_GetTextColor), "int", "void*", "deviceHDC", "", },
-	{ APIFUNC(JS_GDI_DrawText), "int", "void*,const char*,int,int,int,int,int,const char*", "deviceHDC,text,len,left,top,right,bottom,align)", "Parameters:\n * align: Combination of: \"TOP\", \"DT_VCENTER\", \"LEFT\", \"CENTER\", \"DT_RIGHT\", \"BOTTOM\", \"WORDBREAK;\", \"SINGLELINE\", \"NOCLIP\", \"CALCRECT\", \"NOPREFIX\" or \"END_ELLIPSIS\"", },
+	{ APIFUNC(JS_GDI_DrawText), "int", "void*,const char*,int,int,int,int,int,const char*", "deviceHDC,text,len,left,top,right,bottom,align)", "Parameters:\n * align: Combination of: \"TOP\", \"VCENTER\", \"LEFT\", \"HCENTER\", \"RIGHT\", \"BOTTOM\", \"WORDBREAK\", \"SINGLELINE\", \"NOCLIP\", \"CALCRECT\", \"NOPREFIX\" or \"ELLIPSIS\"", },
 
 	{ APIFUNC(JS_GDI_SetPixel), "void", "void*,int,int,int", "deviceHDC,x,y,color", "", },
 	//{ APIFUNC(JS_GDI_MoveTo), "void", "void*,int,int", "deviceHDC,x,y", "", },
 	//{ APIFUNC(JS_GDI_LineTo), "void", "void*,int,int", "deviceHDC,x,y", "", },
 	{ APIFUNC(JS_GDI_Line), "void", "void*,int,int,int,int", "deviceHDC,x1,y1,x2,y2", "", },
+	{ APIFUNC(JS_GDI_Polyline), "void", "void*,const char*,const char*,int", "deviceHDC,packedX,packedY,numPoints", "packedX and packedY are strings of points, each packed as \"<i4\".", },
 	{ APIFUNC(JS_GDI_Blit), "void", "void*,int,int,void*,int,int,int,int", "destHDC,dstx,dsty,sourceHDC,srcx,srxy,width,height", "Blits between two device contexts, which may include LICE \"system bitmaps\"." , },
 	{ APIFUNC(JS_GDI_StretchBlit), "void", "void*,int,int,int,int,void*,int,int,int,int", "destHDC,dstx,dsty,dstw,dsth,sourceHDC,srcx,srxy,srcw,srch", "Blits between two device contexts, which may include LICE \"system bitmaps\"." , },
-	
+
 	{ APIFUNC(JS_LICE_CreateBitmap), "void*", "bool,int,int", "isSysBitmap,width,height", "", },
 	{ APIFUNC(JS_LICE_GetHeight), "int", "void*", "bitmap", "", },
 	{ APIFUNC(JS_LICE_GetWidth), "int", "void*", "bitmap", "", },
 	{ APIFUNC(JS_LICE_GetDC), "void*", "void*", "bitmap", "", },
 	{ APIFUNC(JS_LICE_DestroyBitmap), "void", "void*", "bitmap", "", },
-	{ APIFUNC(JS_LICE_LoadPNG), "void*", "const char*", "filename", "", },
-	{ APIFUNC(JS_LICE_Blit), "void", "void*,int,int,void*,int,int,int,int,double,int", "destBitmap,dstx,dsty,sourceBitmap,srcx,srcy,width,height,alpha,mode", "LICE modes: MASK=0xFF, COPY=0, ADD=1, DODGE=2, MUL=3, OVERLAY=4 or HSVADJ=5, any of which may be combined with ALPHA=0x10000.", },
-	{ APIFUNC(JS_LICE_RotatedBlit), "void", "void*,int,int,int,int,void*,double,double,double,double,double,bool,double,int,double,double", "destBitmap,dstx,dsty,dstw,dsth,sourceBitmap,srcx,srcy,srcw,srch,angle,cliptosourcerect,alpha,mode,rotxcent,rotycent", "LICE modes: MASK=0xFF, COPY=0, ADD=1, DODGE=2, MUL=3, OVERLAY=4 or HSVADJ=5, any of which may be combined with ALPHA=0x10000.", },
-	{ APIFUNC(JS_LICE_ScaledBlit), "void", "void*,int,int,int,int,void*,double,double,double,double,double,int", "destBitmap,dstx,dsty,dstw,dsth,srcBitmap,srcx,srcy,srcw,srch,alpha,mode", "LICE modes: MASK=0xFF, COPY=0, ADD=1, DODGE=2, MUL=3, OVERLAY=4 or HSVADJ=5, any of which may be combined with ALPHA=0x10000.", },
+	{ APIFUNC(JS_LICE_LoadPNG), "void*", "const char*", "filename", "Returns a (non-system) LICE bitmap containing the PNG.", },
+	{ APIFUNC(JS_LICE_Blit), "void", "void*,int,int,void*,int,int,int,int,double,const char*", "destBitmap,dstx,dsty,sourceBitmap,srcx,srcy,width,height,alpha,mode", "LICE modes: \"COPY\" (default if empty string), \"MASK\", \"ADD\", \"DODGE\", \"MUL\", \"OVERLAY\" or \"HSVADJ\", any of which may be combined with \"ALPHA\".", },
+	{ APIFUNC(JS_LICE_RotatedBlit), "void", "void*,int,int,int,int,void*,double,double,double,double,double,double,double,bool,double,const char*", "destBitmap,dstx,dsty,dstw,dsth,sourceBitmap,srcx,srcy,srcw,srch,angle,rotxcent,rotycent,cliptosourcerect,alpha,mode", "LICE modes: \"COPY\" (default if empty string), \"MASK\", \"ADD\", \"DODGE\", \"MUL\", \"OVERLAY\" or \"HSVADJ\", any of which may be combined with \"ALPHA\".", },
+	{ APIFUNC(JS_LICE_ScaledBlit), "void", "void*,int,int,int,int,void*,double,double,double,double,double,const char*", "destBitmap,dstx,dsty,dstw,dsth,srcBitmap,srcx,srcy,srcw,srch,alpha,mode", "LICE modes: \"COPY\" (default if empty string), \"MASK\", \"ADD\", \"DODGE\", \"MUL\", \"OVERLAY\" or \"HSVADJ\", any of which may be combined with \"ALPHA\".", },
 	{ APIFUNC(JS_LICE_IsFlipped), "bool", "void*", "bitmap", "", },
 	{ APIFUNC(JS_LICE_Resize), "void", "void*,int,int", "bitmap,width,height", "", },
 	{ APIFUNC(JS_LICE_Clear), "void", "void*,int", "bitmap,color", "", },
 
 	{ APIFUNC(JS_LICE_CreateFont), "void*", "", "", "", },
 	{ APIFUNC(JS_LICE_DestroyFont), "void", "void*", "LICEFont", "", },
-	{ APIFUNC(JS_LICE_SetFontFromGDI), "void", "void*,void*,const char*", "LICEFont,GDIFont,flags", "Converts a GDI font into a LICE font.\n\nThe font can be modified by the following flags, in a comma-separated list:\n\"VERTICAL\", \"BOTTOMUP\", \"NATIVE\", \"BLUR\", \"INVERT\", \"MONO\", \"SHADOW\" or \"OUTLINE\".", },
+	{ APIFUNC(JS_LICE_SetFontFromGDI), "void", "void*,void*,const char*", "LICEFont,GDIFont,moreFormats", "Converts a GDI font into a LICE font.\n\nThe font can be modified by the following flags, in a comma-separated list:\n\"VERTICAL\", \"BOTTOMUP\", \"NATIVE\", \"BLUR\", \"INVERT\", \"MONO\", \"SHADOW\" or \"OUTLINE\".", },
 	{ APIFUNC(JS_LICE_SetFontColor), "void", "void*,int", "LICEFont,color", "", },
 	{ APIFUNC(JS_LICE_SetFontBkColor), "void", "void*,int", "LICEFont,color", "", },
 	{ APIFUNC(JS_LICE_DrawText), "int", "void*,void*,const char*,int,int,int,int,int", "bitmap,LICEFont,text,textLen,x1,y1,x2,y2", "", },
 	{ APIFUNC(JS_LICE_DrawChar), "void", "void*,int,int,char,int,double,int", "bitmap,x,y,c,color,alpha,mode)", "", },
 
-	{ APIFUNC(JS_LICE_FillRect), "void", "void*,int,int,int,int,int,double,int", "bitmap,x,y,w,h,color,alpha,mode", "", },
-	{ APIFUNC(JS_LICE_FillTriangle), "void", "void*,int,int,int,int,int,int,int,double,int", "bitmap,x1,y1,x2,y2,x3,y3,color,alpha,mode", "", },
-	{ APIFUNC(JS_LICE_FillPolygon), "void", "void*,const char*,const char*,int,int,double,int", "bitmap,packedX,packedY,numPoints,color,alpha,mode", "packedX and packedY are two strings of coordinates, each packed as \"<i4\".", },
-	{ APIFUNC(JS_LICE_FillCircle), "void", "void*,double,double,double,int,double,int,bool", "bitmap,cx,cy,r,color,alpha,mode,antialias", "", },
+	{ APIFUNC(JS_LICE_GradRect), "void", "void*,int,int,int,int,double,double,double,double,double,double,double,double,double,double,double,double,const char*", "bitmap,dstx,dsty,dstw,dsth,ir,ig,ib,ia,drdx,dgdx,dbdx,dadx,drdy,dgdy,dbdy,dady,mode", "", },
+	{ APIFUNC(JS_LICE_FillRect), "void", "void*,int,int,int,int,int,double,const char*", "bitmap,x,y,w,h,color,alpha,mode", "LICE modes: \"COPY\" (default if empty string), \"MASK\", \"ADD\", \"DODGE\", \"MUL\", \"OVERLAY\" or \"HSVADJ\", any of which may be combined with \"ALPHA\".\n\nLICE color format: 0xAARRGGBB (AA is only used in ALPHA mode).", },
+	{ APIFUNC(JS_LICE_FillTriangle), "void", "void*,int,int,int,int,int,int,int,double,const char*", "bitmap,x1,y1,x2,y2,x3,y3,color,alpha,mode", "LICE modes: \"COPY\" (default if empty string), \"MASK\", \"ADD\", \"DODGE\", \"MUL\", \"OVERLAY\" or \"HSVADJ\", any of which may be combined with \"ALPHA\".\n\nLICE color format: 0xAARRGGBB (AA is only used in ALPHA mode).", },
+	{ APIFUNC(JS_LICE_FillPolygon), "void", "void*,const char*,const char*,int,int,double,const char*", "bitmap,packedX,packedY,numPoints,color,alpha,mode", "packedX and packedY are two strings of coordinates, each packed as \"<i4\".\n\nLICE modes : \"COPY\" (default if empty string), \"MASK\", \"ADD\", \"DODGE\", \"MUL\", \"OVERLAY\" or \"HSVADJ\", any of which may be combined with \"ALPHA\".\n\nLICE color format: 0xAARRGGBB (AA is only used in ALPHA mode).", },
+	{ APIFUNC(JS_LICE_FillCircle), "void", "void*,double,double,double,int,double,const char*,bool", "bitmap,cx,cy,r,color,alpha,mode,antialias", "LICE modes: \"COPY\" (default if empty string), \"MASK\", \"ADD\", \"DODGE\", \"MUL\", \"OVERLAY\" or \"HSVADJ\", any of which may be combined with \"ALPHA\".\n\nLICE color format: 0xAARRGGBB (AA is only used in ALPHA mode).", },
 
-	{ APIFUNC(JS_LICE_Line), "void", "void*,double,double,double,double,int,double,int,bool", "bitmap,x1,y1,x2,y2,color,alpha,mode,antialias", "", },
-	{ APIFUNC(JS_LICE_Arc), "void", "void*,double,double,double,double,double,int,double,int,bool", "bitmap,cx,cy,r,minAngle,maxAngle,color,alpha,mode,antialias", "", },
-	{ APIFUNC(JS_LICE_Circle), "void", "void*,double,double,double,int,double,int,bool", "bitmap,cx,cy,r,color,alpha,mode,antialias", "", },
-	{ APIFUNC(JS_LICE_RoundRect), "void", "void*,double,double,double,double,int,int,double,int,bool", "bitmap,x,y,w,h,cornerradius,color,alpha,mode,antialias", "", },
+	{ APIFUNC(JS_LICE_Line), "void", "void*,double,double,double,double,int,double,const char*,bool", "bitmap,x1,y1,x2,y2,color,alpha,mode,antialias", "LICE modes: \"COPY\" (default if empty string), \"MASK\", \"ADD\", \"DODGE\", \"MUL\", \"OVERLAY\" or \"HSVADJ\", any of which may be combined with \"ALPHA\".\n\nLICE color format: 0xAARRGGBB (AA is only used in ALPHA mode).", },
+	{ APIFUNC(JS_LICE_Bezier), "void", "void*,double,double,double,double,double,double,double,double,double,int,double,const char*,bool", "bitmap,xstart,ystart,xctl1,yctl1,xctl2,yctl2,xend,yend,tol,color,alpha,mode,antialias", "LICE modes: \"COPY\" (default if empty string), \"MASK\", \"ADD\", \"DODGE\", \"MUL\", \"OVERLAY\" or \"HSVADJ\", any of which may be combined with \"ALPHA\".\n\nLICE color format: 0xAARRGGBB (AA is only used in ALPHA mode).", },
 
-	{ APIFUNC(JS_LICE_GetPixel), "int", "void*,int,int", "bitmap,x,y", "", },
-	{ APIFUNC(JS_LICE_PutPixel), "void", "void*,int,int,int,double,int", "bitmap,x,y,color,alpha,mode", "", },
+	{ APIFUNC(JS_LICE_Arc), "void", "void*,double,double,double,double,double,int,double,const char*,bool", "bitmap,cx,cy,r,minAngle,maxAngle,color,alpha,mode,antialias", "LICE modes: \"COPY\" (default if empty string), \"MASK\", \"ADD\", \"DODGE\", \"MUL\", \"OVERLAY\" or \"HSVADJ\", any of which may be combined with \"ALPHA\".\n\nLICE color format: 0xAARRGGBB (AA is only used in ALPHA mode).", },
+	{ APIFUNC(JS_LICE_Circle), "void", "void*,double,double,double,int,double,const char*,bool", "bitmap,cx,cy,r,color,alpha,mode,antialias", "LICE modes: \"COPY\" (default if empty string), \"MASK\", \"ADD\", \"DODGE\", \"MUL\", \"OVERLAY\" or \"HSVADJ\", any of which may be combined with \"ALPHA\".\n\nLICE color format: 0xAARRGGBB (AA is only used in ALPHA mode).", },
+	{ APIFUNC(JS_LICE_RoundRect), "void", "void*,double,double,double,double,int,int,double,const char*,bool", "bitmap,x,y,w,h,cornerradius,color,alpha,mode,antialias", "LICE modes: \"COPY\" (default if empty string), \"MASK\", \"ADD\", \"DODGE\", \"MUL\", \"OVERLAY\" or \"HSVADJ\", any of which may be combined with \"ALPHA\".\n\nLICE color format: 0xAARRGGBB (AA is only used in ALPHA mode).", },
+
+	{ APIFUNC(JS_LICE_GetPixel), "int", "void*,int,int", "bitmap,x,y", "Returns the color of the specified pixel.", },
+	{ APIFUNC(JS_LICE_PutPixel), "void", "void*,int,int,int,double,const char*", "bitmap,x,y,color,alpha,mode", "LICE modes: \"COPY\" (default if empty string), \"MASK\", \"ADD\", \"DODGE\", \"MUL\", \"OVERLAY\" or \"HSVADJ\", any of which may be combined with \"ALPHA\".\n\nLICE color format: 0xAARRGGBB (AA is only used in ALPHA mode).", },
 	
 	{ APIFUNC(JS_Window_AttachTopmostPin), "void", "void*", "windowHWND", "", },
 	{ APIFUNC(JS_Window_AttachResizeGrip), "void", "void*", "windowHWND", "", },
@@ -225,5 +232,3 @@ APIdef aAPIdefs[] =
 };
 
 ///////////////////////////////////////////////////////////////////////////////
-
-#endif
