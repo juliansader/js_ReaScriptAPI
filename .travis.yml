@@ -1,3 +1,4 @@
-os: osx
+os: linux
 language: cpp
-compiler: clang
+compiler: g++
+script: g++ -fPIC -shared js_ReaScriptAPI.cpp swell-modstub-generic.cpp -std=gnu++11 -Wall -m32 reaper_js_ReaScriptAPI324.so
