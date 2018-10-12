@@ -1,5 +1,4 @@
-#ifndef JS_REASCRIPTAPI_NAMESPACE
-#define JS_REACSRIPTAPI_NAMESPACE
+#pragma once
 
 namespace Julian
 {
@@ -9,16 +8,16 @@ namespace Julian
 
 	// While windows are being enumerated, this struct stores the information
 	//		such as the title text that must be matched, as well as the list of all matching window HWNDs.
-	struct EnumWindowsStruct
+	struct sEnumWindows
 	{
 		const char* target; // Title text that must be matched
 		bool		exact;  // Match exactly, or substring?
 		char*		temp;   // Temprarily store window titles returned by GetWindowText
 		unsigned int	tempLen;
-		HWND		hwnd;  // HWND to find
-		//char*		hwndString; // List of all matching HWNDs
-		//unsigned int	hwndLen;
-		double*		reaperarray; // Array of all matching HWNDs, in reaper.array format (i.e. with alloc size and used size in first entry)
+		HWND		hwnd;  // HWND that was found (for single-window versions of functions)
+		char*		hwndString; // List of all matching HWNDs (for List version of functions)
+		unsigned int	hwndLen;
+		double*		reaperarray; // Array of all matching HWNDs (for Array version of functions), in reaper.array format (i.e. with alloc size and used size in first entry)
 	};
 	constexpr int TEMP_LEN = 65;	// For temporary storage of pointer strings.
 	constexpr int API_LEN = 1024;	// Maximum length of strings passed between Lua and API.
@@ -217,5 +216,3 @@ namespace Julian
 		pair<UINT, std::string>(0x0400, "WM_USER")
 	};
 }
-
-#endif
