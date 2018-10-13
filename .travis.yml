@@ -1,7 +1,7 @@
 os: osx
 language: cpp
 compiler: g++
-script: clang -fPIC -O2 -std=c++17 -stdlib=libc++ -arch "$1" -mmacosx-version-min=10.5 -DSWELL_PROVIDED_BY_APP -dynamiclib -lc++ -framework AppKit swell-modstub.mm js_ReaScriptAPI.cpp -o "reaper_js_ReaScriptAPI$2.dylib"
+script: clang++ -fPIC -dynamiclib -std=c++17 -stdlib=libc++ -DSWELL_PROVIDED_BY_APP -lc++ -framework AppKit swell-modstub.mm js_ReaScriptAPI.cpp -o "reaper_js_ReaScriptAPI$2.dylib"
 deploy:
   provider: releases
   api_key: 
