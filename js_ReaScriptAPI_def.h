@@ -96,7 +96,7 @@ APIdef aAPIdefs[] =
 	{ APIFUNC(JS_Window_FromPoint), "void*", "int,int", "x,y", "Retrieves a HWND to the window that contains the specified point.", },
 	{ APIFUNC(JS_Window_GetParent), "void*", "void*", "windowHWND", "Retrieves a HWND to the specified window's parent or owner.\nReturns NULL if the window is unowned or if the function otherwise fails.", },
 	{ APIFUNC(JS_Window_IsChild), "bool", "void*,void*", "parentHWND,childHWND", "Determines whether a window is a child window or descendant window of a specified parent window.", },
-	{ APIFUNC(JS_Window_GetRelated), "void*", "void*,int", "windowHWND,relation", "Retrieves a handle to a window that has the specified relationship (Z-Order or owner) to the specified window.\nrelation: \"LAST\", \"NEXT\", \"PREV\", \"OWNER\" or \"CHILD\".\n(Refer to documentation for Win32 C++ function GetWindow.)", },
+	{ APIFUNC(JS_Window_GetRelated), "void*", "void*,const char*", "windowHWND,relation", "Retrieves a handle to a window that has the specified relationship (Z-Order or owner) to the specified window.\nrelation: \"LAST\", \"NEXT\", \"PREV\", \"OWNER\" or \"CHILD\".\n(Refer to documentation for Win32 C++ function GetWindow.)", },
 
 	{ APIFUNC(JS_Window_SetFocus), "void", "void*", "windowHWND", "Sets the keyboard focus to the specified window.", },
 	{ APIFUNC(JS_Window_GetFocus), "void*", "", "", "Retrieves a HWND to the window that has the keyboard focus, if the window is attached to the calling thread's message queue.", },
@@ -228,7 +228,10 @@ APIdef aAPIdefs[] =
 	{ APIFUNC(JS_Int), "void", "void*,int,int*", "address,offset,intOut", "Returns the 4-byte signed integer at address[offset]. Offset is added as steps of 4 bytes each.", },
 	{ APIFUNC(JS_Byte), "void", "void*,int,int*", "address,offset,byteOut", "Returns the unsigned byte at address[offset]. Offset is added as steps of 1 byte each.", },
 	{ APIFUNC(JS_Double), "void", "void*,int,double*", "address,offset,doubleOut", "Returns the 8-byte floating point value at address[offset]. Offset is added as steps of 8 bytes each.", },
-
+	
+	{ APIFUNC(Xen_AudioWriter_Create), "AudioWriter*", "const char*,int,int", "filename,numchans,samplerate", "Creates writer for 32 bit floating point WAV", },
+	{ APIFUNC(Xen_AudioWriter_Destroy), "void", "AudioWriter*", "writer", "Destroys writer", },
+	{ APIFUNC(Xen_AudioWriter_Write), "int", "AudioWriter*,int,void*", "writer,numframes,data", "Write interleaved audio data to disk", }
 };
 
 ///////////////////////////////////////////////////////////////////////////////
