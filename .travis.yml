@@ -1,9 +1,8 @@
 os: osx
 #os: linux
-#
 language: cpp
 compiler: g++
-script: clang++ -fPIC -dynamiclib -undefined dynamic_lookup -std=c++17 -stdlib=libc++ -lc++ -framework AppKit -framework Cocoa swell-modstub.mm js_ReaScriptAPI.cpp -o "reaper_js_ReaScriptAPI64.dylib"
+script: clang++ -fPIC -dynamiclib -std=c++17 -stdlib=libc++ -lc++ -framework AppKit -framework Cocoa swell-modstub.mm js_ReaScriptAPI_ObjC.mm js_ReaScriptAPI.cpp -o "reaper_js_ReaScriptAPI64.dylib"
 #script: g++ -fPIC -shared js_ReaScriptAPI.cpp swell-modstub-generic.cpp -std=gnu++11 -Wall -o reaper_js_ReaScriptAPI64.so
 deploy:
   provider: releases
