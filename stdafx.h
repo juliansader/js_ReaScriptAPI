@@ -13,6 +13,10 @@
 #include <utility>
 #include <cstdint>
 
+#ifdef __linux__
+#include <gtk/gtk.h>
+#endif
+
 #define REAPERAPI_IMPLEMENT
 //#define REAPERAPI_MINIMAL // Only load the API functions #define'd by REAPERAPI_WANT_... This lowers the size of the dll by about 30kb, which isn't really worth the trouble.
 //#define REAPERAPI_WANT_plugin_register
