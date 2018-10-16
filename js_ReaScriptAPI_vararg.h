@@ -698,8 +698,6 @@ static void* __vararg_JS_PtrFromStr(void** arglist, int numparms)
 	return JS_PtrFromStr((const char*)arglist[0]);
 }
 
-//////////////////////////////////////////////////////////////////////
-
 static void* __vararg_Xen_AudioWriter_Create(void** arglist, int numparms)
 {
 	if (numparms > 2)
@@ -717,8 +715,9 @@ static void* __vararg_Xen_AudioWriter_Destroy(void** arglist, int numparms)
 static void* __vararg_Xen_AudioWriter_Write(void** arglist, int numparms)
 {
 	int result = 0;
-	if (numparms > 2)
-		result = Xen_AudioWriter_Write((AudioWriter*)arglist[0],(double*)arglist[2], (int)(INT_PTR)arglist[1]);
+	if (numparms > 3)
+		result = Xen_AudioWriter_Write(
+		(AudioWriter*)arglist[0],(double*)arglist[2], (int)(INT_PTR)arglist[1], (int)(INT_PTR)arglist[3]);
 	return (void*)(INT_PTR)result;
 }
 
