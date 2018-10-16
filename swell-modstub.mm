@@ -86,4 +86,15 @@ extern "C" __attribute__ ((visibility ("default"))) int SWELL_dllMain(HINSTANCE 
   return 1;
 }
 
+void JS_Window_SetTransparency_ObjC(void* hwnd, double alpha)
+{
+   if ([(id)hwnd isKindOfClass:[NSWindow class]])
+   {
+      NSWindow *window = (NSWindow *)hwnd;
+      CGFloat opacity = alpha;
+      [window setAlphaValue:opacity];
+      [window setOpaque:NO];
+   }  
+}
+
 #endif
