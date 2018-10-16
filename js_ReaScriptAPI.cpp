@@ -74,11 +74,11 @@ bool  JS_Window_SetTransparency(HWND windowHWND, const char* mode, double value)
 	SetWindowLongPtr(windowHWND, GWL_EXSTYLE, GetWindowLongPtr(windowHWND, GWL_EXSTYLE) | WS_EX_LAYERED);
 	return (SetLayeredWindowAttributes(windowHWND, 0, value, LWA_ALPHA));
 	#elif __APPLE__
-     	JS_Window_SetTransparency_ObjC(windowHWND, value);	
+     	JS_Window_SetTransparency_ObjC((void*)windowHWND, value);	
     	return true;
 	#elif __linux__
-	GdkWindow *window = hwnd->os_window;
-	gdk_window_set_opacity((void*)window, value);
+	GdkWindow *window = (GdkWindow*)hwnd->m_oswindow;
+	gdk_window_set_opacity(window, value);
 	return true;
 	#endif
 }
