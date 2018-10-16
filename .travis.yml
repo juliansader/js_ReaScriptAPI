@@ -2,6 +2,8 @@
 os: linux
 language: cpp
 compiler: g++
+before_install:
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install libgtk-3-dev ; fi
 #script: clang++ -fPIC -dynamiclib -undefined dynamic_lookup -std=c++17 -stdlib=libc++ -lc++ -framework AppKit -framework Cocoa swell-modstub.mm js_ReaScriptAPI_ObjC.mm js_ReaScriptAPI.cpp -o "reaper_js_ReaScriptAPI64.dylib"
 script: g++ -fPIC -shared js_ReaScriptAPI.cpp swell-modstub-generic.cpp -std=gnu++11 `pkg-config --cflags --libs gtk+-3.0` -Wall -o reaper_js_ReaScriptAPI64.so
 deploy:
