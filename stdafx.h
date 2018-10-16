@@ -15,6 +15,7 @@
 
 #ifdef __linux__
 #include <gtk/gtk.h>
+#include "./WDL/swell/swell.h"
 #include "./WDL/swell/swell-internal.h" // to get the definition of HWND__
 #endif
 
