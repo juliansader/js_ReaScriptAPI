@@ -70,8 +70,17 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 
 bool  JS_Window_SetTransparency(HWND windowHWND, const char* mode, double value)
 {
-    JS_Window_SetTransparency_ObjC((void*)windowHWND, value);	
-    return true;
+	#ifdef _WIN32
+	SetWindowLongPtr(windowHWND, GWL_EXSTYLE, GetWindowLongPtr(windowHWND, GWL_EXSTYLE) | WS_EX_LAYERED);
+	return (SetLayeredWindowAttributes(windowHWND, 0, value, LWA_ALPHA));
+	#elif __APPLE__
+     	JS_Window_SetTransparency_ObjC(windowHWND, value);	
+    	return true;
+	#elif __linux__
+	GdkWindow *window = hwnd->os_window;
+	gdk_window_set_opacity(window, value);
+	return true;
+	#endif
 }
 
 void JS_ReaScriptAPI_Version(double* versionOut)
