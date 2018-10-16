@@ -1,5 +1,6 @@
 os: osx
 #os: linux
+#
 language: cpp
 compiler: g++
 script: clang++ -fPIC -dynamiclib -undefined dynamic_lookup -std=c++17 -stdlib=libc++ -lc++ -framework AppKit -framework Cocoa swell-modstub.mm js_ReaScriptAPI.cpp -o "reaper_js_ReaScriptAPI64.dylib"
