@@ -71,7 +71,7 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 bool  JS_Window_SetTransparency(HWND windowHWND, const char* mode, double value)
 {
     JS_Window_SetTransparency_ObjC((void*)windowHWND, value);	
-	return true;
+    return true;
 }
 
 void JS_ReaScriptAPI_Version(double* versionOut)
