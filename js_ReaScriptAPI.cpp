@@ -77,8 +77,8 @@ bool  JS_Window_SetTransparency(HWND windowHWND, const char* mode, double value)
      	JS_Window_SetTransparency_ObjC((void*)windowHWND, value);	
     	return true;
 	#elif __linux__
-	GdkWindow *window = (GdkWindow*)hwnd->m_oswindow;
-	gdk_window_set_opacity(window, value);
+	GdkWindow* w = (GdkWindow*)windowHWND->m_oswindow;
+	gdk_window_set_opacity(w, value);
 	return true;
 	#endif
 }
