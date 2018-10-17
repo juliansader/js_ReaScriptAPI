@@ -958,7 +958,7 @@ bool JS_Window_SetOpacity(HWND windowHWND, const char* mode, double value)
 		return false;
 	else
 	{
-		JS_Window_SetOpacity_ObjC((void*)windowHWND, value);
+		JS_Window_SetOpacity((void*)windowHWND, value);
 		return true;
 	}
 #endif
@@ -975,9 +975,9 @@ void JS_Window_GetTitle(void* windowHWND, char* buf, int buf_sz)
 	GetWindowText((HWND)windowHWND, buf, buf_sz);
 }
 
-int JS_Window_GetClassName(HWND windowHWND, char* buf, int buf_sz)
+void JS_Window_GetClassName(HWND windowHWND, char* buf, int buf_sz)
 {
-	return GetClassName(windowHWND, buf, buf_sz);
+	GetClassName(windowHWND, buf, buf_sz);
 }
 
 

@@ -46,7 +46,7 @@ bool  JS_Window_IsVisible(void* windowHWND);
 
 bool  JS_Window_SetTitle(void* windowHWND, const char* title);
 void  JS_Window_GetTitle(void* windowHWND, char* buf, int buf_sz);
-int   JS_Window_GetClassName(HWND windowHWND, char* buf, int buf_sz);
+void  JS_Window_GetClassName(HWND windowHWND, char* buf, int buf_sz);
 
 void* JS_Window_HandleFromAddress(double address);
 void  JS_Window_AddressFromHandle(void* handle, double* addressOut);
