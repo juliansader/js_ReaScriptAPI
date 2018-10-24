@@ -219,7 +219,6 @@ static void* __vararg_JS_Window_GetClassName(void** arglist, int numparms)
 	return nullptr;
 }
 
-
 static void* __vararg_JS_Window_IsWindow(void** arglist, int numparms)
 {
   return (void*)(intptr_t)JS_Window_IsWindow((void*)arglist[0]);
@@ -259,6 +258,11 @@ static void* __vararg_JS_WindowMessage_Intercept(void** arglist, int numparms)
 static void* __vararg_JS_WindowMessage_InterceptList(void** arglist, int numparms)
 {
 	return (void*)(intptr_t)JS_WindowMessage_InterceptList((void*)arglist[0], (const char*)arglist[1]);
+}
+
+static void* __vararg_JS_WindowMessage_PassThrough(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_WindowMessage_PassThrough(arglist[0], (const char*)arglist[1], (bool)arglist[2]);
 }
 
 static void* __vararg_JS_WindowMessage_ListIntercepts(void** arglist, int numparms)
@@ -737,5 +741,14 @@ static void* __vararg_Xen_AudioWriter_Write(void** arglist, int numparms)
 	if (numparms > 3)
 		result = Xen_AudioWriter_Write(
 		(AudioWriter*)arglist[0], (double*)arglist[2], (int)(INT_PTR)arglist[1], (int)(INT_PTR)arglist[3]);
+	return (void*)(INT_PTR)result;
+}
+
+static void* __vararg_Xen_GetMediaSourceSamples(void** arglist, int numparms)
+{
+	int result = 0;
+	if (numparms > 6)
+		result = Xen_GetMediaSourceSamples((PCM_source*)arglist[0], (double*)arglist[1], (int)(INT_PTR)arglist[2],
+		(int)(INT_PTR)arglist[3], (int)(INT_PTR)arglist[4], *(double*)arglist[5], *(double*)arglist[6]);
 	return (void*)(INT_PTR)result;
 }

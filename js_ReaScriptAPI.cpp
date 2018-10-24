@@ -71,7 +71,7 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 
 void JS_ReaScriptAPI_Version(double* versionOut)
 {
-	*versionOut = 0.95;
+	*versionOut = 0.951;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -924,44 +924,43 @@ void JS_Window_SetZOrder(void* windowHWND, const char* ZOrder, void* insertAfter
 
 bool JS_Window_SetOpacity(HWND windowHWND, const char* mode, double value)
 {
-#ifdef _WIN32
 	bool OK = false;
 	if (IsWindow(windowHWND))
 	{
-		if (SetWindowLongPtr(windowHWND, GWL_EXSTYLE, GetWindowLongPtr(windowHWND, GWL_EXSTYLE) | WS_EX_LAYERED))
+#ifdef _WIN32
+		if (GetWindowLongPtr(windowHWND, GWL_STYLE) & WS_THICKFRAME)
+		{
+			if (SetWindowLongPtr(windowHWND, GWL_EXSTYLE, GetWindowLongPtr(windowHWND, GWL_EXSTYLE) | WS_EX_LAYERED))
+			{
+				if (strchr(mode, 'A'))
+					OK = !!(SetLayeredWindowAttributes(windowHWND, 0, (BYTE)(value * 255), LWA_ALPHA));
+				else
+				{
+					UINT v = (UINT)value;
+					OK = !!(SetLayeredWindowAttributes(windowHWND, (COLORREF)(((v & 0xFF0000) >> 16) | (v & 0x00FF00) | ((v & 0x0000FF) << 16)), 0, LWA_COLORKEY));
+				}
+#elif __linux__
+		if (GetWindowLong(windowHWND, GWL_STYLE) & WS_THICKFRAME)
+		{
+			if (strchr(mode, 'A') || (!IsWindow(windowHWND)))
+			{
+				GdkWindow* w = (GdkWindow*)windowHWND->m_oswindow;
+				if (w)
+				{
+					gdk_window_set_opacity(w, value);
+					OK = true;
+				}
+#elif __APPLE__
+		if (GetWindowLong(windowHWND, GWL_STYLE) & WS_THICKFRAME)
 		{
 			if (strchr(mode, 'A'))
 			{
-				if (SetLayeredWindowAttributes(windowHWND, 0, (BYTE)(value * 255), LWA_ALPHA))
-					OK = true;
-			}
-			else
-			{
-				UINT v = (UINT)value;
-				if (SetLayeredWindowAttributes(windowHWND, (COLORREF)(((v & 0xFF0000) >> 16) | (v & 0x00FF00) | ((v & 0x0000FF) << 16)), 0, LWA_COLORKEY))
-					OK = true;
+				OK = JS_Window_SetOpacity_ObjC((void*)windowHWND, value);
+#endif
 			}
 		}
 	}
 	return OK;
-#elif __linux__
-	if (strchr(mode, 'C') || (!IsWindow(windowHWND)))
-		return false;
-	else
-	{
-		GdkWindow* w = (GdkWindow*)windowHWND->m_oswindow;
-		gdk_window_set_opacity(w, value);
-		return true;
-	}
-#elif __APPLE__
-	if (strchr(mode, 'C') || (!IsWindow(windowHWND)))
-		return false;
-	else
-	{
-		JS_Window_SetOpacity_ObjC((void*)windowHWND, value);
-		return true;
-	}
-#endif
 }
 
 
@@ -979,7 +978,6 @@ void JS_Window_GetClassName(HWND windowHWND, char* buf, int buf_sz)
 {
 	GetClassName(windowHWND, buf, buf_sz);
 }
-
 
 void* JS_Window_HandleFromAddress(double address)
 {
@@ -1250,6 +1248,38 @@ int JS_WindowMessage_Intercept(void* windowHWND, const char* message, bool passt
 	}
 
 	Julian::mapWindowToData[hwnd].messages.emplace(uMsg, sMsgData{ passthrough, 0, 0, 0 });
+	return 1;
+}
+
+int JS_WindowMessage_PassThrough(void* windowHWND, const char* message, bool passThrough)
+{
+	using namespace Julian;
+	HWND hwnd = (HWND)windowHWND;
+	UINT uMsg;
+
+	// Is this window already being intercepted?
+	if (Julian::mapWindowToData.count(hwnd) == 0)
+		return ERR_ALREADY_INTERCEPTED; // Actually, NOT intercepted
+
+	// Convert string to UINT
+	string msgString = message;
+	if (mapWM_toMsg.count(msgString))
+		uMsg = mapWM_toMsg[msgString];
+	else
+	{
+		errno = 0;
+		uMsg = strtoul(message, nullptr, 16);
+		if (errno != 0 || (uMsg == 0 && !(strstr(message, "0x0000")))) // 0x0000 is a valid message type, so cannot assume 0 is error.
+			return ERR_PARSING;
+	}
+
+	// Is this message type actually already being intercepted?
+	if (Julian::mapWindowToData[hwnd].messages.count(uMsg) == 0)
+		return ERR_ALREADY_INTERCEPTED;
+
+	// Change passthrough
+	Julian::mapWindowToData[hwnd].messages[uMsg].passthrough = passThrough;
+
 	return 1;
 }
 
@@ -1987,6 +2017,18 @@ void JS_Double(void* address, int offset, double* doubleOut)
 
 ///////////////////////////////////////////////////////////////////////
 
+inline int getArraySize(double* arr)
+{
+	if (arr == nullptr)
+		return 0;
+	int* bufptr = (int*)arr;
+	int r = bufptr[1];
+	if (r < 1 || r>(4 * 1024 * 1024)) // size is apparently nonsense
+		return 0;
+	return r;
+}
+
+
 class AudioWriter
 {
 public:
@@ -2053,6 +2095,25 @@ int Xen_AudioWriter_Write(AudioWriter* aw, double* data, int numframes, int offs
 	if ((numframes < 1) || (offset < 0))
 		return 0;
 	return aw->Write(data, numframes, offset);
+}
+
+
+int Xen_GetMediaSourceSamples(PCM_source* src, double* destbuf, int destbufoffset, int numframes, int numchans, double samplerate, double positioninfile)
+{
+	if (src == nullptr || destbuf==nullptr || numframes<1 || numchans < 1 || samplerate < 1.0)
+		return 0;
+	int bufsize = getArraySize(destbuf);
+	if (bufsize == 0)
+		return 0;
+	PCM_source_transfer_t block;
+	memset(&block, 0, sizeof(PCM_source_transfer_t));
+	block.time_s = positioninfile; // seeking in the source is based on seconds
+	block.length = numframes;
+	block.nch = numchans; // the source will attempt to render as many channels as requested
+	block.samplerate = samplerate; // properly implemented sources will resample to requested samplerate
+	block.samples = &destbuf[destbufoffset];
+	src->GetSamples(&block);
+	return block.samples_out;
 }
 
 ////////////////////////////////////////////////////////////////
