@@ -85,15 +85,28 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 
 void JS_ReaScriptAPI_Version(double* versionOut)
 {
-	*versionOut = 0.97;
+	*versionOut = 0.96;
 }
 
 
-void JS_Localize(const char* USEnglish, const char* LangPackSection, char* translationOutNeedBig, int translationOutNeedBig_sz)
+void JS_Localize(const char* USEnglish, const char* LangPackSection, char* translationOut, int translationOut_sz)
 {
-	const char* t = __localizeFunc(USEnglish, LangPackSection, 0);
-	strncpy(translationOutNeedBig, t, translationOutNeedBig_sz);
-	translationOutNeedBig[translationOutNeedBig_sz - 1] = 0;
+	const char* trans = __localizeFunc(USEnglish, LangPackSection, 0);
+	// Why not use NeedBig in this function?  Because seldom necessary, and I want to inform users about the "trick" to customize buffer size.
+	/*
+	size_t transLen = strlen(trans);
+	bool reallocOK = false;
+	if (realloc_cmd_ptr(&translationOutNeedBig, &translationOutNeedBig_sz, transLen))
+		if (translationOutNeedBig && translationOutNeedBig_sz == transLen)
+			reallocOK = true;
+	if (reallocOK)
+		memcpy(translationOutNeedBig, trans, transLen);
+	else if (translationOutNeedBig && translationOutNeedBig_sz > 0)
+		translationOutNeedBig[0] = 0;
+	return;
+	*/
+	strncpy(translationOut, trans, translationOut_sz);
+	translationOut[translationOut_sz - 1] = 0;
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -101,6 +114,7 @@ void JS_Localize(const char* USEnglish, const char* LangPackSection, char* trans
 
 int JS_Dialog_BrowseForSaveFile(const char* windowTitle, const char* initialFolder, const char* initialFile, const char* extensionList, char* fileNameOutNeedBig, int fileNameOutNeedBig_sz)
 {			
+	// NeedBig buffers should be 2^15 chars by default
 	if (fileNameOutNeedBig_sz < 32000) return -1;
 
 	// Set default extension and filter
@@ -150,7 +164,7 @@ int JS_Dialog_BrowseForOpenFiles(const char* windowTitle, const char* initialFol
 	// Set default extension and filter
 	const char* newExtList = ((strlen(extensionList) > 0) ? extensionList : "All files (*.*)\0*.*\0\0");
 
-	// GetOpenFileName returns the required buffer length in a mere 2 bytes, so 1024*1024 should be more than enough.
+	// GetOpenFileName returns the required buffer length in a mere 2 bytes, so a beffer size of 1024*1024 should be more than enough.
 	constexpr uint32_t LONGLEN = 1024 * 1024;
 
 	// If buffer is succesfully created, this will not be NULL anymore, and must be freed.
@@ -164,9 +178,10 @@ int JS_Dialog_BrowseForOpenFiles(const char* windowTitle, const char* initialFol
 	fileNames = (char*) malloc(LONGLEN);
 	if (fileNames) {
 		strncpy(fileNames, initialFile, LONGLEN);
+		fileNames[LONGLEN - 1] = 0;
 
 		DWORD flags = allowMultiple ? (OFN_EXPLORER | OFN_LONGNAMES | OFN_PATHMUSTEXIST | OFN_ALLOWMULTISELECT)
-					: (OFN_EXPLORER | OFN_LONGNAMES | OFN_PATHMUSTEXIST);
+									: (OFN_EXPLORER | OFN_LONGNAMES | OFN_PATHMUSTEXIST);
 
 		OPENFILENAME info{
 			sizeof(OPENFILENAME),	//DWORD         lStructSize;
