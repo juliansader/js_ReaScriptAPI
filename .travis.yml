@@ -8,7 +8,7 @@ before_install:
 script: clang++ -fPIC -dynamiclib -undefined dynamic_lookup -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" -std=c++17 -framework AppKit -framework Cocoa "./WDL/swell/swell-modstub.mm" js_ReaScriptAPI_ObjC.mm js_ReaScriptAPI.cpp -lc++ -stdlib=libc++ -m32 -o "reaper_js_ReaScriptAPI32.dylib"
 #script: clang++ -fPIC -dynamiclib -undefined dynamic_lookup -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" -std=c++17 -framework AppKit -framework Cocoa "./WDL/swell/swell-modstub.mm" js_ReaScriptAPI_ObjC.mm js_ReaScriptAPI.cpp -lc++ -stdlib=libc++ -static -o "reaper_js_ReaScriptAPI64.dylib"
 #linux command:
-script: g++ -fPIC -shared -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" js_ReaScriptAPI.cpp "./WDL/swell/swell-modstub-generic.cpp" -std=c++11 `pkg-config --cflags --libs gtk+-3.0` -Wall -o reaper_js_ReaScriptAPI64.so
+#script: g++ -fPIC -shared -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" js_ReaScriptAPI.cpp "./WDL/swell/swell-modstub-generic.cpp" -std=c++11 `pkg-config --cflags --libs gtk+-3.0` -Wall -o reaper_js_ReaScriptAPI64.so
 deploy:
   provider: releases
   api_key: 
