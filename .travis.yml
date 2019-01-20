@@ -1,20 +1,20 @@
-#os: osx
-os: linux
+os: osx
+#os: linux
 language: cpp
 compiler: g++
 before_install:
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install libgtk-3-dev gcc-4.8-multilib g++-4.8-multilib; fi
 #osx command (remember the 32 or 64 in file name):
-#script: clang++ -fPIC -dynamiclib -undefined dynamic_lookup -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" -std=c++17 -framework AppKit -framework Cocoa "./WDL/swell/swell-modstub.mm" js_ReaScriptAPI_ObjC.mm js_ReaScriptAPI.cpp -lc++ -stdlib=libc++ -m32 -o "reaper_js_ReaScriptAPI32.dylib"
+script: clang++ -fPIC -dynamiclib -undefined dynamic_lookup -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" -std=c++17 -framework AppKit -framework Cocoa "./WDL/swell/swell-modstub.mm" js_ReaScriptAPI_ObjC.mm js_ReaScriptAPI.cpp -lc++ -stdlib=libc++ -m32 -o "reaper_js_ReaScriptAPI32.dylib"
 #script: clang++ -fPIC -dynamiclib -undefined dynamic_lookup -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" -std=c++17 -framework AppKit -framework Cocoa "./WDL/swell/swell-modstub.mm" js_ReaScriptAPI_ObjC.mm js_ReaScriptAPI.cpp -lc++ -stdlib=libc++ -o "reaper_js_ReaScriptAPI64.dylib"
 #linux command:
-script: g++ -m32 -fPIC -shared -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" js_ReaScriptAPI.cpp "./WDL/swell/swell-modstub-generic.cpp" -std=c++11 `pkg-config --cflags --libs gtk+-3.0` -Wall -o reaper_js_ReaScriptAPI32.so
+#script: g++ -fPIC -shared -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" js_ReaScriptAPI.cpp "./WDL/swell/swell-modstub-generic.cpp" -std=c++11 `pkg-config --cflags --libs gtk+-3.0` -Wall -o reaper_js_ReaScriptAPI64.so
 deploy:
   provider: releases
   api_key: 
     secure: "TZdnYSUcZj7H5MF01kH856+HwfKW1pAfZfj3ZJQhR3YiPM81SLxHsuo9LzpSTs8t7hyhq/LGXyGq+YVn48pl8/c05s2tI+lcLWm3zTdDsKT9j6M/osCMLcr09Wj5XX2k4UeKciFXXJ5b9IC3z2sKZGuxO+CAJ8Y59d9uNRXR68pWYHvYB5E8ym3v2V9baHHt6V5DrhRb/gz5mFn3c9NrJ0fWXUojmps6neF/s5Hai9gVeWjcjFXXHdAjzWQMhO7KwF+3uKjgS/NRQ9LHcMRZfbPxP1Gq/T1W18ZAfBb/wiXTSYTifS1D9SXBieXlLOU6C+xksud7OfijyDRFwzf49vTncixOP6HC5E83iOU1EdceSNWtmGsLPdHVeJ5xhoMJ6ShMdHqp5ixrxZYfnbweUQUrPnXvD1k0OXMXeMzR//EehBreIIiCXBX1xUwI6TTqT4fSkWKLyEfb15GSUyF+XJJYumuRpl5gWD3BFyNSLRWroEexLFy7RCq3brDDeK+4L29kukCFPkMqQxUT8k1FVDQ1pks/8rD1e+tZ8o4/3tlFyk76NBczxUW3aDI0hbiaWCdXl2S2E6CbQt3trI29LHTk/apuF/9fYWAjcHXxH2H7riMbXPXKnG1FLhEDA/7TEGJDigKWWZOCytdYK7dpUqF8HTgACJ4ZpgrrxPI78U4="
-  file: 'reaper_js_ReaScriptAPI32.so'
-  #file: 'reaper_js_ReaScriptAPI32.dylib'
+  #file: 'reaper_js_ReaScriptAPI64.so'
+  file: 'reaper_js_ReaScriptAPI32.dylib'
   #file: 'reaper_js_ReaScriptAPI64.dylib'
   skip_cleanup: true
   on:
