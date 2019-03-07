@@ -1104,11 +1104,11 @@ void JS_Window_SetZOrder(void* windowHWND, const char* ZOrder, void* insertAfter
 	SetWindowPos((HWND)windowHWND, insertAfter, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 }
 
-bool JS_Window_SetOpacity(HWND windowHWND, const char* mode, double value)
+int JS_Window_SetOpacity(HWND windowHWND, const char* mode, double value)
 {
 	// Opacity can only be applied to top-level framed windows, AFAIK, and in Linux, REAPER crashes if opacity is applied to a child window.
 	// So must check that style is WS_THICKFRAME.
-	bool OK = false;
+	int OK = -3;
 	if (JS_Window_IsWindow(windowHWND))
 	{
 #ifdef _WIN32
@@ -1142,7 +1142,11 @@ bool JS_Window_SetOpacity(HWND windowHWND, const char* mode, double value)
 				OK = JS_Window_SetOpacity_ObjC((void*)windowHWND, value);
 #endif
 			}
+			else
+				return -2
 		}
+		else
+			return -1
 	}
 	return OK;
 }
