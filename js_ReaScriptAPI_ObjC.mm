@@ -1,7 +1,7 @@
 #import <Cocoa/Cocoa.h>
 #import <objc/objc-runtime.h>
 
-int JS_Window_SetOpacity_ObjC(void* hwnd, double alpha)
+int JS_Window_SetOpacity_ObjC(HWND hwnd, double alpha)
 {
    if ([(id)hwnd isKindOfClass:[NSWindow class]])
    {
