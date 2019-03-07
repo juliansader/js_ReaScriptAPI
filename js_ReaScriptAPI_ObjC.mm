@@ -9,8 +9,8 @@ bool JS_Window_SetOpacity_ObjC(void* hwnd, double alpha)
       CGFloat opacity = alpha;
       [window setAlphaValue:opacity];
       [window setOpaque:NO];
-	  return true;
+	  return 1;
    }  
    else
-		return false;
+		return 0;
 }
