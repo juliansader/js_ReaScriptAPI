@@ -1109,7 +1109,7 @@ int JS_Window_SetOpacity(HWND windowHWND, const char* mode, double value)
 	// Opacity can only be applied to top-level framed windows, AFAIK, and in Linux, REAPER crashes if opacity is applied to a child window.
 	// So must check that style is WS_THICKFRAME.
 	int OK = -3;
-	if (JS_Window_IsWindow(windowHWND))
+	if (true) //(JS_Window_IsWindow(windowHWND))
 	{
 #ifdef _WIN32
 		if (GetWindowLongPtr(windowHWND, GWL_STYLE) & WS_THICKFRAME)
@@ -1135,9 +1135,9 @@ int JS_Window_SetOpacity(HWND windowHWND, const char* mode, double value)
 					OK = true;
 				}
 #elif __APPLE__
-		if (GetWindowLong(windowHWND, GWL_STYLE) & WS_THICKFRAME)
+		if (true) //(GetWindowLong(windowHWND, GWL_STYLE) & WS_THICKFRAME)
 		{
-			if (strchr(mode, 'A'))
+			if (true) //(strchr(mode, 'A'))
 			{
 				OK = JS_Window_SetOpacity_ObjC(windowHWND, value);
 #endif
