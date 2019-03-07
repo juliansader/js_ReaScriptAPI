@@ -48,7 +48,7 @@ void  JS_Window_SetPosition(void* windowHWND, int left, int top, int width, int 
 void  JS_Window_SetZOrder(void* windowHWND, const char* ZOrder, void* insertAfterHWND);
 void* JS_Window_GetLongPtr(void* windowHWND, const char* info);
 int   JS_Window_SetOpacity_ObjC(void* windowHWND, double alpha);
-bool  JS_Window_SetOpacity(HWND windowHWND, const char* mode, double value);
+int   JS_Window_SetOpacity(HWND windowHWND, const char* mode, double value);
 
 void  JS_Window_SetFocus(void* windowHWND);
 void* JS_Window_GetFocus();
