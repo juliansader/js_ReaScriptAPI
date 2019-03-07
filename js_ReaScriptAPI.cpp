@@ -1143,10 +1143,10 @@ int JS_Window_SetOpacity(HWND windowHWND, const char* mode, double value)
 #endif
 			}
 			else
-				return -2
+				return -2;
 		}
 		else
-			return -1
+			return -1;
 	}
 	return OK;
 }
