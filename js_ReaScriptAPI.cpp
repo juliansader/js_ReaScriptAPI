@@ -427,13 +427,23 @@ int JS_Dialog_BrowseForFolder(const char* caption, const char* initialFolder, ch
 
 bool JS_Window_GetRect(void* windowHWND, int* leftOut, int* topOut, int* rightOut, int* bottomOut)
 {
-	HWND hwnd = (HWND)windowHWND;
 	RECT r{ 0, 0, 0, 0 };
-	bool isOK = !!GetWindowRect(hwnd, &r);
+	bool isOK = !!GetWindowRect((HWND)windowHWND, &r);
+#ifdef __APPLE__
+	if (r.top < r.bottom) {
+#else
+	if (r.top > r.bottom) {
+#endif
+		*topOut	   = (int)r.bottom;
+		*bottomOut = (int)r.top;			
+	}
+	else {
+		*topOut	   = (int)r.top;
+		*bottomOut = (int)r.bottom;
+	}
 	*leftOut   = (int)r.left;
 	*rightOut  = (int)r.right;
-	*topOut	   = (int)r.top;
-	*bottomOut = (int)r.bottom;
+
 	return (isOK);
 }
 
@@ -441,8 +451,7 @@ void JS_Window_ScreenToClient(void* windowHWND, int x, int y, int* xOut, int* yO
 {
 	// Unlike Win32, Cockos WDL doesn't return a bool to confirm success.
 	POINT p{ x, y };
-	HWND hwnd = (HWND)windowHWND;
-	ScreenToClient(hwnd, &p);
+	ScreenToClient((HWND)windowHWND, &p);
 	*xOut = (int)p.x;
 	*yOut = (int)p.y;
 }
@@ -451,8 +460,7 @@ void JS_Window_ClientToScreen(void* windowHWND, int x, int y, int* xOut, int* yO
 {
 	// Unlike Win32, Cockos WDL doesn't return a bool to confirm success.
 	POINT p{ x, y };
-	HWND hwnd = (HWND)windowHWND;
-	ClientToScreen(hwnd, &p);
+	ClientToScreen((HWND)windowHWND, &p);
 	*xOut = (int)p.x;
 	*yOut = (int)p.y;
 }
@@ -489,12 +497,11 @@ bool JS_Window_GetClientSize(void* windowHWND, int* widthOut, int* heightOut)
 {
 	// Unlike Win32, Cockos WDL doesn't return a bool to confirm success.
 	// However, if hwnd is not a true hwnd, SWELL will return a {0,0,0,0} rect.
-	HWND hwnd = (HWND)windowHWND;
 	RECT r{ 0, 0, 0, 0 };
 #ifdef _WIN32
-	bool isOK = !!GetClientRect(hwnd, &r);
+	bool isOK = !!GetClientRect((HWND)windowHWND, &r);
 #else
-	GetClientRect(hwnd, &r);
+	GetClientRect((HWND)windowHWND, &r);
 	bool isOK = (r.bottom != 0 || r.right != 0);
 #endif
 	r.right = (r.right >= 0) ? (r.right) : (-(r.right));
