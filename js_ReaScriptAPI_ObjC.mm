@@ -1,18 +1,16 @@
 #import <Cocoa/Cocoa.h>
 #import <objc/objc-runtime.h>
-#include "swell.h"
-#include "swell-internal.h"
 
-int JS_Window_SetOpacity_ObjC(HWND hwnd, double alpha)
+bool JS_Window_SetOpacity_ObjC(void* hwnd, double alpha)
 {
-   if ([(id)hwnd isKindOfClass:[NSWindow class]] || [(id)hwnd isKindOfClass:[NSView class]])
+   if ([(id)hwnd isKindOfClass:[NSWindow class]])
    {
       NSWindow *window = (NSWindow *)hwnd;
       CGFloat opacity = alpha;
       [window setAlphaValue:opacity];
       [window setOpaque:NO];
-	  return 1;
+	  return true;
    }  
    else
-		return 0;
+		return false;
 }
