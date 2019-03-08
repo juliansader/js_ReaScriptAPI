@@ -269,7 +269,13 @@ static void* __vararg_JS_Window_SetZOrder(void** arglist, int numparms)
 
 static void* __vararg_JS_Window_GetLongPtr(void** arglist, int numparms)
 {
-	return JS_Window_GetLongPtr((void*)arglist[0], (const char*)arglist[1], (double*)arglist[2]);
+	return JS_Window_GetLongPtr((void*)arglist[0], (const char*)arglist[1]);
+}
+
+static void* __vararg_JS_Window_GetLong(void** arglist, int numparms)
+{
+	JS_Window_GetLong((void*)arglist[0], (const char*)arglist[1], (double*)arglist[2]);
+	return nullptr;
 }
 
 static void* __vararg_JS_Window_SetOpacity(void** arglist, int numparms)

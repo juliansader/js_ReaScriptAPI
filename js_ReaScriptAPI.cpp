@@ -661,10 +661,9 @@ void  JS_Window_ReleaseCapture()
 }
 
 
-void* JS_Window_GetLongPtr(void* windowHWND, const char* info, double* integerOut)
+void* JS_Window_GetLongPtr(void* windowHWND, const char* info)
 {
 	int intMode;
-	void* ptr;
 
 #ifdef _WIN32
 	if (strstr(info, "USER"))			intMode = GWLP_USERDATA;
@@ -673,8 +672,8 @@ void* JS_Window_GetLongPtr(void* windowHWND, const char* info, double* integerOu
 	else if (strstr(info, "EXSTYLE"))	intMode = GWL_EXSTYLE;
 	else if (strstr(info, "STYLE"))		intMode = GWL_STYLE;
 	else return nullptr;
- 
-	ptr = (void*)GetWindowLongPtr((HWND)windowHWND, intMode);
+	
+	return (void*)GetWindowLongPtr((HWND)windowHWND, intMode);
 
 #else 
 	if (strstr(info, "USER"))			intMode = GWL_USERDATA;
@@ -685,10 +684,35 @@ void* JS_Window_GetLongPtr(void* windowHWND, const char* info, double* integerOu
 	else if (strstr(info, "STYLE"))		intMode = GWL_STYLE;
 	else return nullptr;
 
-	ptr = (void*)GetWindowLong((HWND)windowHWND, intMode);
+	return (void*)GetWindowLong((HWND)windowHWND, intMode);
 #endif
-	*integerOut = (double)(intptr_t)ptr;
-	return ptr;
+}
+
+void JS_Window_GetLong(void* windowHWND, const char* info, double* retvalOut)
+{
+	int intMode;
+
+#ifdef _WIN32
+	if (strstr(info, "USER"))			intMode = GWLP_USERDATA;
+	else if (strstr(info, "WND"))		intMode = GWLP_WNDPROC;
+	else if (strstr(info, "ID"))		intMode = GWL_ID;
+	else if (strstr(info, "EXSTYLE"))	intMode = GWL_EXSTYLE;
+	else if (strstr(info, "STYLE"))		intMode = GWL_STYLE;
+	else {*retvalOut = 0; return;}
+
+	*retvalOut = (double)GetWindowLongPtr((HWND)windowHWND, intMode);
+
+#else 
+	if (strstr(info, "USER"))			intMode = GWL_USERDATA;
+	else if (strstr(info, "WND"))		intMode = GWL_WNDPROC;
+	else if (strstr(info, "DLG"))		intMode = DWL_DLGPROC;
+	else if (strstr(info, "ID"))		intMode = GWL_ID;
+	else if (strstr(info, "EXSTYLE"))	intMode = GWL_EXSTYLE;
+	else if (strstr(info, "STYLE"))		intMode = GWL_STYLE;
+	else {*retvalOut = 0; return;}
+
+	*retvalOut = (double)GetWindowLong((HWND)windowHWND, intMode);
+#endif
 }
 
 
