@@ -1188,7 +1188,7 @@ bool JS_Window_SetOpacity(HWND windowHWND, const char* mode, double value)
 		{
 			if (strchr(mode, 'A'))
 			{
-				OK = JS_Window_SetOpacity_ObjC((void*)windowHWND, value);
+				OK = JS_Window_SetOpacity_ObjC(windowHWND, value);
 #endif
 			}
 		}
