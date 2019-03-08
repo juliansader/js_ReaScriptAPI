@@ -1268,13 +1268,15 @@ bool  JS_Window_IsWindow(void* windowHWND)
 	// This implementation will enumerate all WDL/swell windows, looking for a match.
 	// The "target" HWND will be passed to each callback function.
 	// If a match is found, target will be replaced with NULL;
+	if (!windowHWND) return false;
 	HWND target = (HWND)windowHWND;
-	bool isFloatingDock;
+	/*bool isFloatingDock;
 
 	if (!windowHWND)
 		return false;
 	else if (DockIsChildOfDock(target, &isFloatingDock) != -1)
 		return true;
+	*/
 
 	/*HWND editor = MIDIEditor_GetActive();
 	if (editor) {
