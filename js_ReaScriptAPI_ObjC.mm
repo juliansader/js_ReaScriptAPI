@@ -5,7 +5,7 @@
 
 int JS_Window_SetOpacity_ObjC(HWND hwnd, double alpha)
 {
-   if ([(id)hwnd isKindOfClass:[NSWindow class]])
+   if ([(id)hwnd isKindOfClass:[NSWindow class]] || [(id)hwnd isKindOfClass:[NSView class]])
    {
       NSWindow *window = (NSWindow *)hwnd;
       CGFloat opacity = alpha;
