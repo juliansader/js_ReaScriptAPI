@@ -524,10 +524,21 @@ void JS_Window_MonitorFromRect(int x1, int y1, int x2, int y2, bool wantWork, in
 	RECT r{ 0,0,0,0 };
 	SWELL_GetViewPort(&r, &s, wantWork);
 #endif
+	
+#ifdef __APPLE__
+	if (r.top < r.bottom) {
+#else
+	if (r.top > r.bottom) {
+#endif
+		*topOut	   = (int)r.bottom;
+		*bottomOut = (int)r.top;			
+	}
+	else {
+		*topOut	   = (int)r.top;
+		*bottomOut = (int)r.bottom;
+	}
 	*leftOut = (int)r.left;
-	*topOut = (int)r.top;
 	*rightOut = (int)r.right;
-	*bottomOut = (int)r.bottom;
 }
 
 void* JS_Window_FromPoint(int x, int y)
