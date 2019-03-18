@@ -207,6 +207,8 @@ APIdef aAPIdefs[] =
 	{ APIFUNC(JS_GDI_Blit), "void", "void*,int,int,void*,int,int,int,int", "destHDC,dstx,dsty,sourceHDC,srcx,srxy,width,height", "Blits between two device contexts, which may include LICE \"system bitmaps\"." , },
 	{ APIFUNC(JS_GDI_StretchBlit), "void", "void*,int,int,int,int,void*,int,int,int,int", "destHDC,dstx,dsty,dstw,dsth,sourceHDC,srcx,srxy,srcw,srch", "Blits between two device contexts, which may include LICE \"system bitmaps\"." , },
 
+	{ APIFUNC(JS_LICE_Link), "void", "void*,void*", "windowHWND,bitmap", "",	},
+
 	{ APIFUNC(JS_LICE_CreateBitmap), "void*", "bool,int,int", "isSysBitmap,width,height", "", },
 	{ APIFUNC(JS_LICE_GetHeight), "int", "void*", "bitmap", "", },
 	{ APIFUNC(JS_LICE_GetWidth), "int", "void*", "bitmap", "", },

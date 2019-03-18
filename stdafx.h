@@ -35,10 +35,11 @@
 #include "localize.h"
 
 #ifdef _WIN32
-	// #include windows.h is not necessary
+	//#include <windows.h> //is not necessary
 	#include <windowsx.h>
 	#include <Shlobj.h>
 	//#include <Shlobj_core.h>
+	#include <wingdi.h>
 	#define WINAPI __stdcall
 #elif __linux__
 	#include <gtk/gtk.h>

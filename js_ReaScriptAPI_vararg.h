@@ -642,7 +642,11 @@ static void* __vararg_JS_LICE_Clear(void** arglist, int numparms)
 	return NULL;
 }
 
-
+static void* __vararg_JS_LICE_Link(void** arglist, int numparms)
+{
+	JS_LICE_Link((HWND)arglist[0], (LICE_IBitmap*)arglist[1]);
+	return NULL;
+}
 
 static void* __vararg_JS_LICE_CreateFont(void** arglist, int numparms)
 {

@@ -129,6 +129,9 @@ int   JS_LICE_GetWidth(void* bitmap);
 void* JS_LICE_GetDC(void* bitmap);
 void  JS_LICE_DestroyBitmap(void* bitmap);
 
+LRESULT CALLBACK JS_Link_Callback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+void  JS_LICE_Link(HWND hwnd, LICE_IBitmap* bitmap);
+
 void  JS_LICE_Blit(void* destBitmap, int dstx, int dsty, void* sourceBitmap, int srcx, int srcy, int width, int height, double alpha, const char* mode);
 void  JS_LICE_RotatedBlit(void* destBitmap, int dstx, int dsty, int dstw, int dsth, void* sourceBitmap, double srcx, double srcy, double srcw, double srch, double angle, double rotxcent, double rotycent, bool cliptosourcerect, double alpha, const char* mode);
 void  JS_LICE_ScaledBlit(void* destBitmap, int dstx, int dsty, int dstw, int dsth, void* sourceBitmap, double srcx, double srcy, double srcw, double srch, double alpha, const char* mode);

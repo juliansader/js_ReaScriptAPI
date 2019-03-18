@@ -2062,12 +2062,20 @@ void JS_GDI_SetPixel(void* deviceHDC, int x, int y, int color)
 
 void JS_GDI_Blit(void* destHDC, int dstx, int dsty, void* sourceHDC, int srcx, int srcy, int width, int height)
 {
-	BitBlt((HDC)destHDC, dstx, dsty, width, height, (HDC)sourceHDC, srcx, srcy, SRCCOPY);  //swell only provdes the SRCCOPY mode.  NB: swell defines SRCCOPY as 0 instead of HCC0020
+#ifdef _WIN32
+	AlphaBlend((HDC)destHDC, dstx, dsty, width, height, (HDC)sourceHDC, srcx, srcy, width, height, BLENDFUNCTION { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
+#else
+	BitBlt((HDC)destHDC, dstx, dsty, width, height, (HDC)sourceHDC, srcx, srcy, SRCCOPY_USEALPHACHAN);  //swell only provdes the SRCCOPY mode.  NB: swell defines SRCCOPY as 0 instead of HCC0020
+#endif
 }
 
 void JS_GDI_StretchBlit(void* destHDC, int dstx, int dsty, int dstw, int dsth, void* sourceHDC, int srcx, int srcy, int srcw, int srch)
 {
-	StretchBlt((HDC)destHDC, dstx, dsty, dstw, dsth, (HDC)sourceHDC, srcx, srcy, srcw, srch, SRCCOPY);
+#ifdef _WIN32
+	AlphaBlend((HDC)destHDC, dstx, dsty, dstw, dsth, (HDC)sourceHDC, srcx, srcy, srcw, srch, BLENDFUNCTION{ AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
+#else
+	StretchBlt((HDC)destHDC, dstx, dsty, dstw, dsth, (HDC)sourceHDC, srcx, srcy, srcw, srch, SRCCOPY_USEALPHACHAN);
+#endif
 }
 
 
@@ -2132,6 +2140,34 @@ int JS_LICE_GetWidth(void* bitmap)
 void* JS_LICE_GetDC(void* bitmap)
 {
 	return LICE__GetDC((LICE_IBitmap*)bitmap);
+}
+
+WNDPROC linkPrev;
+HDC linkDC;
+HDC linkBitmap;
+
+LRESULT CALLBACK JS_Link_Callback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	LRESULT r = linkPrev(hwnd, uMsg, wParam, lParam);
+	if (uMsg == WM_PAINT) {
+#ifdef _WIN32
+		AlphaBlend(linkDC, 0, 0, 400, 400, linkBitmap, 0, 0, 400, 400, BLENDFUNCTION { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
+#else
+		BitBlt(linkDC, 0, 0, 400, 400, linkBitmap, 0, 0, SRCCOPY_USEALPHACHAN);
+#endif
+	}
+	return r;
+}
+
+void JS_LICE_Link(HWND hwnd, LICE_IBitmap* bitmap)
+{
+#ifdef _WIN32
+	linkPrev = (WNDPROC)SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)JS_Link_Callback);
+#else
+	linkPrev = (WNDPROC)SetWindowLong(hwnd, GWL_WNDPROC, (LONG_PTR)JS_Link_Callback);
+#endif
+	linkDC = GetDC(hwnd);
+	linkBitmap = LICE__GetDC(bitmap);
 }
 
 void JS_LICE_DestroyBitmap(void* bitmap)
