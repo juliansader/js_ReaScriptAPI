@@ -376,8 +376,11 @@ int JS_Dialog_BrowseForSaveFile(const char* windowTitle, const char* initialFold
 
 int JS_Dialog_BrowseForOpenFiles(const char* windowTitle, const char* initialFolder, const char* initialFile, const char* extensionList, bool allowMultiple, char* fileNamesOutNeedBig, int fileNamesOutNeedBig_sz)
 {
-	// Set default extension and filter
-#ifndef __APPLE__
+	// Set default extension and filter text if no extList is provided.
+	// swell's OSX file dialog doesn't seem to understand *.*, but also doesn't show filter text, so just keep empty string.
+#ifdef __APPLE__
+	const char* newExtList = extensionList;
+#else
 	const char* newExtList = ((strlen(extensionList) > 0) ? extensionList : "All files (*.*)\0*.*\0\0");
 #endif
 
