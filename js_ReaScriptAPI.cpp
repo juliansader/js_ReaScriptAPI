@@ -8,6 +8,8 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 {
 	if (rec)
 	{
+		MessageBox(NULL, "Entered", "", 0); //!!!!
+		
 		// First, import REAPER's C++ API functions for use in this extension.
 		//		Load all listed API functions at once.
 		if (REAPERAPI_LoadAPI(rec->GetFunc) != 0)
@@ -95,7 +97,7 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 		for (auto& i : Julian::mapMallocToSize)
 			free(i.first);
 
-		plugin_register("-accelerator", &(Julian::sAccelerator));
+		//plugin_register("-accelerator", &(Julian::sAccelerator));
 		return 0;
 	}
 }
@@ -127,7 +129,7 @@ v0.973
 */
 void JS_ReaScriptAPI_Version(double* versionOut)
 {
-	*versionOut = 0.972;
+	*versionOut = 0.973;
 }
 
 void JS_Localize(const char* USEnglish, const char* LangPackSection, char* translationOut, int translationOut_sz)
@@ -152,7 +154,7 @@ void JS_Localize(const char* USEnglish, const char* LangPackSection, char* trans
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Virtual keys / Keyboard functions
-
+/*
 static unsigned char VK_Bitmap[256] { 0 };
 static unsigned char VK_BitmapHistory[256] { 0 };
 static unsigned char VK_Intercepts[256] { 0 };
@@ -246,7 +248,7 @@ int JS_VKeys_Intercept(int keyCode, int intercept)
 
 	return -1;
 }
-
+*/
 //////////////////////////////////////////////////////////////////////
 
 void* JS_Mem_Alloc(int sizeBytes)
