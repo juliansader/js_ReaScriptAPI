@@ -3,7 +3,7 @@
 using namespace std;
 
 // This function is called when REAPER loads or unloads the extension.
-// If rec !- nil, the extenstion is being loaded.  If rec == nil, the extension is being UNloaded.
+// If rec != nil, the extenstion is being loaded.  If rec == nil, the extension is being UNloaded.
 extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance, reaper_plugin_info_t *rec)
 {
 	if (rec)
@@ -70,7 +70,7 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 		for (auto& i : Julian::mapWM_toMsg)
 			Julian::mapMsgToWM_.emplace(i.second, i.first);
 
-		plugin_register("accelerator", &(Julian::sAccelerator));
+		//plugin_register("accelerator", &(Julian::sAccelerator));
 
 		return 1; // success
 	}
