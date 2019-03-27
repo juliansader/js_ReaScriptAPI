@@ -324,7 +324,11 @@ int JS_Dialog_BrowseForSaveFile(const char* windowTitle, const char* initialFold
 	if (fileNameOutNeedBig_sz < 16000) return -1;
 
 	// Set default extension and filter
+#ifdef __APPLE__
+	const char* newExtList = extensionList;
+#else
 	const char* newExtList = ((strlen(extensionList) > 0) ? extensionList : "All files (*.*)\0*.*\0\0");
+#endif
 
 #ifdef _WIN32
 	// These Windows file dialogs do not understand /, so v0.970 added this quick hack to replace with \.
@@ -377,7 +381,9 @@ int JS_Dialog_BrowseForSaveFile(const char* windowTitle, const char* initialFold
 int JS_Dialog_BrowseForOpenFiles(const char* windowTitle, const char* initialFolder, const char* initialFile, const char* extensionList, bool allowMultiple, char* fileNamesOutNeedBig, int fileNamesOutNeedBig_sz)
 {
 	// Set default extension and filter
-#ifndef __APPLE__
+#ifdef __APPLE__
+	const char* newExtList = extensionList;
+#else
 	const char* newExtList = ((strlen(extensionList) > 0) ? extensionList : "All files (*.*)\0*.*\0\0");
 #endif
 
