@@ -104,60 +104,7 @@ static void* __vararg_JS_WindowMessage_ReleaseAll(void** arglist, int numparms)
 
 ////////////////////////////////////////////////////////////////////////////
 
-static void* __vararg_JS_Window_GetRect(void** arglist, int numparms)
-{
-  return (void*)(intptr_t)JS_Window_GetRect((void*)arglist[0], (int*)arglist[1], (int*)arglist[2], (int*)arglist[3], (int*)arglist[4]);
-}
 
-static void* __vararg_JS_Window_ScreenToClient(void** arglist, int numparms)
-{
-  JS_Window_ScreenToClient((void*)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (int*)arglist[3], (int*)arglist[4]);
-  return NULL;
-}
-
-static void* __vararg_JS_Window_ClientToScreen(void** arglist, int numparms)
-{
-  JS_Window_ClientToScreen((void*)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (int*)arglist[3], (int*)arglist[4]);
-  return NULL;
-}
-
-static void* __vararg_JS_Window_GetClientRect(void** arglist, int numparms)
-{
-  return (void*)(intptr_t)JS_Window_GetClientRect((void*)arglist[0], (int*)arglist[1], (int*)arglist[2], (int*)arglist[3], (int*)arglist[4]);
-}
-
-static void* __vararg_JS_Window_GetClientSize(void** arglist, int numparms)
-{
-	return (void*)(intptr_t)JS_Window_GetClientSize((void*)arglist[0], (int*)arglist[1], (int*)arglist[2]);
-}
-
-static void* __vararg_JS_Window_MonitorFromRect(void** arglist, int numparms)
-{
-	JS_Window_MonitorFromRect((int)(intptr_t)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (int)(intptr_t)arglist[3], (bool)arglist[4], (int*)arglist[5], (int*)arglist[6], (int*)arglist[7], (int*)arglist[8]);
-	return nullptr;
-}
-
-static void* __vararg_JS_Window_GetViewportFromRect(void** arglist, int numparms)
-{
-	JS_Window_GetViewportFromRect((int)(intptr_t)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (int)(intptr_t)arglist[3], (bool)arglist[4], (int*)arglist[5], (int*)arglist[6], (int*)arglist[7], (int*)arglist[8]);
-	return nullptr;
-}
-
-static void* __vararg_JS_Window_Update(void** arglist, int numparms)
-{
-	JS_Window_Update((HWND)arglist[0]);
-	return nullptr;
-}
-
-static void* __vararg_JS_Window_InvalidateRect(void** arglist, int numparms)
-{
-	return (void*)(intptr_t)JS_Window_InvalidateRect((HWND)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (int)(intptr_t)arglist[3], (int)(intptr_t)arglist[4], (bool)arglist[5]);
-}
-
-static void* __vararg_JS_Window_FromPoint(void** arglist, int numparms)
-{
-  return (void*)(intptr_t)JS_Window_FromPoint((int)(intptr_t)arglist[0], (int)(intptr_t)arglist[1]);
-}
 
 static void* __vararg_JS_Window_GetParent(void** arglist, int numparms)
 {
