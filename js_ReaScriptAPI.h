@@ -18,25 +18,10 @@ int   JS_Dialog_BrowseForSaveFile(const char* windowTitle, const char* initialFo
 int   JS_Dialog_BrowseForFolder(const char* caption, const char* initialFolder, char* folderOutNeedBIg, int folderOutNeedBig_sz);
 int   JS_Dialog_BrowseForOpenFiles(const char* windowTitle, const char* initialFolder, const char* initialFile, const char* extensionList, bool allowMultiple, char* fileNamesOutNeedBig, int fileNamesOutNeedBig_sz);
 
-
-void* JS_Window_FromPoint(int x, int y);
-
-void* JS_Window_GetParent(void* windowHWND);
-bool  JS_Window_IsChild(void* parentHWND, void* childHWND);
-void* JS_Window_GetRelated(void* windowHWND, const char* relation);
-HWND  JS_Window_FindChildByID(HWND parent, int ID);  // Functions that receive and return void* are in SWS style. Newer functions use HWND and let vararg wrapper typecast.
-
-HWND  JS_Window_FindEx(HWND parentHWND, HWND childHWND, const char* className, const char* title);
-void* JS_Window_Find(const char* title, bool exact);
-
 void  JS_Window_Move(void* windowHWND, int left, int top);
 void  JS_Window_Resize(void* windowHWND, int width, int height);
 void  JS_Window_SetPosition(void* windowHWND, int left, int top, int width, int height);
 void  JS_Window_SetZOrder(void* windowHWND, const char* ZOrder, void* insertAfterHWND);
-void* JS_Window_GetLongPtr(void* windowHWND, const char* info);
-void  JS_Window_GetLong(void* windowHWND, const char* info, double* retvalOut);
-bool  JS_Window_SetOpacity_ObjC(HWND windowHWND, double alpha);
-bool  JS_Window_SetOpacity(HWND windowHWND, const char* mode, double value);
 
 void  JS_Window_SetFocus(void* windowHWND);
 void* JS_Window_GetFocus();
