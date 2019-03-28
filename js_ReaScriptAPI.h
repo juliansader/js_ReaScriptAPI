@@ -136,17 +136,15 @@ void  JS_GDI_Polyline(void* deviceHDC, const char* packedX, const char* packedY,
 void  JS_GDI_Blit(void* destHDC, int dstx, int dsty, void* sourceHDC, int srcx, int srcy, int width, int height, const char* modeOptional);
 void  JS_GDI_StretchBlit(void* destHDC, int dstx, int dsty, int dstw, int dsth, void* sourceHDC, int srcx, int srcy, int srcw, int srch, const char* modeOptional);
 
+int   JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap* sysBitmap, int srcx, int srcy, int srcw, int srch);
+void  JS_Composite_Unlink(HWND hwnd, LICE_IBitmap* bitmap);
+int   JS_Composite_ListBitmaps(HWND hwnd, char* listOutNeedBig, int listOutNeedBig_sz);
+
 void* JS_LICE_CreateBitmap(bool isSysBitmap, int width, int height);
 int   JS_LICE_GetHeight(void* bitmap);
 int   JS_LICE_GetWidth(void* bitmap);
 void* JS_LICE_GetDC(void* bitmap);
 void  JS_LICE_DestroyBitmap(LICE_IBitmap* bitmap);
-
-LRESULT CALLBACK JS_Link_Callback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-void  JS_LICE_Link(HWND hwnd, LICE_IBitmap* bitmap);
-int   JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap* sysBitmap, int srcx, int srcy, int srcw, int srch);
-void  JS_Composite_Unlink(HWND hwnd, LICE_IBitmap* bitmap);
-int   JS_Composite_ListBitmaps(HWND hwnd, char* listOutNeedBig, int listOutNeedBig_sz);
 
 void  JS_LICE_Blit(void* destBitmap, int dstx, int dsty, void* sourceBitmap, int srcx, int srcy, int width, int height, double alpha, const char* mode);
 void  JS_LICE_RotatedBlit(void* destBitmap, int dstx, int dsty, int dstw, int dsth, void* sourceBitmap, double srcx, double srcy, double srcw, double srch, double angle, double rotxcent, double rotycent, bool cliptosourcerect, double alpha, const char* mode);
