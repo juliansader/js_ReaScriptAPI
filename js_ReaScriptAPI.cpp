@@ -17,27 +17,7 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 			MessageBox(NULL, "Unable to import default API functions.\n\nNOTE:\nThis extension requires REAPER v5.965 or later.", "ERROR: js_ReaScriptAPI extension", 0);  //fprintf(stderr, "Unable to import API functions.\n");
 			return 0;
 		}
-		//		Load each of the undocumented functions.
-		if (!((*(void **)&CoolSB_GetScrollInfo) = (void *)rec->GetFunc("CoolSB_GetScrollInfo")))
-		{
-			MessageBox(NULL, "Unable to import CoolSB_GetScrollInfo function.", "ERROR: js_ReaScriptAPI extension", 0);
-			return 0;
-		}
-		if (!((*(void **)&AttachWindowTopmostButton) = (void *)rec->GetFunc("AttachWindowTopmostButton")))
-		{
-			MessageBox(NULL, "Unable to import AttachWindowTopmostButton function.", "ERROR: js_ReaScriptAPI extension", 0);
-			return 0;
-		}
-		if (!((*(void **)&AttachWindowResizeGrip) = (void *)rec->GetFunc("AttachWindowResizeGrip")))
-		{
-			MessageBox(NULL, "Unable to import AttachWindowResizeGrip function.", "ERROR: js_ReaScriptAPI extension", 0);
-			return 0;
-		}
-		if (!((*(void **)&CoolSB_SetScrollPos) = (void *)rec->GetFunc("CoolSB_SetScrollPos")))
-		{
-			MessageBox(NULL, "Unable to import CoolSB_SetScrollPos function.", "ERROR: js_ReaScriptAPI extension", 0);
-			return 0;
-		}
+		
 
 		// Don't know what this does, but apparently it's necessary for the localization functions.
 		IMPORT_LOCALIZE_RPLUG(rec);
@@ -80,22 +60,7 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 	// Why store stuff in extra sets?  For some unexplained reason REAPER crashes if I try to destroy LICE bitmaps explicitly. And for another unexplained reason, this roundabout way works...
 	else 
 	{
-		std::set<HWND> windowsToRestore;
-		for (auto& i : Julian::mapWindowData)
-			windowsToRestore.insert(i.first);
-		for (HWND hwnd : windowsToRestore)
-			JS_WindowMessage_RestoreOrigProc(hwnd);
 
-		std::set<LICE_IBitmap*> bitmapsToDelete;
-		for (auto& i : Julian::LICEBitmaps)
-			bitmapsToDelete.insert(i.first);
-		for (LICE_IBitmap* bm : bitmapsToDelete)
-			JS_LICE_DestroyBitmap(bm);
-
-		for (auto& i : Julian::mapMallocToSize)
-			free(i.first);
-
-		plugin_register("-accelerator", &(Julian::sAccelerator));
 		return 0;
 	}
 }
