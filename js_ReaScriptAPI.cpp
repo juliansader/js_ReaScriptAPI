@@ -69,7 +69,9 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 		// Construct mapMsgToWM_ as inverse of mapWM_ToMsg
 		for (auto& i : Julian::mapWM_toMsg)
 			Julian::mapMsgToWM_.emplace(i.second, i.first);
-
+		
+		plugin_register("accelerator", &(Julian::sAccelerator));
+		
 		return 1; // success
 	}
 	// Does an extension need to do anything when unloading?  
