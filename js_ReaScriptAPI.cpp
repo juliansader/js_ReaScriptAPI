@@ -80,7 +80,7 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 	// Why store stuff in extra sets?  For some unexplained reason REAPER crashes if I try to destroy LICE bitmaps explicitly. And for another unexplained reason, this roundabout way works...
 	else 
 	{
-		/*std::set<HWND> windowsToRestore;
+		std::set<HWND> windowsToRestore;
 		for (auto& i : Julian::mapWindowData)
 			windowsToRestore.insert(i.first);
 		for (HWND hwnd : windowsToRestore)
@@ -96,7 +96,7 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 			free(i.first);
 
 		plugin_register("-accelerator", &(Julian::sAccelerator));
-		*/
+		
 		return 0;
 	}
 }
@@ -249,3 +249,511 @@ int JS_VKeys_Intercept(int keyCode, int intercept)
 }
 
 //////////////////////////////////////////////////////////////////////
+
+bool JS_WindowMessage_ListIntercepts(void* windowHWND, char* listOutNeedBig, int listOutNeedBig_sz)
+{
+	using namespace Julian;
+	listOutNeedBig[0] = '\0';
+	
+	if (mapWindowData.count((HWND)windowHWND))
+	{
+		auto& messages = mapWindowData[(HWND)windowHWND].mapMessages;
+		for (const auto& it : messages)
+		{
+			if (strlen(listOutNeedBig) < (UINT)listOutNeedBig_sz - 32)
+			{
+				if (mapMsgToWM_.count(it.first))
+					sprintf(strchr(listOutNeedBig, 0), "%s:", mapMsgToWM_[it.first].c_str());
+				else
+					sprintf(strchr(listOutNeedBig, 0), "0x%04X:", it.first);
+				if ((it.second).passthrough)
+					strcat(listOutNeedBig, "passthrough,\0");
+				else
+					strcat(listOutNeedBig, "block,\0");
+			}
+			else
+				return false;
+		}
+		
+		char* lastComma{ strrchr(listOutNeedBig, ',') }; // Remove final comma
+		if (lastComma)
+			*lastComma = '\0';
+		return true;
+	}
+	else
+		return true;
+		
+}
+
+bool JS_WindowMessage_Post(void* windowHWND, const char* message, int wParamLow, int wParamHigh, int lParamLow, int lParamHigh)
+{
+	using namespace Julian;
+
+	std::string msgString = message;
+	UINT uMsg = 0;
+	if (mapWM_toMsg.count(msgString))
+		uMsg = mapWM_toMsg[msgString];
+	else
+	{
+		errno = 0;
+		char* endPtr;
+		uMsg = strtoul(message, &endPtr, 16);
+		if (endPtr == message || errno != 0) // 0x0000 is a valid message type, so cannot assume 0 is error.
+			return false;
+	}
+
+	WPARAM wParam = MAKEWPARAM(wParamLow, wParamHigh);
+	LPARAM lParam = MAKELPARAM(lParamLow, lParamHigh);
+	HWND hwnd = (HWND)windowHWND;
+
+	// Is this window currently being intercepted?
+	if (mapWindowData.count(hwnd)) {
+		sWindowData& w = mapWindowData[hwnd];
+		if (w.mapMessages.count(uMsg)) {
+			w.origProc(hwnd, uMsg, wParam, lParam); // WindowProcs usually return 0 if message was handled.  But not always, 
+			return true;
+		}
+	}
+	return !!PostMessage(hwnd, uMsg, wParam, lParam);
+}
+
+
+int JS_WindowMessage_Send(void* windowHWND, const char* message, int wParamLow, int wParamHigh, int lParamLow, int lParamHigh)
+{
+	using namespace Julian;
+
+	std::string msgString = message;
+	UINT uMsg = 0;
+	if (mapWM_toMsg.count(msgString))
+		uMsg = mapWM_toMsg[msgString];
+	else
+	{
+		errno = 0;
+		char* endPtr;
+		uMsg = strtoul(message, &endPtr, 16);
+		if (endPtr == message || errno != 0) // 0x0000 is a valid message type, so cannot assume 0 is error.
+			return FALSE;
+	}
+	
+	WPARAM wParam = MAKEWPARAM(wParamLow, wParamHigh);
+	LPARAM lParam = MAKELPARAM(lParamLow, lParamHigh);
+
+	return (int)SendMessage((HWND)windowHWND, uMsg, wParam, lParam);
+}
+
+// swell does not define these macros:
+#ifndef GET_KEYSTATE_WPARAM
+#define GET_KEYSTATE_WPARAM(wParam) LOWORD(wParam)
+#endif
+#ifndef GET_WHEEL_DELTA_WPARAM
+#define GET_WHEEL_DELTA_WPARAM(wParam) ((short)HIWORD(wParam))
+#endif
+
+
+bool JS_Window_OnCommand(void* windowHWND, int commandID)
+{
+	return JS_WindowMessage_Post(windowHWND, "WM_COMMAND", commandID, 0, 0, 0);
+}
+
+
+bool JS_WindowMessage_Peek(void* windowHWND, const char* message, bool* passedThroughOut, double* timeOut, int* wParamLowOut, int* wParamHighOut, int* lParamLowOut, int* lParamHighOut)
+{
+	// lParamLow, lParamHigh, and wParamHigh are signed, whereas wParamLow is unsigned.
+	using namespace Julian;
+
+	std::string msgString = message;
+	UINT uMsg = 0;
+	if (mapWM_toMsg.count(msgString))
+		uMsg = mapWM_toMsg[msgString];
+	else
+	{
+		errno = 0;
+		char* endPtr;
+		uMsg = strtoul(message, &endPtr, 16);
+		if (endPtr == message || errno != 0) // 0x0000 is a valid message type, so cannot assume 0 is error.
+			return false;
+	}
+
+	if (mapWindowData.count((HWND)windowHWND))
+	{
+		sWindowData& w = mapWindowData[(HWND)windowHWND];
+
+		if (w.mapMessages.count(uMsg))
+		{
+			sMsgData& m = w.mapMessages[uMsg];
+
+			*passedThroughOut = m.passthrough;
+			*timeOut		= m.time;
+			*lParamLowOut	= GET_X_LPARAM(m.lParam);
+			*lParamHighOut	= GET_Y_LPARAM(m.lParam);
+			*wParamLowOut	= GET_KEYSTATE_WPARAM(m.wParam);
+			*wParamHighOut	= GET_WHEEL_DELTA_WPARAM(m.wParam);
+
+			return true;
+		}
+	}
+	return false;
+}
+
+LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	using namespace Julian;
+
+	// If not in map, we don't know how to call original process.
+	if (mapWindowData.count(hwnd) == 0)
+		return 1;
+	else {
+		sWindowData& windowData = mapWindowData[hwnd]; // Get reference/alias because want to write into existing struct.
+
+		// Event that should be intercepted? 
+		if (windowData.mapMessages.count(uMsg)) // ".contains" has only been implemented in more recent C++ versions
+		{
+			windowData.mapMessages[uMsg].time = time_precise();
+			windowData.mapMessages[uMsg].wParam = wParam;
+			windowData.mapMessages[uMsg].lParam = lParam;
+
+			// If event will not be passed through, can quit here.
+			if (windowData.mapMessages[uMsg].passthrough == false)
+			{
+				// Most WM_ messages return 0 if processed, with only a few exceptions:
+				switch (uMsg)
+				{
+				case WM_SETCURSOR:
+				case WM_DRAWITEM:
+				case WM_COPYDATA:
+					return 1;
+				case WM_MOUSEACTIVATE:
+					return 3;
+				default:
+					return 0;
+				}
+			}
+		}
+
+		// Any other event that isn't intercepted.
+		LRESULT r = windowData.origProc(hwnd, uMsg, wParam, lParam);
+
+		if (uMsg == WM_PAINT) {
+			for (auto& b : windowData.mapBitmaps) {
+				sBitmapData& i = b.second;
+#ifdef _WIN32
+				AlphaBlend(windowData.windowDC, i.dstx, i.dsty, i.dstw, i.dsth, i.bitmapDC, i.srcx, i.srcy, i.srcw, i.srch, BLENDFUNCTION{ AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
+#else
+				StretchBlt(windowData.windowDC, i.dstx, i.dsty, i.dstw, i.dsth, i.bitmapDC, i.srcx, i.srcy, i.srcw, i.srch, SRCCOPY_USEALPHACHAN);
+#endif
+			}
+		}
+
+		return r;
+	}
+}
+
+
+// Intercept a single message type
+int JS_WindowMessage_Intercept(void* windowHWND, const char* message, bool passthrough)
+{
+	using namespace Julian;
+	HWND hwnd = (HWND)windowHWND;
+	UINT uMsg;
+
+	// Convert string to UINT
+	string msgString = message;
+	if (mapWM_toMsg.count(msgString))
+		uMsg = mapWM_toMsg[msgString];
+	else
+	{
+		errno = 0;
+		uMsg = strtoul(message, nullptr, 16);
+		if (errno != 0 || (uMsg == 0 && !(strstr(message, "0x0000")))) // 0x0000 is a valid message type, so cannot assume 0 is error.
+			return ERR_PARSING;
+	}
+
+	// Is this window already being intercepted?
+
+	// Not yet intercepted, so create new sWindowdata map
+	if (Julian::mapWindowData.count(hwnd) == 0) 
+	{
+		if (!JS_Window_IsWindow(hwnd)) 
+			return ERR_NOT_WINDOW;
+
+		HDC windowDC = (HDC)JS_GDI_GetClientDC(hwnd);
+		if (!windowDC) 
+			return ERR_WINDOW_HDC;
+
+		// Try to get the original process.
+		WNDPROC origProc = nullptr;
+		#ifdef _WIN32
+		origProc = (WNDPROC)SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
+		#else
+		origProc = (WNDPROC)SetWindowLong(hwnd, GWL_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
+		#endif
+		if (!origProc) 
+			return ERR_ORIGPROC;
+
+		Julian::mapWindowData.emplace(hwnd, sWindowData{ origProc, windowDC }); // , map<UINT, sMsgData>{}, map<LICE_IBitmap*, sBitmapData>{} }); // Insert empty map
+	}
+
+	// Window already intercepted.  So try to add to existing maps.
+	else
+	{
+		// Check that no overlaps: only one script may intercept each message type
+		if (Julian::mapWindowData[hwnd].mapMessages.count(uMsg))
+			return ERR_ALREADY_INTERCEPTED;
+	}
+
+	Julian::mapWindowData[hwnd].mapMessages.emplace(uMsg, sMsgData{ passthrough, 0, 0, 0 });
+	return 1;
+}
+
+int JS_WindowMessage_PassThrough(void* windowHWND, const char* message, bool passThrough)
+{
+	using namespace Julian;
+	HWND hwnd = (HWND)windowHWND;
+	UINT uMsg;
+
+	// Is this window already being intercepted?
+	if (Julian::mapWindowData.count(hwnd) == 0)
+		return ERR_ALREADY_INTERCEPTED; // Actually, NOT intercepted
+
+	// Convert string to UINT
+	string msgString = message;
+	if (mapWM_toMsg.count(msgString))
+		uMsg = mapWM_toMsg[msgString];
+	else
+	{
+		errno = 0;
+		uMsg = strtoul(message, nullptr, 16);
+		if (errno != 0 || (uMsg == 0 && !(strstr(message, "0x0000")))) // 0x0000 is a valid message type, so cannot assume 0 is error.
+			return ERR_PARSING;
+	}
+
+	// Is this message type actually already being intercepted?
+	if (Julian::mapWindowData[hwnd].mapMessages.count(uMsg) == 0)
+		return ERR_ALREADY_INTERCEPTED;
+
+	// Change passthrough
+	Julian::mapWindowData[hwnd].mapMessages[uMsg].passthrough = passThrough;
+
+	return 1;
+}
+
+int JS_WindowMessage_InterceptList(void* windowHWND, const char* messages)
+{
+	using namespace Julian;
+	HWND hwnd = (HWND)windowHWND;
+
+	// strtok *replaces* characters in the string, so better copy messages to new char array.
+	// It should not be possible for API functions to pass more than API_LEN characters.  But make doubly sure...
+	if (strlen(messages) > API_LEN)
+		return ERR_PARSING;
+	char msg[API_LEN];
+	strncpy(msg, messages, API_LEN);
+	msg[API_LEN - 1] = 0;
+
+	// messages string will be parsed into uMsg message types and passthrough modifiers 
+	UINT uMsg;
+	bool passthrough;
+
+	// For use while tokenizing messages string
+	char *token;
+	std::string msgString;
+	const char* delim = ":;,= \n\t";
+	char* endPtr; 
+
+	// Parsed info will be stored in these temporary maps
+	map<UINT, sMsgData> newMessages;
+
+	// Parse!
+	token = strtok(msg, delim);
+	while (token)
+	{
+		// Get message number
+		msgString = token;
+		if (mapWM_toMsg.count(msgString))
+			uMsg = mapWM_toMsg[msgString];
+		else
+		{
+			errno = 0;
+			uMsg = strtoul(token, &endPtr, 16);
+			if (endPtr == token || errno != 0) // 0x0000 is a valid message type, so cannot assume 0 is error.
+				return ERR_PARSING;
+		}
+
+		// Now get passthrough
+		token = strtok(NULL, delim);
+		if (token == NULL)
+			return ERR_PARSING; // Each message type must be followed by a modifier
+		else if (token[0] == 'p' || token[0] == 'P')
+			passthrough = true;
+		else if (token[0] == 'b' || token[0] == 'B')
+			passthrough = false;
+		else // Not block or passthrough
+			return ERR_PARSING;
+
+		// Save in temporary maps
+		newMessages.emplace(uMsg, sMsgData{ passthrough, 0, 0, 0 }); // time = 0 indicates that this message type is being intercepted OK, but that no message has yet been received.
+
+		token = strtok(NULL, delim);
+	}
+
+	// Parsing went OK?  Any messages to intercept?
+	if (newMessages.size() == 0)
+		return ERR_PARSING;
+
+	// Is this window already being intercepted?
+	if (mapWindowData.count(hwnd) == 0) // Not yet intercepted
+	{
+		// IsWindow is slow in Linux and MacOS. 
+		// However, checking may be prudent this may be necessary since Linux will crash if windowHWND is not an actual window.
+		if (!JS_Window_IsWindow(hwnd)) 
+			return ERR_NOT_WINDOW;
+
+		HDC windowDC = (HDC)JS_GDI_GetClientDC(hwnd);
+		if (!windowDC) 
+			return ERR_WINDOW_HDC;
+
+		// Try to get the original process.
+		WNDPROC origProc = nullptr;
+#ifdef _WIN32
+		origProc = (WNDPROC)SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
+#else
+		origProc = (WNDPROC)SetWindowLong(hwnd, GWL_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
+#endif
+		if (!origProc) 
+			return ERR_ORIGPROC;
+
+		// Got everything OK.  Finally, store struct.
+		Julian::mapWindowData.emplace(hwnd, sWindowData{ origProc, windowDC, newMessages }); // Insert into static map of namespace
+		return 1;
+	}
+
+	// Already intercepted.  So add to existing maps.
+	else
+	{
+		// Check that no overlaps: only one script may intercept each message type
+		// Want to update existing map, so use aliases/references
+		auto& existingMsg = Julian::mapWindowData[hwnd].mapMessages; // Messages that are already being intercepted for this window
+		for (const auto& it : newMessages)
+		{
+			if (existingMsg.count(it.first)) // Oops, already intercepting this message type
+			{
+				return ERR_ALREADY_INTERCEPTED;
+			}
+		}
+		// No overlaps, so add new intercepts to existing messages to intercept
+		existingMsg.insert(newMessages.begin(), newMessages.end());
+		return 1;
+	}
+}
+
+int JS_WindowMessage_Release(void* windowHWND, const char* messages)
+{
+	using namespace Julian;
+	HWND hwnd = (HWND)windowHWND;
+
+	if (mapWindowData.count(hwnd) == 0)
+		return ERR_NOT_WINDOW;
+
+	// strtok *replaces* characters in the string, so better copy messages to new char array.
+	// It should not be possible for API functions to pass more than API_LEN characters.  But make doubly sure...
+	if (strlen(messages) > API_LEN)
+		return ERR_PARSING;
+	char msg[API_LEN];
+	strncpy(msg, messages, API_LEN);
+	msg[API_LEN - 1] = 0;
+
+	// messages string will be parsed into uMsg message types and passthrough modifiers 
+	UINT uMsg;
+	char *token;
+	std::string msgString;
+	const char* delim = ":;,= \n\t";
+	std::set<UINT> messagesToErase;
+
+	// Parse!
+	token = strtok(msg, delim);
+	while (token)
+	{
+		// Get message number
+		msgString = token;
+		if (mapWM_toMsg.count(msgString))
+			uMsg = mapWM_toMsg[msgString];
+		else
+			uMsg = strtoul(token, NULL, 16);
+		if (!uMsg || (errno == ERANGE))
+			return ERR_PARSING;
+
+		// Store this parsed uMsg number
+		messagesToErase.insert(uMsg);
+
+		token = strtok(NULL, delim);
+	}
+
+	// Erase all message types that have been parsed
+	auto& existingMessages = Julian::mapWindowData[hwnd].mapMessages; // Messages that are already being intercepted for this window
+	for (const UINT& it : messagesToErase)
+		existingMessages.erase(it);
+
+	// If no messages need to be intercepted any more, release this window
+	if ((existingMessages.size() == 0) && (Julian::mapWindowData[hwnd].mapBitmaps.size() == 0))
+		JS_WindowMessage_RestoreOrigProc(hwnd);
+
+	return TRUE;
+}
+
+void JS_WindowMessage_ReleaseAll()
+{
+	using namespace Julian;
+	for (auto it = mapWindowData.begin(); it != mapWindowData.end(); ++it) {
+		JS_WindowMessage_ReleaseWindow(it->first);
+	}
+}
+
+void JS_WindowMessage_ReleaseWindow(void* windowHWND)
+{
+	using namespace Julian;
+	HWND hwnd = (HWND)windowHWND;
+	if (mapWindowData.count(hwnd)) {
+		if (mapWindowData[hwnd].mapBitmaps.size() == 0) JS_WindowMessage_RestoreOrigProc(hwnd); // no linked bitmaps either, so can restore original WNDPROC
+		else mapWindowData[hwnd].mapMessages.clear(); // delete intercepts, but leave linked bitmaps alone
+	}
+}
+
+static void JS_WindowMessage_RestoreOrigProc(HWND hwnd)
+{
+	using namespace Julian;
+
+	if (mapWindowData.count(hwnd)) {
+		if (JS_Window_IsWindow(hwnd)) {
+			WNDPROC origProc = mapWindowData[hwnd].origProc;
+#ifdef _WIN32
+			SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)origProc);
+#else
+			SetWindowLong(hwnd, GWL_WNDPROC, (LONG_PTR)origProc);
+#endif
+		}
+		JS_GDI_ReleaseDC(hwnd, mapWindowData[hwnd].windowDC);
+		mapWindowData.erase(hwnd);
+	}
+}
+
+static int  JS_WindowMessage_CreateNewMap(HWND hwnd)
+{
+
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////////
+
+void JS_LICE_DestroyBitmap(LICE_IBitmap* bitmap)
+{
+	using namespace Julian;
+	// Also delete any occurence of this bitmap from UI Compositing
+	if (LICEBitmaps.count(bitmap)) {
+		for (auto& m : mapWindowData) {
+			sWindowData& d = m.second;
+			d.mapBitmaps.erase(bitmap);
+		}
+		LICEBitmaps.erase(bitmap);
+		LICE__Destroy(bitmap);
+	}
+}
