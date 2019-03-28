@@ -142,8 +142,6 @@ int   JS_LICE_GetWidth(void* bitmap);
 void* JS_LICE_GetDC(void* bitmap);
 void  JS_LICE_DestroyBitmap(LICE_IBitmap* bitmap);
 
-LRESULT CALLBACK JS_Link_Callback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-void  JS_LICE_Link(HWND hwnd, LICE_IBitmap* bitmap);
 int   JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap* sysBitmap, int srcx, int srcy, int srcw, int srch);
 void  JS_Composite_Unlink(HWND hwnd, LICE_IBitmap* bitmap);
 int   JS_Composite_ListBitmaps(HWND hwnd, char* listOutNeedBig, int listOutNeedBig_sz);
