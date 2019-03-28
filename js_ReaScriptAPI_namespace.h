@@ -17,16 +17,9 @@ namespace Julian
 	// REAPER immediately converts this array into Lua strings, 
 	char longString[EXT_LEN];
 
-
-	///////////////////////////////////////////////////////////////////////////////////////////////
-	// GDI and LICE stuff
-	// Store all created HDCs and IBitmaps so that can check whether these exist, when 
-
 	// Bitmaps can use up lots of RAM, so to ensure that all bitmaps are destroyed when REAPER exits,
 	//		all active bitmaps are stored here, and will be destroyed by the REAPER_PLUGIN_ENTRYPOINT function.
-	map<LICE_IBitmap*,HDC> LICEBitmaps;
-	set<HDC> GDIHDCs;
-
+	set<LICE_IBitmap*> LICEBitmaps;
 
 	// To avoid having to re-load a cursor from file every time that a script is executed,
 	//		the HCURSURS will be stored in this map.
@@ -37,12 +30,10 @@ namespace Julian
 
 	//Store the size of allocated memory for Mem functions
 	map<void*, int> mapMallocToSize;
-
+	
 	accelerator_register_t sAccelerator{ JS_VKeys_Callback, true };
 
-
-	//////////////////////////////////////////////////////////////////////////////////////
-	// Find functions: Some global variables that will be used when searching for windows.
+	// Some global variables that will be used when searching for windows.
 	// Since these variables are global, all functions and their callbacks can access the variables without having to pass them via lParams.
 	set<HWND>	foundHWNDs;
 	char		findTitle[1024]; // Title text that must be matched
@@ -68,17 +59,12 @@ namespace Julian
 	};
 
 
-	///////////////////////////////////////////////////////////////////////////////////////
-	// Window Message intercept stuff
-
 	// Error codes for WindowMessage_Intercept
 	constexpr int ERR_ALREADY_INTERCEPTED = 0;
 	constexpr int ERR_NOT_WINDOW = -1;
 	constexpr int ERR_PARSING = -2;
 	constexpr int ERR_ORIGPROC = -3;
-	constexpr int ERR_NOT_BITMAP = -4;
-	constexpr int ERR_NOT_SYSBITMAP = -5;
-	constexpr int ERR_WINDOW_HDC = -6;
+
 
 	// This struct is used to store the data of intercepted messages.
 	//		In addition to the standard wParam and lParam, a unique timestamp is added.
@@ -90,19 +76,6 @@ namespace Julian
 		LPARAM lParam;
 	};
 
-	// This struct is used to store the data of linked bitmaps for compositing.
-	struct sBitmapData {
-		int dstx;
-		int dsty;
-		int dstw;
-		int dsth;
-		HDC bitmapDC;
-		int srcx;
-		int srcy;
-		int srcw;
-		int srch;
-	};
-
 	// This struct and map store the data of each HWND that is being intercepted.
 	// (Each window can only be intercepted by one script at a time.)
 	// For each window, three bitfields summarize the up/down states of most of the keyboard. 
@@ -110,15 +83,17 @@ namespace Julian
 	struct sWindowData
 	{
 		WNDPROC origProc;
-		HDC windowDC;
-		std::map<UINT, sMsgData> mapMessages;
-		std::map<LICE_IBitmap*, sBitmapData> mapBitmaps;
+		std::map<UINT, sMsgData> messages;
+		//int keysBitfieldBACKtoHOME	= 0; // Virtual key codes VK_BACK (backspace) to VK_HOME
+		//int keysBitfieldAtoSLEEP	= 0;
+		//int keysBitfieldLEFTto9		= 0;
 	};
 	const bool BLOCK = false;
 
+	////////////////////////////////////////////////////////////////////////////
 	// THE MAIN MAP FOR ALL INTERCEPTS
 	// Each window that is being intercepted, will be mapped to its data struct.
-	std::map <HWND, sWindowData> mapWindowData;
+	std::map <HWND, sWindowData> mapWindowToData;
 
 	// This map contains all the WM_ messages in swell-types.h. These can be assumed to be valid cross-platform.
 	std::map<std::string, UINT> mapWM_toMsg
