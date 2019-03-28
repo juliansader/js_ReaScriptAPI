@@ -2151,22 +2151,28 @@ void JS_GDI_SetPixel(void* deviceHDC, int x, int y, int color)
 
 
 
-void JS_GDI_Blit(void* destHDC, int dstx, int dsty, void* sourceHDC, int srcx, int srcy, int width, int height)
+void JS_GDI_Blit(void* destHDC, int dstx, int dsty, void* sourceHDC, int srcx, int srcy, int width, int height, const char* modeOptional)
 {
+	if (strchr(modeOptional, 'A') || strchr(modeOptional, 'a'))
 #ifdef _WIN32
-	AlphaBlend((HDC)destHDC, dstx, dsty, width, height, (HDC)sourceHDC, srcx, srcy, width, height, BLENDFUNCTION { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
+		AlphaBlend((HDC)destHDC, dstx, dsty, width, height, (HDC)sourceHDC, srcx, srcy, width, height, BLENDFUNCTION { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
 #else
-	BitBlt((HDC)destHDC, dstx, dsty, width, height, (HDC)sourceHDC, srcx, srcy, SRCCOPY_USEALPHACHAN);  //swell only provdes the SRCCOPY mode.  NB: swell defines SRCCOPY as 0 instead of HCC0020
+		StretchBlt((HDC)destHDC, dstx, dsty, width, height, (HDC)sourceHDC, srcx, srcy, width, height, SRCCOPY_USEALPHACHAN);
 #endif
+	else
+		StretchBlt((HDC)destHDC, dstx, dsty, width, height, (HDC)sourceHDC, srcx, srcy, width, height, SRCCOPY);
 }
 
-void JS_GDI_StretchBlit(void* destHDC, int dstx, int dsty, int dstw, int dsth, void* sourceHDC, int srcx, int srcy, int srcw, int srch)
+void JS_GDI_StretchBlit(void* destHDC, int dstx, int dsty, int dstw, int dsth, void* sourceHDC, int srcx, int srcy, int srcw, int srch, const char* modeOptional)
 {
+	if (strchr(modeOptional, 'A') || strchr(modeOptional, 'a'))
 #ifdef _WIN32
-	AlphaBlend((HDC)destHDC, dstx, dsty, dstw, dsth, (HDC)sourceHDC, srcx, srcy, srcw, srch, BLENDFUNCTION{ AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
+		AlphaBlend((HDC)destHDC, dstx, dsty, dstw, dsth, (HDC)sourceHDC, srcx, srcy, srcw, srch, BLENDFUNCTION{ AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
 #else
-	StretchBlt((HDC)destHDC, dstx, dsty, dstw, dsth, (HDC)sourceHDC, srcx, srcy, srcw, srch, SRCCOPY_USEALPHACHAN);
+		StretchBlt((HDC)destHDC, dstx, dsty, dstw, dsth, (HDC)sourceHDC, srcx, srcy, srcw, srch, SRCCOPY_USEALPHACHAN);
 #endif
+	else
+		StretchBlt((HDC)destHDC, dstx, dsty, dstw, dsth, (HDC)sourceHDC, srcx, srcy, srcw, srch, SRCCOPY);
 }
 
 
@@ -2261,10 +2267,10 @@ void JS_LICE_Link(HWND hwnd, LICE_IBitmap* bitmap)
 	linkBitmap = LICE__GetDC(bitmap);
 }
 
-void JS_LICE_DestroyBitmap(void* bitmap)
+void JS_LICE_DestroyBitmap(LICE_IBitmap* bitmap)
 {
-	Julian::LICEBitmaps.erase((LICE_IBitmap*)bitmap);
-	LICE__Destroy((LICE_IBitmap*)bitmap);
+	Julian::LICEBitmaps.erase(bitmap);
+	LICE__Destroy(bitmap);
 }
 
 #define LICE_BLIT_MODE_MASK 0xff
