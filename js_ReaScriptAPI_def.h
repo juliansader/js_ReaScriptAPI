@@ -89,6 +89,11 @@ APIdef aAPIdefs[] =
 	{ APIFUNC(JS_ReaScriptAPI_Version), "void", "double*", "versionOut", "Returns the version of the js_ReaScriptAPI extension.", },
 	{ APIFUNC(JS_Localize), "void", "const char*,const char*,char*,int", "USEnglish,LangPackSection,translationOut,translationOut_sz", "Returns the translation of the given US English text, according to the currently loaded Language Pack.\n\nParameters:\n * LangPackSection: Language Packs are divided into sections such as \"common\" or \"DLG_102\".\n * In Lua, by default, text of up to 1024 chars can be returned. To increase (or reduce) the default buffer size, a string and size can be included as optional 3rd and 4th arguments.\n\nExample: reaper.JS_Localize(\"Actions\", \"common\", \"\", 20)", },
 
+	{ APIFUNC(JS_VKeys_GetState), "bool", "char*,int*", "stateOutNeedBig,stateOutNeedBig_sz", "Retrieves the current states of all virtual keys, from 0x01 to 0xFF, in a 255-byte array.\n\nNote: Mouse buttons are not reliably detected, and JS_Mouse_GetState can be used instead.", },
+	{ APIFUNC(JS_VKeys_GetHistory), "bool", "char*,int*", "stateOutNeedBig,stateOutNeedBig_sz", "Retrieves the cumulative states of all virtual keys since the last JS_VKeys_ClearHistory, in a 255-byte array.", },
+	{ APIFUNC(JS_VKeys_ClearHistory), "void", "", "", "", },
+	{ APIFUNC(JS_VKeys_Intercept), "int", "int,int", "keyCode,intercept", "Intercepting (blocking) virtual keys work similar to the native function PreventUIRefresh:  Each key has a (non-negative) intercept state, and the key is passed through as usual if the state equals 0, or blocked if the state is greater than 0.\n\nkeyCode: The virtual key code of the key, or -1 to change the state of all keys.\n\nintercept: A script can increase the intercept state by passing +1, or lower the state by passing -1.  Multiple scripts can block the same key, and the intercept state may reach up to 255. If zero is passed, the intercept state is not changed, but the current state is returned.\n\nReturns: If keyCode refers to a single key, the intercept state of that key is returned.  If keyCode = -1, the state of the key that is most strongly blocked (highest intercept state) is returned.", },
+
 };
 
 ///////////////////////////////////////////////////////////////////////////////
