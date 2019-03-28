@@ -588,13 +588,13 @@ static void* __vararg_JS_GDI_LineTo(void** arglist, int numparms)
 
 static void* __vararg_JS_GDI_Blit(void** arglist, int numparms)
 {
-	JS_GDI_Blit((void*)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (void*)arglist[3], (int)(intptr_t)arglist[4], (int)(intptr_t)arglist[5], (int)(intptr_t)arglist[6], (int)(intptr_t)arglist[7], (bool)arglist[8]);
+	JS_GDI_Blit((void*)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (void*)arglist[3], (int)(intptr_t)arglist[4], (int)(intptr_t)arglist[5], (int)(intptr_t)arglist[6], (int)(intptr_t)arglist[7], (const char*)arglist[8]);
 	return NULL;
 }
 
 static void* __vararg_JS_GDI_StretchBlit(void** arglist, int numparms)
 {
-	JS_GDI_StretchBlit((void*)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (int)(intptr_t)arglist[3], (int)(intptr_t)arglist[4], (void*)arglist[5], (int)(intptr_t)arglist[6], (int)(intptr_t)arglist[7], (int)(intptr_t)arglist[8], (int)(intptr_t)arglist[9], (bool)arglist[10]);
+	JS_GDI_StretchBlit((void*)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (int)(intptr_t)arglist[3], (int)(intptr_t)arglist[4], (void*)arglist[5], (int)(intptr_t)arglist[6], (int)(intptr_t)arglist[7], (int)(intptr_t)arglist[8], (int)(intptr_t)arglist[9], (const char*)arglist[10]);
 	return NULL;
 }
 
