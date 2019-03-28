@@ -187,51 +187,7 @@ static void* __vararg_JS_Window_FindChild(void** arglist, int numparms)
   return (void*)(intptr_t)JS_Window_FindChild((void*)arglist[0], (const char*)arglist[1], (bool)arglist[2]);
 }
 
-////////////////////////////////////////////////
 
-static void* __vararg_JS_Window_ArrayAllChild(void** arglist, int numparms)
-{
-	return (void*)(intptr_t)JS_Window_ArrayAllChild((void*)arglist[0], (double*)arglist[1]);
-}
-
-static void* __vararg_JS_Window_ArrayAllTop(void** arglist, int numparms)
-{
-	return (void*)(intptr_t)JS_Window_ArrayAllTop((double*)arglist[0]);
-}
-
-static void* __vararg_JS_Window_ArrayFind(void** arglist, int numparms)
-{
-	return (void*)(intptr_t)JS_Window_ArrayFind((const char*)arglist[0], (bool)arglist[1], (double*)arglist[2]);
-}
-
-static void* __vararg_JS_MIDIEditor_ArrayAll(void** arglist, int numparms)
-{
-	return (void*)(intptr_t)JS_MIDIEditor_ArrayAll((double*)arglist[0]);
-}
-
-///////////////////////////////////////////////
-
-static void* __vararg_JS_Window_ListAllChild(void** arglist, int numparms)
-{
-	return (void*)(intptr_t)JS_Window_ListAllChild((void*)arglist[0], (char*)arglist[1], (int)(intptr_t)arglist[2]);
-}
-
-static void* __vararg_JS_Window_ListAllTop(void** arglist, int numparms)
-{
-	return (void*)(intptr_t)JS_Window_ListAllTop((char*)arglist[0], (int)(intptr_t)arglist[1]);
-}
-
-static void* __vararg_JS_Window_ListFind(void** arglist, int numparms)
-{
-	return (void*)(intptr_t)JS_Window_ListFind((const char*)arglist[0], (bool)arglist[1], (char*)arglist[2], (int)(intptr_t)arglist[3]);
-}
-
-static void* __vararg_JS_MIDIEditor_ListAll(void** arglist, int numparms)
-{
-	return (void*)(intptr_t)JS_MIDIEditor_ListAll((char*)arglist[0], (int)(intptr_t)arglist[1]);
-}
-
-////////////////////////////////////////////////
 
 
 static void* __vararg_JS_Window_Resize(void** arglist, int numparms)
