@@ -106,26 +106,6 @@ static void* __vararg_JS_WindowMessage_ReleaseAll(void** arglist, int numparms)
 
 
 
-static void* __vararg_JS_Window_GetParent(void** arglist, int numparms)
-{
-  return (void*)(intptr_t)JS_Window_GetParent((void*)arglist[0]);
-}
-
-static void* __vararg_JS_Window_IsChild(void** arglist, int numparms)
-{
-  return (void*)(intptr_t)JS_Window_IsChild((void*)arglist[0], (void*)arglist[1]);
-}
-
-static void* __vararg_JS_Window_GetRelated(void** arglist, int numparms)
-{
-  return (void*)(intptr_t)JS_Window_GetRelated((void*)arglist[0], (const char*)arglist[1]);
-}
-
-static void* __vararg_JS_Window_FindChildByID(void** arglist, int numparms)
-{
-	return (void*)JS_Window_FindChildByID((HWND)arglist[0], (int)(intptr_t)arglist[1]);
-}
-
 
 static void* __vararg_JS_Window_SetFocus(void** arglist, int numparms)
 {
@@ -172,15 +152,7 @@ static void* __vararg_JS_Window_IsVisible(void** arglist, int numparms)
   return (void*)(intptr_t)JS_Window_IsVisible((void*)arglist[0]);
 }
 
-static void* __vararg_JS_Window_FindEx(void** arglist, int numparms)
-{
-	return (void*)JS_Window_FindEx((HWND)arglist[0], (HWND)arglist[1], (const char*)arglist[2], (const char*)arglist[3]);
-}
 
-static void* __vararg_JS_Window_Find(void** arglist, int numparms)
-{
-  return (void*)(intptr_t)JS_Window_Find((const char*)arglist[0], (bool)arglist[1]);
-}
 
 
 
@@ -210,21 +182,8 @@ static void* __vararg_JS_Window_SetZOrder(void** arglist, int numparms)
 	return NULL;
 }
 
-static void* __vararg_JS_Window_GetLongPtr(void** arglist, int numparms)
-{
-	return JS_Window_GetLongPtr((void*)arglist[0], (const char*)arglist[1]);
-}
 
-static void* __vararg_JS_Window_GetLong(void** arglist, int numparms)
-{
-	JS_Window_GetLong((void*)arglist[0], (const char*)arglist[1], (double*)arglist[2]);
-	return nullptr;
-}
 
-static void* __vararg_JS_Window_SetOpacity(void** arglist, int numparms)
-{
-	return (void*)(intptr_t)JS_Window_SetOpacity((HWND)arglist[0], (const char*)arglist[1], arglist[2] ? *(double*)arglist[2] : 0.0);
-}
 
 static void* __vararg_JS_Window_GetTitle(void** arglist, int numparms)
 {
@@ -243,10 +202,6 @@ static void* __vararg_JS_Window_GetClassName(void** arglist, int numparms)
 	return nullptr;
 }
 
-static void* __vararg_JS_Window_IsWindow(void** arglist, int numparms)
-{
-  return (void*)(intptr_t)JS_Window_IsWindow((void*)arglist[0]);
-}
 
 static void* __vararg_JS_Window_HandleFromAddress(void** arglist, int numparms)
 {
