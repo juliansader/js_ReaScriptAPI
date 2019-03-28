@@ -3,7 +3,7 @@
 using namespace std;
 
 // This function is called when REAPER loads or unloads the extension.
-// If rec != nil, the extenstion is being loaded.  If rec == nil, the extension is being UNloaded.
+// If rec != nil, the extension is being loaded.  If rec == nil, the extension is being UNloaded.
 extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance, reaper_plugin_info_t *rec)
 {
 	if (rec)
@@ -1471,7 +1471,6 @@ bool  JS_Window_IsWindow(void* windowHWND)
 			return true;
 		HWND midiview = GetDlgItem(editor, 1000);
 		if (target == midiview) 
-			return true;
 	}
 
 	/*HWND main = GetMainHwnd();
@@ -2276,10 +2275,10 @@ void JS_GDI_Blit(void* destHDC, int dstx, int dsty, void* sourceHDC, int srcx, i
 #ifdef _WIN32
 		AlphaBlend((HDC)destHDC, dstx, dsty, width, height, (HDC)sourceHDC, srcx, srcy, width, height, BLENDFUNCTION { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
 #else
-		StretchBlt((HDC)destHDC, dstx, dsty, width, height, (HDC)sourceHDC, srcx, srcy, srcw, srch, SRCCOPY_USEALPHACHAN);
+		StretchBlt((HDC)destHDC, dstx, dsty, width, height, (HDC)sourceHDC, srcx, srcy, width, height, SRCCOPY_USEALPHACHAN);
 #endif
 	else
-		StretchBlt((HDC)destHDC, dstx, dsty, width, height, (HDC)sourceHDC, srcx, srcy, width, width, SRCCOPY);
+		StretchBlt((HDC)destHDC, dstx, dsty, width, height, (HDC)sourceHDC, srcx, srcy, width, height, SRCCOPY);
 }
 
 void JS_GDI_StretchBlit(void* destHDC, int dstx, int dsty, int dstw, int dsth, void* sourceHDC, int srcx, int srcy, int srcw, int srch, const char* modeOptional)
