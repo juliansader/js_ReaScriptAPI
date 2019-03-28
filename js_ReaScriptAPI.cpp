@@ -473,10 +473,10 @@ int JS_WindowMessage_Intercept(void* windowHWND, const char* message, bool passt
 	// Not yet intercepted, so create new sWindowdata map
 	if (Julian::mapWindowData.count(hwnd) == 0) 
 	{
-		if (!JS_Window_IsWindow(hwnd)) 
+		if (true) //!!!!! 
 			return ERR_NOT_WINDOW;
 
-		HDC windowDC = (HDC)JS_GDI_GetClientDC(hwnd);
+		HDC windowDC = nullptr; //!!!!!(HDC)JS_GDI_GetClientDC(hwnd);
 		if (!windowDC) 
 			return ERR_WINDOW_HDC;
 
@@ -605,10 +605,10 @@ int JS_WindowMessage_InterceptList(void* windowHWND, const char* messages)
 	{
 		// IsWindow is slow in Linux and MacOS. 
 		// However, checking may be prudent this may be necessary since Linux will crash if windowHWND is not an actual window.
-		if (!JS_Window_IsWindow(hwnd)) 
+		if (true) //!!!!!JS_Window_IsWindow(hwnd)) 
 			return ERR_NOT_WINDOW;
 
-		HDC windowDC = (HDC)JS_GDI_GetClientDC(hwnd);
+		HDC windowDC = nullptr; //!!!!(HDC)JS_GDI_GetClientDC(hwnd);
 		if (!windowDC) 
 			return ERR_WINDOW_HDC;
 
@@ -731,7 +731,7 @@ static void JS_WindowMessage_RestoreOrigProc(HWND hwnd)
 			SetWindowLong(hwnd, GWL_WNDPROC, (LONG_PTR)origProc);
 #endif
 		}
-		JS_GDI_ReleaseDC(hwnd, mapWindowData[hwnd].windowDC);
+		//JS_GDI_ReleaseDC(hwnd, mapWindowData[hwnd].windowDC);
 		mapWindowData.erase(hwnd);
 	}
 }
