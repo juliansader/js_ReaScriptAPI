@@ -80,7 +80,7 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 	// Why store stuff in extra sets?  For some unexplained reason REAPER crashes if I try to destroy LICE bitmaps explicitly. And for another unexplained reason, this roundabout way works...
 	else 
 	{
-		std::set<HWND> windowsToRestore;
+		/*std::set<HWND> windowsToRestore;
 		for (auto& i : Julian::mapWindowData)
 			windowsToRestore.insert(i.first);
 		for (HWND hwnd : windowsToRestore)
@@ -96,6 +96,7 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 			free(i.first);
 
 		plugin_register("-accelerator", &(Julian::sAccelerator));
+		*/
 		return 0;
 	}
 }
