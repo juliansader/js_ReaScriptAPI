@@ -1471,6 +1471,7 @@ bool  JS_Window_IsWindow(void* windowHWND)
 			return true;
 		HWND midiview = GetDlgItem(editor, 1000);
 		if (target == midiview) 
+			return true;
 	}
 
 	/*HWND main = GetMainHwnd();
