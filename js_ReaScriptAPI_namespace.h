@@ -38,7 +38,7 @@ namespace Julian
 	//Store the size of allocated memory for Mem functions
 	map<void*, int> mapMallocToSize;
 
-	//accelerator_register_t sAccelerator{ JS_VKeys_Callback, true };
+	accelerator_register_t sAccelerator{ JS_VKeys_Callback, true };
 
 
 	//////////////////////////////////////////////////////////////////////////////////////
