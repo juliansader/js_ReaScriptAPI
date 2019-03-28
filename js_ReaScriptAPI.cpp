@@ -748,38 +748,6 @@ static int  JS_WindowMessage_CreateNewMap(HWND hwnd)
 
 
 
-void* JS_Window_GetParent(void* windowHWND)
-{
-	return GetParent((HWND)windowHWND);
-}
-
-bool  JS_Window_IsChild(void* parentHWND, void* childHWND)
-{
-	return !!IsChild((HWND)parentHWND, (HWND)childHWND);
-}
-
-void* JS_Window_GetRelated(void* windowHWND, const char* relation)
-{
-	/*
-	#define GW_HWNDFIRST        0
-	#define GW_HWNDLAST         1
-	#define GW_HWNDNEXT         2
-	#define GW_HWNDPREV         3
-	#define GW_OWNER            4
-	#define GW_CHILD            5
-	*/
-	int intMode;
-	if		(strstr(relation, "FIRST"))	intMode = GW_HWNDFIRST;
-	else if (strstr(relation, "LAST"))	intMode = GW_HWNDLAST;
-	else if (strstr(relation, "NEXT"))	intMode = GW_HWNDNEXT;
-	else if (strstr(relation, "PREV"))	intMode = GW_HWNDPREV;
-	else if (strstr(relation, "OWNER"))	intMode = GW_OWNER;
-	else if (strstr(relation, "CHILD"))	intMode = GW_CHILD;
-	else return nullptr;
-	return GetWindow((HWND)windowHWND, intMode);
-}
-
-
 
 void  JS_Window_SetFocus(void* windowHWND)
 {
@@ -862,75 +830,6 @@ void  JS_Window_ReleaseCapture()
 }
 
 
-void* JS_Window_GetLongPtr(void* windowHWND, const char* info)
-{
-	int intMode;
-
-#ifdef _WIN32
-	if (strstr(info, "USER"))			intMode = GWLP_USERDATA;
-	else if (strstr(info, "WND"))		intMode = GWLP_WNDPROC;
-	else if (strstr(info, "ID"))		intMode = GWL_ID;
-	else if (strstr(info, "EXSTYLE"))	intMode = GWL_EXSTYLE;
-	else if (strstr(info, "STYLE"))		intMode = GWL_STYLE;
-	else return nullptr;
-	
-	return (void*)GetWindowLongPtr((HWND)windowHWND, intMode);
-
-#else 
-	if (strstr(info, "USER"))			intMode = GWL_USERDATA;
-	else if (strstr(info, "WND"))		intMode = GWL_WNDPROC;
-	else if (strstr(info, "DLG"))		intMode = DWL_DLGPROC;
-	else if (strstr(info, "ID"))		intMode = GWL_ID;
-	else if (strstr(info, "EXSTYLE"))	intMode = GWL_EXSTYLE;
-	else if (strstr(info, "STYLE"))		intMode = GWL_STYLE;
-	else return nullptr;
-
-	return (void*)GetWindowLong((HWND)windowHWND, intMode);
-#endif
-}
-
-void JS_Window_GetLong(void* windowHWND, const char* info, double* retvalOut)
-{
-	int intMode;
-
-#ifdef _WIN32
-	if (strstr(info, "USER"))			intMode = GWLP_USERDATA;
-	else if (strstr(info, "WND"))		intMode = GWLP_WNDPROC;
-	else if (strstr(info, "ID"))		intMode = GWL_ID;
-	else if (strstr(info, "EXSTYLE"))	intMode = GWL_EXSTYLE;
-	else if (strstr(info, "STYLE"))		intMode = GWL_STYLE;
-	else {*retvalOut = 0; return;}
-
-	*retvalOut = (double)GetWindowLongPtr((HWND)windowHWND, intMode);
-
-#else 
-	if (strstr(info, "USER"))			intMode = GWL_USERDATA;
-	else if (strstr(info, "WND"))		intMode = GWL_WNDPROC;
-	else if (strstr(info, "DLG"))		intMode = DWL_DLGPROC;
-	else if (strstr(info, "ID"))		intMode = GWL_ID;
-	else if (strstr(info, "EXSTYLE"))	intMode = GWL_EXSTYLE;
-	else if (strstr(info, "STYLE"))		intMode = GWL_STYLE;
-	else {*retvalOut = 0; return;}
-
-	*retvalOut = (double)GetWindowLong((HWND)windowHWND, intMode);
-#endif
-}
-
-
-HWND JS_Window_FindEx(HWND parentHWND, HWND childHWND, const char* className, const char* title)
-{
-	// REAPER API cannot pass null pointers, so must do another way:
-	HWND		c = ((parentHWND == childHWND) ? nullptr : childHWND);
-	const char* t = ((strlen(title) == 0) ? nullptr : title);
-	return FindWindowEx(parentHWND, c, className, t);
-}
-
-
-HWND JS_Window_FindChildByID(HWND parent, int ID)
-{
-	return GetDlgItem(parent, ID);
-}
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -990,48 +889,6 @@ void JS_Window_SetZOrder(void* windowHWND, const char* ZOrder, void* insertAfter
 }
 
 
-bool JS_Window_SetOpacity(HWND windowHWND, const char* mode, double value)
-{
-	// Opacity can only be applied to top-level framed windows, AFAIK, and in Linux, REAPER crashes if opacity is applied to a child window.
-	// So must check that style is WS_THICKFRAME.
-	bool OK = false;
-	if (JS_Window_IsWindow(windowHWND))
-	{
-#ifdef _WIN32
-		if (GetWindowLongPtr(windowHWND, GWL_STYLE) & WS_THICKFRAME)
-		{
-			if (SetWindowLongPtr(windowHWND, GWL_EXSTYLE, GetWindowLongPtr(windowHWND, GWL_EXSTYLE) | WS_EX_LAYERED))
-			{
-				if (strchr(mode, 'A'))
-					OK = !!(SetLayeredWindowAttributes(windowHWND, 0, (BYTE)(value * 255), LWA_ALPHA));
-				else
-				{
-					UINT v = (UINT)value;
-					OK = !!(SetLayeredWindowAttributes(windowHWND, (COLORREF)(((v & 0xFF0000) >> 16) | (v & 0x00FF00) | ((v & 0x0000FF) << 16)), 0, LWA_COLORKEY));
-				}
-#elif __linux__
-		if (GetWindowLong(windowHWND, GWL_STYLE) & WS_THICKFRAME)
-		{
-			if (strchr(mode, 'A') || (!IsWindow(windowHWND)))
-			{
-				GdkWindow* w = (GdkWindow*)windowHWND->m_oswindow;
-				if (w)
-				{
-					gdk_window_set_opacity(w, value);
-					OK = true;
-				}
-#elif __APPLE__
-		if (GetWindowLong(windowHWND, GWL_STYLE) & WS_THICKFRAME)
-		{
-			if (strchr(mode, 'A'))
-			{
-				OK = JS_Window_SetOpacity_ObjC(windowHWND, value);
-#endif
-			}
-		}
-	}
-	return OK;
-}
 
 
 bool JS_Window_SetTitle(void* windowHWND, const char* title)
