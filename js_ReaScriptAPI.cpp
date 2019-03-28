@@ -187,6 +187,7 @@ int JS_VKeys_Callback(MSG* event, accelerator_register_t*)
 
 void JS_VKeys_ClearHistory()
 {
+	std::fill_n(VK_Bitmap, 256, 0);
 	std::fill_n(VK_BitmapHistory, 256, 0);
 }
 
@@ -1470,7 +1471,7 @@ bool  JS_Window_IsWindow(void* windowHWND)
 		if (target == editor)
 			return true;
 		HWND midiview = GetDlgItem(editor, 1000);
-		if (target == midiview) 
+		if (target == midiview)
 			return true;
 	}
 
