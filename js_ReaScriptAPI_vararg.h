@@ -182,10 +182,6 @@ static void* __vararg_JS_Window_Find(void** arglist, int numparms)
   return (void*)(intptr_t)JS_Window_Find((const char*)arglist[0], (bool)arglist[1]);
 }
 
-static void* __vararg_JS_Window_FindChild(void** arglist, int numparms)
-{
-  return (void*)(intptr_t)JS_Window_FindChild((void*)arglist[0], (const char*)arglist[1], (bool)arglist[2]);
-}
 
 
 
