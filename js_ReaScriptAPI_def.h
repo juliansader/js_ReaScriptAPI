@@ -88,7 +88,7 @@ APIdef aAPIdefs[] =
 {
 	{ APIFUNC(JS_ReaScriptAPI_Version), "void", "double*", "versionOut", "Returns the version of the js_ReaScriptAPI extension.", },
 	{ APIFUNC(JS_Localize), "void", "const char*,const char*,char*,int", "USEnglish,LangPackSection,translationOut,translationOut_sz", "Returns the translation of the given US English text, according to the currently loaded Language Pack.\n\nParameters:\n * LangPackSection: Language Packs are divided into sections such as \"common\" or \"DLG_102\".\n * In Lua, by default, text of up to 1024 chars can be returned. To increase (or reduce) the default buffer size, a string and size can be included as optional 3rd and 4th arguments.\n\nExample: reaper.JS_Localize(\"Actions\", \"common\", \"\", 20)", },
-
+/*
 	{ APIFUNC(JS_Mem_Alloc), "void*", "int", "sizeBytes", "Allocates memory for general use by functions that require memory buffers.", },
 	{ APIFUNC(JS_Mem_Free), "bool", "void*", "mallocPointer", "Frees memory that was previously allocated by JS_Mem_Alloc.", },
 	{ APIFUNC(JS_Mem_FromString), "bool", "void*,int,const char*,int", "mallocPointer,offset,packedString,stringLength", "Copies a packed string into a memory buffer.", },
@@ -275,6 +275,7 @@ APIdef aAPIdefs[] =
 	{ APIFUNC(Xen_AudioWriter_Destroy), "void", "AudioWriter*", "writer", "Destroys writer", },
 	{ APIFUNC(Xen_AudioWriter_Write), "int", "AudioWriter*,int,void*,int", "writer,numframes,data,offset", "Write interleaved audio data to disk", },
 	{ APIFUNC(Xen_GetMediaSourceSamples), "int", "PCM_source*,void*,int,int,int,double,double", "src,destbuf,destbufoffset,numframes,numchans,samplerate,sourceposition", "Get interleaved audio data from media source", }
+*/
 };
 
 ///////////////////////////////////////////////////////////////////////////////
