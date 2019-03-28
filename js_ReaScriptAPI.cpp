@@ -723,7 +723,7 @@ static void JS_WindowMessage_RestoreOrigProc(HWND hwnd)
 	using namespace Julian;
 
 	if (mapWindowData.count(hwnd)) {
-		if (true) //!!!!JS_Window_IsWindow(hwnd)) {
+		if (true) { //!!!!JS_Window_IsWindow(hwnd)) {
 			WNDPROC origProc = mapWindowData[hwnd].origProc;
 #ifdef _WIN32
 			SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)origProc);
