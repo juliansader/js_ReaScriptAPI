@@ -1463,25 +1463,15 @@ bool  JS_Window_IsWindow(void* windowHWND)
 	// If a match is found, target will be replaced with NULL;
 	if (!windowHWND) return false;
 	HWND target = (HWND)windowHWND;
-	/*bool isFloatingDock;
-
-	if (!windowHWND)
-		return false;
-	else if (DockIsChildOfDock(target, &isFloatingDock) != -1)
-		return true;
-	*/
 
 	HWND editor = MIDIEditor_GetActive();
-	if (editor) {
+	if (editor) 
+	{
 		if (target == editor)
 			return true;
 		HWND midiview = GetDlgItem(editor, 1000);
 		if (target == midiview) 
 			return true;
-		/*else {
-			EnumChildWindows(editor, JS_Window_IsWindow_Callback_Child, reinterpret_cast<LPARAM>(&target));
-			if (!target) return true;*/
-		}
 	}
 
 	/*HWND main = GetMainHwnd();
