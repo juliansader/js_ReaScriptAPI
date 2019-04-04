@@ -1974,7 +1974,7 @@ static void JS_WindowMessage_RestoreOrigProc(HWND hwnd)
 			SetWindowLong(hwnd, GWL_WNDPROC, (LONG_PTR)origProc);
 #endif
 		}
-		JS_GDI_ReleaseDC(hwnd, mapWindowData[hwnd].windowDC);
+		//JS_GDI_ReleaseDC(hwnd, mapWindowData[hwnd].windowDC);
 		mapWindowData.erase(hwnd);
 	}
 }
