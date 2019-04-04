@@ -91,7 +91,7 @@ bool  JS_WindowMessage_Peek(void* windowHWND, const char* message, bool* passedT
 int   JS_WindowMessage_Release(void* windowHWND, const char* messages);
 void  JS_WindowMessage_ReleaseWindow(void* windowHWND);
 void  JS_WindowMessage_ReleaseAll();
-static void JS_WindowMessage_RestoreOrigProc(HWND hwnd);
+void  JS_WindowMessage_RestoreOrigProc(HWND hwnd);
 static int  JS_WindowMessage_CreateNewMap(HWND hwnd);
 bool  JS_Window_OnCommand(void* windowHWND, int commandID);
 
