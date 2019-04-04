@@ -1961,7 +1961,7 @@ void JS_WindowMessage_ReleaseWindow(void* windowHWND)
 	}
 }
 
-static void JS_WindowMessage_RestoreOrigProc(HWND hwnd)
+void JS_WindowMessage_RestoreOrigProc(HWND hwnd)
 {
 	using namespace Julian;
 
