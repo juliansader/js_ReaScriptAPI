@@ -62,7 +62,7 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 			plugin_register(f.regkey_def, (void*)f.defstring);
 			// API_... for exposing to other extensions, and for IDE to recognize and color functions while typing 
 			plugin_register(f.regkey_func, f.func);
-			// APIvarag_... for exporting to ReaScript API
+			// APIvararg_... for exporting to ReaScript API
 			plugin_register(f.regkey_vararg, f.func_vararg);
 		}
 
@@ -86,12 +86,15 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 		for (HWND hwnd : windowsToRestore)
 			JS_WindowMessage_RestoreOrigProc(hwnd);
 
+		for (auto& bm : Julian::LICEBitmaps)
+			LICE__Destroy(bm.first);
+		/*
 		std::set<LICE_IBitmap*> bitmapsToDelete;
 		for (auto& i : Julian::LICEBitmaps)
 			bitmapsToDelete.insert(i.first);
 		for (LICE_IBitmap* bm : bitmapsToDelete)
 			JS_LICE_DestroyBitmap(bm);
-
+		*/
 		for (auto& i : Julian::mapMallocToSize)
 			free(i.first);
 
@@ -124,10 +127,13 @@ v0.980
  * Functions for getting and intercepting virtual key / keyboard states.
  * Functions for compositing LICE bitmaps into REAPER windows.
  * Enabled alpha blending for GDI blitting.
+v0.981
+ * Don't cache GDI HDCs.
+ * JS_WindowMessage_Send and _Post can skip MAKEWPARAM and MAKELPARAM to send larger values.
 */
 void JS_ReaScriptAPI_Version(double* versionOut)
 {
-	*versionOut = 0.980;
+	*versionOut = 0.981;
 }
 
 void JS_Localize(const char* USEnglish, const char* LangPackSection, char* translationOut, int translationOut_sz)
@@ -1528,7 +1534,7 @@ bool JS_WindowMessage_ListIntercepts(void* windowHWND, char* listOutNeedBig, int
 		
 }
 
-bool JS_WindowMessage_Post(void* windowHWND, const char* message, int wParamLow, int wParamHigh, int lParamLow, int lParamHigh)
+bool JS_WindowMessage_Post(void* windowHWND, const char* message, double wParam, int wParamHighWord, double lParam, int lParamHighWord)
 {
 	using namespace Julian;
 
@@ -1544,24 +1550,34 @@ bool JS_WindowMessage_Post(void* windowHWND, const char* message, int wParamLow,
 		if (endPtr == message || errno != 0) // 0x0000 is a valid message type, so cannot assume 0 is error.
 			return false;
 	}
-
-	WPARAM wParam = MAKEWPARAM(wParamLow, wParamHigh);
-	LPARAM lParam = MAKELPARAM(lParamLow, lParamHigh);
+	
+	WPARAM wP;
+	if (wParamHighWord || ((wParam < 0) && (-(2^15) > wParam))) // WARNING: Negative values (such as mousewheel turns) are not bitwise encoded the same in low WORD vs entire WPARAM. So if small negative, assume that low WORD is intended.
+		wP = MAKEWPARAM(wParam, wParamHighWord);
+	else
+		wP = (WPARAM)(int64_t)wParam;
+		
+	LPARAM lP;
+	if (lParamHighWord || ((lParam < 0) && (-(2 ^ 15) > lParam)))
+		lP = MAKELPARAM(lParam, lParamHighWord);
+	else
+		lP = (LPARAM)(int64_t)lParam;
+		
 	HWND hwnd = (HWND)windowHWND;
 
 	// Is this window currently being intercepted?
 	if (mapWindowData.count(hwnd)) {
 		sWindowData& w = mapWindowData[hwnd];
 		if (w.mapMessages.count(uMsg)) {
-			w.origProc(hwnd, uMsg, wParam, lParam); // WindowProcs usually return 0 if message was handled.  But not always, 
+			w.origProc(hwnd, uMsg, wP, lP); // WindowProcs usually return 0 if message was handled.  But not always, 
 			return true;
 		}
 	}
-	return !!PostMessage(hwnd, uMsg, wParam, lParam);
+	return !!PostMessage(hwnd, uMsg, wP, lP);
 }
 
 
-int JS_WindowMessage_Send(void* windowHWND, const char* message, int wParamLow, int wParamHigh, int lParamLow, int lParamHigh)
+int JS_WindowMessage_Send(void* windowHWND, const char* message, double wParam, int wParamHighWord, double lParam, int lParamHighWord)
 {
 	using namespace Julian;
 
@@ -1578,10 +1594,19 @@ int JS_WindowMessage_Send(void* windowHWND, const char* message, int wParamLow, 
 			return FALSE;
 	}
 	
-	WPARAM wParam = MAKEWPARAM(wParamLow, wParamHigh);
-	LPARAM lParam = MAKELPARAM(lParamLow, lParamHigh);
+	WPARAM wP;
+	if (wParamHighWord || ((wParam < 0) && (-(2 ^ 15) > wParam))) // WARNING: Negative values (such as mousewheel turns) are not bitwise encoded the same in low WORD vs entire WPARAM. So if small negative, assume that low WORD is intended.
+		wP = MAKEWPARAM(wParam, wParamHighWord);
+	else
+		wP = (WPARAM)(int64_t)wParam;
 
-	return (int)SendMessage((HWND)windowHWND, uMsg, wParam, lParam);
+	LPARAM lP;
+	if (lParamHighWord || ((lParam < 0) && (-(2 ^ 15) > lParam)))
+		lP = MAKELPARAM(lParam, lParamHighWord);
+	else
+		lP = (LPARAM)(int64_t)lParam;
+
+	return (int)SendMessage((HWND)windowHWND, uMsg, wP, lP);
 }
 
 // swell does not define these macros:
@@ -1677,13 +1702,34 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 		LRESULT r = windowData.origProc(hwnd, uMsg, wParam, lParam);
 
 		if (uMsg == WM_PAINT) {
-			for (auto& b : windowData.mapBitmaps) {
-				sBitmapData& i = b.second;
+			if (!windowData.mapBitmaps.empty()) {
+				HDC windowDC = GetDC(hwnd);
+				if (windowDC) {
+					for (auto& b : windowData.mapBitmaps) {
+						if (LICEBitmaps.count(b.first)) {
+							HDC& bitmapDC = LICEBitmaps[b.first];
+							if (bitmapDC) {
+								sBitmapData& i = b.second;
+								RECT r{ i.dstx, i.dsty, i.dstw, i.dsth };
+								if (i.dstw == -1 || i.dsth == -1) {
+									GetClientRect(hwnd, &r);
+									if (i.dstw != -1) {
+										r.left = i.dstx; r.right = i.dsty;
+									}
+									else if (i.dsth != -1) {
+										r.top = i.dsty; r.bottom = i.dsth;
+									}
+								}
 #ifdef _WIN32
-				AlphaBlend(windowData.windowDC, i.dstx, i.dsty, i.dstw, i.dsth, i.bitmapDC, i.srcx, i.srcy, i.srcw, i.srch, BLENDFUNCTION{ AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
+								AlphaBlend(windowDC, r.left, r.top, r.right, r.bottom, bitmapDC, i.srcx, i.srcy, i.srcw, i.srch, BLENDFUNCTION{ AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
 #else
-				StretchBlt(windowData.windowDC, i.dstx, i.dsty, i.dstw, i.dsth, i.bitmapDC, i.srcx, i.srcy, i.srcw, i.srch, SRCCOPY_USEALPHACHAN);
+								StretchBlt(windowDC, r.left, r.top, r.right, r.bottom, bitmapDC, i.srcx, i.srcy, i.srcw, i.srch, SRCCOPY_USEALPHACHAN);
 #endif
+							}
+						}
+					}
+					ReleaseDC(hwnd, windowDC);
+				}
 			}
 		}
 
@@ -1733,7 +1779,7 @@ int JS_WindowMessage_Intercept(void* windowHWND, const char* message, bool passt
 		if (!origProc) 
 			return ERR_ORIGPROC;
 
-		Julian::mapWindowData.emplace(hwnd, sWindowData{ origProc, windowDC }); // , map<UINT, sMsgData>{}, map<LICE_IBitmap*, sBitmapData>{} }); // Insert empty map
+		Julian::mapWindowData.emplace(hwnd, sWindowData{ origProc }); // , map<UINT, sMsgData>{}, map<LICE_IBitmap*, sBitmapData>{} }); // Insert empty map
 	}
 
 	// Window already intercepted.  So try to add to existing maps.
@@ -1840,7 +1886,7 @@ int JS_WindowMessage_InterceptList(void* windowHWND, const char* messages)
 	}
 
 	// Parsing went OK?  Any messages to intercept?
-	if (newMessages.size() == 0)
+	if (newMessages.empty())
 		return ERR_PARSING;
 
 	// Is this window already being intercepted?
@@ -1866,7 +1912,7 @@ int JS_WindowMessage_InterceptList(void* windowHWND, const char* messages)
 			return ERR_ORIGPROC;
 
 		// Got everything OK.  Finally, store struct.
-		Julian::mapWindowData.emplace(hwnd, sWindowData{ origProc, windowDC, newMessages }); // Insert into static map of namespace
+		Julian::mapWindowData.emplace(hwnd, sWindowData{ origProc, newMessages }); // Insert into static map of namespace
 		return 1;
 	}
 
@@ -1937,7 +1983,7 @@ int JS_WindowMessage_Release(void* windowHWND, const char* messages)
 		existingMessages.erase(it);
 
 	// If no messages need to be intercepted any more, release this window
-	if ((existingMessages.size() == 0) && (Julian::mapWindowData[hwnd].mapBitmaps.size() == 0))
+	if (existingMessages.empty() && mapWindowData[hwnd].mapBitmaps.empty())
 		JS_WindowMessage_RestoreOrigProc(hwnd);
 
 	return TRUE;
@@ -1956,12 +2002,12 @@ void JS_WindowMessage_ReleaseWindow(void* windowHWND)
 	using namespace Julian;
 	HWND hwnd = (HWND)windowHWND;
 	if (mapWindowData.count(hwnd)) {
-		if (mapWindowData[hwnd].mapBitmaps.size() == 0) JS_WindowMessage_RestoreOrigProc(hwnd); // no linked bitmaps either, so can restore original WNDPROC
+		if (mapWindowData[hwnd].mapBitmaps.empty()) JS_WindowMessage_RestoreOrigProc(hwnd); // no linked bitmaps either, so can restore original WNDPROC
 		else mapWindowData[hwnd].mapMessages.clear(); // delete intercepts, but leave linked bitmaps alone
 	}
 }
 
-void JS_WindowMessage_RestoreOrigProc(HWND hwnd)
+static void JS_WindowMessage_RestoreOrigProc(HWND hwnd)
 {
 	using namespace Julian;
 
@@ -1974,14 +2020,8 @@ void JS_WindowMessage_RestoreOrigProc(HWND hwnd)
 			SetWindowLong(hwnd, GWL_WNDPROC, (LONG_PTR)origProc);
 #endif
 		}
-		//JS_GDI_ReleaseDC(hwnd, mapWindowData[hwnd].windowDC);
 		mapWindowData.erase(hwnd);
 	}
-}
-
-static int  JS_WindowMessage_CreateNewMap(HWND hwnd)
-{
-
 }
 
 
@@ -2346,8 +2386,8 @@ int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap
 	if (mapWindowData.count(hwnd) == 0) {
 		if (!JS_Window_IsWindow(hwnd)) return ERR_NOT_WINDOW;
 		
-		HDC windowDC = (HDC)JS_GDI_GetClientDC(hwnd);
-		if (!windowDC) return ERR_WINDOW_HDC;
+		//!!HDC windowDC = (HDC)JS_GDI_GetClientDC(hwnd);
+		//!!if (!windowDC) return ERR_WINDOW_HDC;
 		
 		WNDPROC origProc = nullptr;
 #ifdef _WIN32
@@ -2357,11 +2397,11 @@ int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap
 #endif
 		if (!origProc) return ERR_ORIGPROC;
 		
-		mapWindowData.emplace(hwnd, sWindowData{ origProc, windowDC });
+		mapWindowData.emplace(hwnd, sWindowData{ origProc });
 	}
 
 	// OK, hwnd should now be in map
-	mapWindowData[hwnd].mapBitmaps.emplace(sysBitmap, sBitmapData{ dstx, dsty, dstw, dsth, bitmapDC, srcx, srcy, srcw, srch });
+	mapWindowData[hwnd].mapBitmaps.emplace(sysBitmap, sBitmapData{ dstx, dsty, dstw, dsth, srcx, srcy, srcw, srch });
 	return 1;
 }
 
@@ -2403,7 +2443,7 @@ void JS_Composite_Unlink(HWND hwnd, LICE_IBitmap* bitmap)
 	using namespace Julian;
 	if (mapWindowData.count(hwnd)) {
 		mapWindowData[hwnd].mapBitmaps.erase(bitmap);
-		if ((mapWindowData[hwnd].mapBitmaps.size() == 0) && (mapWindowData[hwnd].mapMessages.size() == 0)) {
+		if (mapWindowData[hwnd].mapBitmaps.empty() && mapWindowData[hwnd].mapMessages.empty() == 0) {
 			JS_WindowMessage_RestoreOrigProc(hwnd);
 		}
 	}
@@ -2466,8 +2506,7 @@ void JS_LICE_DestroyBitmap(LICE_IBitmap* bitmap)
 	// Also delete any occurence of this bitmap from UI Compositing
 	if (LICEBitmaps.count(bitmap)) {
 		for (auto& m : mapWindowData) {
-			sWindowData& d = m.second;
-			d.mapBitmaps.erase(bitmap);
+			m.second.mapBitmaps.erase(bitmap);
 		}
 		LICEBitmaps.erase(bitmap);
 		LICE__Destroy(bitmap);

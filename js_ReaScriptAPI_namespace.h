@@ -24,7 +24,7 @@ namespace Julian
 
 	// Bitmaps can use up lots of RAM, so to ensure that all bitmaps are destroyed when REAPER exits,
 	//		all active bitmaps are stored here, and will be destroyed by the REAPER_PLUGIN_ENTRYPOINT function.
-	map<LICE_IBitmap*,HDC> LICEBitmaps;
+	map<LICE_IBitmap*, HDC> LICEBitmaps;
 	set<HDC> GDIHDCs;
 
 
@@ -91,12 +91,12 @@ namespace Julian
 	};
 
 	// This struct is used to store the data of linked bitmaps for compositing.
-	struct sBitmapData {
+	struct sBitmapData 
+	{
 		int dstx;
 		int dsty;
 		int dstw;
 		int dsth;
-		HDC bitmapDC;
 		int srcx;
 		int srcy;
 		int srcw;
@@ -110,7 +110,6 @@ namespace Julian
 	struct sWindowData
 	{
 		WNDPROC origProc;
-		HDC windowDC;
 		std::map<UINT, sMsgData> mapMessages;
 		std::map<LICE_IBitmap*, sBitmapData> mapBitmaps;
 	};
@@ -197,7 +196,7 @@ namespace Julian
 		pair<std::string, UINT>("WM_CAPTURECHANGED", WM_CAPTURECHANGED),
 		pair<std::string, UINT>("WM_DROPFILES", WM_DROPFILES),
 		pair<std::string, UINT>("WM_USER", WM_USER),
-
+		
 		pair<std::string, UINT>("BM_GETCHECK", BM_GETCHECK),
 		pair<std::string, UINT>("BM_SETCHECK", BM_SETCHECK),
 		pair<std::string, UINT>("BM_GETIMAGE", BM_GETIMAGE),

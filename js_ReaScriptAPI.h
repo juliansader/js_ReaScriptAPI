@@ -85,14 +85,13 @@ int   JS_WindowMessage_Intercept(void* windowHWND, const char* message, bool pas
 int   JS_WindowMessage_InterceptList(void* windowHWND, const char* messages);
 int   JS_WindowMessage_PassThrough(void* windowHWND, const char* message, bool passThrough);
 bool  JS_WindowMessage_ListIntercepts(void* windowHWND, char* listOutNeedBig, int listOutNeedBig_sz);
-bool  JS_WindowMessage_Post(void* windowHWND, const char* message, int wParamLow, int wParamHigh, int lParamLow, int lParamHigh);
-int   JS_WindowMessage_Send(void* windowHWND, const char* message, int wParamLow, int wParamHigh, int lParamLow, int lParamHigh);
+bool  JS_WindowMessage_Post(void* windowHWND, const char* message, double wParam, int wParamHighWord, double lParam, int lParamHighWord);
+int   JS_WindowMessage_Send(void* windowHWND, const char* message, double wParam, int wParamHighWord, double lParam, int lParamHighWord);
 bool  JS_WindowMessage_Peek(void* windowHWND, const char* message, bool* passedThroughOut, double* timeOut, int* wParamLowOut, int* wParamHighOut, int* lParamLowOut, int* lParamHighOut);
 int   JS_WindowMessage_Release(void* windowHWND, const char* messages);
 void  JS_WindowMessage_ReleaseWindow(void* windowHWND);
 void  JS_WindowMessage_ReleaseAll();
-void  JS_WindowMessage_RestoreOrigProc(HWND hwnd);
-static int  JS_WindowMessage_CreateNewMap(HWND hwnd);
+static void JS_WindowMessage_RestoreOrigProc(HWND hwnd);
 bool  JS_Window_OnCommand(void* windowHWND, int commandID);
 
 int   JS_Mouse_GetState(int flags);
