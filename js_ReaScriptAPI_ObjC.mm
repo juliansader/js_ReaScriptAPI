@@ -8,7 +8,7 @@ bool JS_Window_SetOpacity_ObjC(void* hwnd, double alpha)
       NSWindow* window = (NSWindow*)hwnd;
       CGFloat opacity = (CGFloat)alpha;
       [window setAlphaValue:opacity];
-      [window setBackgroundColor:[NSColor colorWithCalibratedWhite:1.0 alpha:opacity]];
+      [window setBackgroundColor:[NSColor(red: opacity, green: opacity, blue: opacity, alpha: opacity)]];
       [window setOpaque:NO];
       return true;
    //}  
