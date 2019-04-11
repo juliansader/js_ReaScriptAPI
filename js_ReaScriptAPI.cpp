@@ -2443,7 +2443,7 @@ void JS_Composite_Unlink(HWND hwnd, LICE_IBitmap* bitmap)
 	using namespace Julian;
 	if (mapWindowData.count(hwnd)) {
 		mapWindowData[hwnd].mapBitmaps.erase(bitmap);
-		if (mapWindowData[hwnd].mapBitmaps.empty() && mapWindowData[hwnd].mapMessages.empty() == 0) {
+		if (mapWindowData[hwnd].mapBitmaps.empty() && mapWindowData[hwnd].mapMessages.empty()) {
 			JS_WindowMessage_RestoreOrigProc(hwnd);
 		}
 	}
