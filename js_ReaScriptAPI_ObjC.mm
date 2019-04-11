@@ -5,11 +5,12 @@ bool JS_Window_SetOpacity_ObjC(void* hwnd, double alpha)
 {
    //if ([(id)hwnd isKindOfClass:[NSWindow class]])
    //{
-      NSWindow *window = (NSWindow *)hwnd;
-      CGFloat opacity = alpha;
+      NSWindow* window = (NSWindow*)hwnd;
+      CGFloat opacity = (CGFloat)alpha;
       [window setAlphaValue:opacity];
+      [window setBackgroundColor:[NSColor clearColor]];
       [window setOpaque:NO];
-	  return true;
+      return true;
    //}  
    //else
 //		return false;
