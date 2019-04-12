@@ -86,15 +86,15 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 		for (HWND hwnd : windowsToRestore)
 			JS_WindowMessage_RestoreOrigProc(hwnd);
 
-		for (auto& bm : Julian::LICEBitmaps)
-			LICE__Destroy(bm.first);
-		/*
+		//for (auto& bm : Julian::LICEBitmaps)
+		//	LICE__Destroy(bm.first);
+		
 		std::set<LICE_IBitmap*> bitmapsToDelete;
 		for (auto& i : Julian::LICEBitmaps)
 			bitmapsToDelete.insert(i.first);
 		for (LICE_IBitmap* bm : bitmapsToDelete)
 			JS_LICE_DestroyBitmap(bm);
-		*/
+		
 		for (auto& i : Julian::mapMallocToSize)
 			free(i.first);
 
@@ -130,10 +130,15 @@ v0.980
 v0.981
  * Don't cache GDI HDCs.
  * JS_WindowMessage_Send and _Post can skip MAKEWPARAM and MAKELPARAM to send larger values.
+v0.982
+ * New audio preview functions by Xenakios.
+ * Improvements in Compositing functions, including:
+    ~ Bug fix: Return original window proc when all bitmaps are unlinked.
+	~ Source and dest RECTs of existing linked bitmap can be changed without first having to unlink.
 */
 void JS_ReaScriptAPI_Version(double* versionOut)
 {
-	*versionOut = 0.981;
+	*versionOut = 0.982;
 }
 
 void JS_Localize(const char* USEnglish, const char* LangPackSection, char* translationOut, int translationOut_sz)
@@ -1670,37 +1675,100 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 	// If not in map, we don't know how to call original process.
 	if (mapWindowData.count(hwnd) == 0)
 		return 1;
-	else {
-		sWindowData& windowData = mapWindowData[hwnd]; // Get reference/alias because want to write into existing struct.
 
-		// Event that should be intercepted? 
-		if (windowData.mapMessages.count(uMsg)) // ".contains" has only been implemented in more recent C++ versions
+	// INTERCEPT / BLOCK WINDOW MESSAGES
+	sWindowData& windowData = mapWindowData[hwnd]; // Get reference/alias because want to write into existing struct.
+
+	// Event that should be intercepted? 
+	if (windowData.mapMessages.count(uMsg)) // ".contains" has only been implemented in more recent C++ versions
+	{
+		windowData.mapMessages[uMsg].time = time_precise();
+		windowData.mapMessages[uMsg].wParam = wParam;
+		windowData.mapMessages[uMsg].lParam = lParam;
+
+		// If event will not be passed through, can quit here.
+		if (windowData.mapMessages[uMsg].passthrough == false)
 		{
-			windowData.mapMessages[uMsg].time = time_precise();
-			windowData.mapMessages[uMsg].wParam = wParam;
-			windowData.mapMessages[uMsg].lParam = lParam;
-
-			// If event will not be passed through, can quit here.
-			if (windowData.mapMessages[uMsg].passthrough == false)
+			// Most WM_ messages return 0 if processed, with only a few exceptions:
+			switch (uMsg)
 			{
-				// Most WM_ messages return 0 if processed, with only a few exceptions:
-				switch (uMsg)
-				{
-				case WM_SETCURSOR:
-				case WM_DRAWITEM:
-				case WM_COPYDATA:
-					return 1;
-				case WM_MOUSEACTIVATE:
-					return 3;
-				default:
-					return 0;
+			case WM_SETCURSOR:
+			case WM_DRAWITEM:
+			case WM_COPYDATA:
+			case WM_ERASEBKGND:
+				return 1;
+			case WM_MOUSEACTIVATE:
+				return 3;
+			default:
+				return 0;
+			}
+		}
+	}
+
+	// All messages that aren't blocked, end up here
+
+	// COMPOSITE LICE BITMAPS - if any
+	if (uMsg == WM_PAINT && !windowData.mapBitmaps.empty())
+	{
+		RECT r{ 0,0,0,0 };
+		GetClientRect(hwnd, &r);
+		InvalidateRect(hwnd, &r, false);  // If entire window isn't redrawn, and if compositing destination falls outside invalidated area, bitmap may be composited multiple times over itself.
+
+		LRESULT result = windowData.origProc(hwnd, uMsg, wParam, lParam);
+
+		HDC windowDC = GetDC(hwnd);
+		if (windowDC) {
+			for (auto& b : windowData.mapBitmaps) {
+				if (LICEBitmaps.count(b.first)) {
+					HDC& bitmapDC = LICEBitmaps[b.first];
+					if (bitmapDC) {
+						sBitmapData& i = b.second;
+						if (i.dstw != -1) {
+							r.left = i.dstx; r.right = i.dstw;
+						}
+						if (i.dsth != -1) {
+							r.top = i.dsty; r.bottom = i.dsth;
+						}
+#ifdef _WIN32
+						AlphaBlend(windowDC, r.left, r.top, r.right, r.bottom, bitmapDC, i.srcx, i.srcy, i.srcw, i.srch, BLENDFUNCTION{ AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
+#else
+						StretchBlt(windowDC, r.left, r.top, r.right, r.bottom, bitmapDC, i.srcx, i.srcy, i.srcw, i.srch, SRCCOPY_USEALPHACHAN);
+#endif
+					}
+				}
+			}
+			ReleaseDC(hwnd, windowDC);
+		}
+		return result;
+	}
+
+	// NO COMPOSITING - just return original results
+	else
+		return windowData.origProc(hwnd, uMsg, wParam, lParam);
+}
+
+		//LRESULT result = windowData.origProc(hwnd, uMsg, wParam, lParam); // PRF_CLIENT | PRF_, );
+		/*
+		cW, cH = GetClientRect
+		RECT rr{ 10000, 10000, 0, 0 };
+		if (uMsg == WM_PAINT) {
+			if (!windowData.mapBitmaps.empty()) {
+				for (auto& b : windowData.mapBitmaps) {
+					sBitmapData& i = b.second;
+					if (i.dstx < rr.left) rr.left = i.dstx;
+					if (i.dsty < rr.top)  rr.top  = i.dsty;
+					if (i.dstx+i.dstw > rr.right) rr.right = i.dstx+i.dstw;
+					if (i.dsty+i.dsth > rr.bottom) rr.bottom = i.dsty+i.dsth;
+					InvalidateRect(hwnd, &rr, true);
 				}
 			}
 		}
 
-		// Any other event that isn't intercepted.
+		// All events that are not blocked
 		LRESULT r = windowData.origProc(hwnd, uMsg, wParam, lParam);
+		*/
 
+		/*
 		if (uMsg == WM_PAINT) {
 			if (!windowData.mapBitmaps.empty()) {
 				HDC windowDC = GetDC(hwnd);
@@ -1721,21 +1789,27 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 									}
 								}
 #ifdef _WIN32
-								AlphaBlend(windowDC, r.left, r.top, r.right, r.bottom, bitmapDC, i.srcx, i.srcy, i.srcw, i.srch, BLENDFUNCTION{ AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
+								AlphaBlend(memDC, r.left, r.top, r.right, r.bottom, bitmapDC, i.srcx, i.srcy, i.srcw, i.srch, BLENDFUNCTION{ AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
 #else
 								StretchBlt(windowDC, r.left, r.top, r.right, r.bottom, bitmapDC, i.srcx, i.srcy, i.srcw, i.srch, SRCCOPY_USEALPHACHAN);
 #endif
 							}
 						}
 					}
-					ReleaseDC(hwnd, windowDC);
+					//ReleaseDC(hwnd, windowDC);
 				}
 			}
 		}
+		
+		//BitBlt(windowDC, 0, 0, r.right, r.bottom, memDC, 0, 0, SRCCOPY);
 
-		return r;
+		//SelectObject(memDC, oldbitmap);
+		DeleteObject(hbitmap);
+		DeleteDC(memDC);
+		
+		return result;
 	}
-}
+}*/
 
 
 // Intercept a single message type
@@ -2397,11 +2471,11 @@ int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap
 #endif
 		if (!origProc) return ERR_ORIGPROC;
 		
-		mapWindowData.emplace(hwnd, sWindowData{ origProc });
+		mapWindowData[hwnd] = sWindowData{ origProc };
 	}
 
-	// OK, hwnd should now be in map
-	mapWindowData[hwnd].mapBitmaps.emplace(sysBitmap, sBitmapData{ dstx, dsty, dstw, dsth, srcx, srcy, srcw, srch });
+	// OK, hwnd should now be in map. Don't use emplace, since may need to replace previous dst or src RECT of already-linked bitmap
+	mapWindowData[hwnd].mapBitmaps[sysBitmap] = sBitmapData{ dstx, dsty, dstw, dsth, srcx, srcy, srcw, srch };
 	return 1;
 }
 
@@ -2467,7 +2541,7 @@ void* JS_LICE_CreateBitmap(bool isSysBitmap, int width, int height)
 	// Immediately get HDC and store, so that all scripts can use the same HDC.
 	if (bm) {
 		HDC dc = LICE__GetDC(bm);
-		Julian::LICEBitmaps.emplace(bm, dc);
+		Julian::LICEBitmaps[bm] = dc;
 	}
 	return bm;
 }
@@ -2941,6 +3015,7 @@ inline int getArraySize(double* arr)
 	return r;
 }
 
+// Class that manages both a PCM_sink instance and some helper buffers
 
 class AudioWriter
 {
@@ -2961,6 +3036,8 @@ public:
 		if (m_sink == nullptr)
 			return 0;
 		int nch = m_sink->GetNumChannels();
+		if ((numframes * nch) + offset > getArraySize(data))
+			return 0;
 		if (m_convbuf.size() < numframes*nch)
 			m_convbuf.resize(numframes*nch);
 		for (int i = 0; i < nch; ++i)
@@ -2971,6 +3048,11 @@ public:
 				m_writearraypointers[i][j] = data[(j + offset)*nch + i];
 			}
 		}
+		/*
+		For mysterious reasons, WriteDoubles wants a split audio buffer (array of pointers into mono audio buffers),
+		which is the reason the helper buffer and copying data into it is needed. Pretty much everything
+		else in the Reaper API seems to be using interleaved buffers for audio...
+		*/
 		m_sink->WriteDoubles(m_writearraypointers, numframes, nch, 0, 1);
 		return numframes;
 	}
@@ -2992,7 +3074,7 @@ AudioWriter* Xen_AudioWriter_Create(const char* filename, int numchans, int samp
 	AudioWriter* aw = new AudioWriter(filename, numchans, samplerate);
 	if (aw->IsReady())
 		return aw;
-	delete aw;
+	delete aw; // sink creation failed, delete created instance and return null
 	return nullptr;
 }
 
@@ -3013,21 +3095,211 @@ int Xen_AudioWriter_Write(AudioWriter* aw, double* data, int numframes, int offs
 
 int Xen_GetMediaSourceSamples(PCM_source* src, double* destbuf, int destbufoffset, int numframes, int numchans, double samplerate, double positioninfile)
 {
-	if (src == nullptr || destbuf==nullptr || numframes<1 || numchans < 1 || samplerate < 1.0)
+	if (src == nullptr || destbuf == nullptr || numframes<1 || numchans < 1 || samplerate < 1.0)
 		return 0;
 	int bufsize = getArraySize(destbuf);
 	if (bufsize == 0)
+		return 0;
+	if ((numframes*numchans) + destbufoffset > bufsize)
 		return 0;
 	PCM_source_transfer_t block;
 	memset(&block, 0, sizeof(PCM_source_transfer_t));
 	block.time_s = positioninfile; // seeking in the source is based on seconds
 	block.length = numframes;
-	block.nch = numchans; // the source will attempt to render as many channels as requested
-	block.samplerate = samplerate; // properly implemented sources will resample to requested samplerate
+	block.nch = numchans; // the source should attempt to render as many channels as requested
+	block.samplerate = samplerate; // properly implemented sources should resample to requested samplerate
 	block.samples = &destbuf[destbufoffset];
 	src->GetSamples(&block);
 	return block.samples_out;
 }
 
-////////////////////////////////////////////////////////////////
+class PreviewEntry
+{
+public:
+	PreviewEntry(int id, PCM_source* src, double gain, bool loop)
+	{
+		m_id = id;
+		memset(&m_preg, 0, sizeof(preview_register_t));
+#ifdef WIN32
+		InitializeCriticalSection(&m_preg.cs);
+#else
+		pthread_mutexattr_t mta;
+		pthread_mutexattr_init(&mta);
+		pthread_mutexattr_settype(&mta, PTHREAD_MUTEX_RECURSIVE);
+		pthread_mutex_init(&m_preg.mutex, &mta);
+#endif
+		MediaItem_Take* parent_take = nullptr;
+		for (int i = 0; i < CountMediaItems(nullptr); ++i)
+		{
+			MediaItem* item = GetMediaItem(nullptr, i);
+			for (int j = 0; j < CountTakes(item); ++j)
+			{
+				MediaItem_Take* temptake = GetMediaItemTake(item, j);
+				PCM_source* tempsrc = GetMediaItemTake_Source(temptake);
+				if (tempsrc == src)
+				{
+					parent_take = temptake;
+					break;
+				}
+			}
+			if (parent_take)
+				break;
+		}
+		if (parent_take)
+		{
+			//ShowConsoleMsg("PCM_source has parent take, duplicating...\n");
+			m_preg.src = src->Duplicate();
+		}
+		else
+		{
+			//ShowConsoleMsg("PCM_source has no parent take\n");
+			m_preg.src = src;
+		}
+		m_preg.loop = loop;
+		if (gain < 0.0)
+			gain = 0.0;
+		if (gain > 8.0)
+			gain = 8.0;
+		m_preg.volume = gain;
+	}
+	~PreviewEntry()
+	{
+#ifdef WIN32
+		DeleteCriticalSection(&m_preg.cs);
+#else
+		pthread_mutex_destroy(&m_preg.mutex);
+#endif
+		delete m_preg.src;
+	}
+	void lock_mutex()
+	{
+#ifdef WIN32
+		EnterCriticalSection(&m_preg.cs);
+#else
+		pthread_mutex_lock(&m_preg.mutex);
+#endif
+	}
+	void unlock_mutex()
+	{
+#ifdef WIN32
+		LeaveCriticalSection(&m_preg.cs);
+#else
+		pthread_mutex_unlock(&m_preg.mutex);
+#endif
+	}
+	preview_register_t m_preg;
+	int m_id = -1;
+};
 
+class PCMSourcePlayerManager;
+PCMSourcePlayerManager* g_sourcepreviewman = nullptr;
+
+class PCMSourcePlayerManager
+{
+public:
+	PCMSourcePlayerManager()
+	{
+		// the 1000 millisecond timer is used to check for non-looping previews that have ended
+		m_timer_id = SetTimer(NULL, 3000000, 1000, MyTimerproc);
+	}
+	~PCMSourcePlayerManager()
+	{
+		KillTimer(NULL, m_timer_id);
+	}
+	int startPreview(PCM_source* src, double gain, bool loop)
+	{
+		auto entry = std::make_unique<PreviewEntry>(m_preview_id_count, src, gain, loop);
+		if (entry->m_preg.src)
+		{
+			PlayPreview(&entry->m_preg);
+			m_previews.push_back(std::move(entry));
+			int old_id = m_preview_id_count;
+			++m_preview_id_count;
+			return old_id;
+		}
+		return -1;
+	}
+	void stopPreview(int preview_id)
+	{
+		if (preview_id >= 0)
+		{
+			for (int i = 0; i < m_previews.size(); ++i)
+			{
+				if (m_previews[i]->m_id == preview_id)
+				{
+					StopPreview(&m_previews[i]->m_preg);
+					m_previews.erase(m_previews.begin() + i);
+					break;
+				}
+			}
+		}
+		if (preview_id == -1)
+		{
+			for (int i = 0; i < m_previews.size(); ++i)
+			{
+				StopPreview(&m_previews[i]->m_preg);
+			}
+			m_previews.clear();
+		}
+	}
+	void stopPreviewsIfAtEnd()
+	{
+		for (int i = m_previews.size() - 1; i >= 0; --i)
+		{
+			m_previews[i]->lock_mutex();
+			double curpos = m_previews[i]->m_preg.curpos;
+			bool looping = m_previews[i]->m_preg.loop;
+			m_previews[i]->unlock_mutex();
+			if (looping) // the user is responsible for stopping looping previews!
+				continue;
+			if (curpos >= m_previews[i]->m_preg.src->GetLength() - 0.01)
+			{
+				//char buf[100];
+				//sprintf(buf, "Stopping preview %d\n", m_previews[i]->m_id);
+				//ShowConsoleMsg(buf);
+				StopPreview(&m_previews[i]->m_preg);
+				m_previews.erase(m_previews.begin() + i);
+			}
+
+		}
+	}
+private:
+	// for Windows 32 bit, this may need a calling convention qualifier...?
+	static void MyTimerproc(
+		HWND Arg1,
+		UINT Arg2,
+		UINT_PTR Arg3,
+		DWORD Arg4
+	)
+	{
+		if (g_sourcepreviewman)
+			g_sourcepreviewman->stopPreviewsIfAtEnd();
+	}
+	std::vector<std::unique_ptr<PreviewEntry>> m_previews;
+	int m_preview_id_count = 0;
+	UINT_PTR m_timer_id = 0;
+};
+
+
+
+int Xen_StartSourcePreview(PCM_source* src, double gain, bool loop)
+{
+	if (g_sourcepreviewman == nullptr)
+		g_sourcepreviewman = new PCMSourcePlayerManager;
+	return (int)g_sourcepreviewman->startPreview(src, gain, loop);
+}
+
+int Xen_StopSourcePreview(int preview_id)
+{
+	if (g_sourcepreviewman != nullptr)
+		g_sourcepreviewman->stopPreview(preview_id);
+	return 0;
+}
+
+void Xen_DestroyPreviewSystem()
+{
+	delete g_sourcepreviewman;
+	g_sourcepreviewman = nullptr;
+}
+
+////////////////////////////////////////////////////////////////
