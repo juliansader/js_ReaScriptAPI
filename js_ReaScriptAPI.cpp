@@ -130,15 +130,17 @@ v0.980
 v0.981
  * Don't cache GDI HDCs.
  * JS_WindowMessage_Send and _Post can skip MAKEWPARAM and MAKELPARAM to send larger values.
-v0.982
+v0.983
  * New audio preview functions by Xenakios.
  * Improvements in Compositing functions, including:
     ~ Bug fix: Return original window proc when all bitmaps are unlinked.
 	~ Source and dest RECTs of existing linked bitmap can be changed without first having to unlink.
+v0.984
+ * Hotfix for keyboard intercepts on macOS.
 */
 void JS_ReaScriptAPI_Version(double* versionOut)
 {
-	*versionOut = 0.982;
+	*versionOut = 0.984;
 }
 
 void JS_Localize(const char* USEnglish, const char* LangPackSection, char* translationOut, int translationOut_sz)
@@ -190,7 +192,7 @@ int JS_VKeys_Callback(MSG* event, accelerator_register_t*)
 			break;
 	}
 
-	if ((VK_Intercepts[keycode] != 0) && (uMsg != WM_KEYUP) && (uMsg != WM_SYSKEYUP)) // Block keystroke, but not when releasing key
+	if ((keycode < 256) && (VK_Intercepts[keycode] != 0) && (uMsg != WM_KEYUP) && (uMsg != WM_SYSKEYUP)) // Block keystroke, but not when releasing key
 		return 1; // Eat keystroke
 	else
 		return 0; // "Not my window", whatever this means?
@@ -3265,7 +3267,7 @@ public:
 	}
 private:
 	// for Windows 32 bit, this may need a calling convention qualifier...?
-	static void MyTimerproc(
+	static void CALLBACK MyTimerproc(
 		HWND Arg1,
 		UINT Arg2,
 		UINT_PTR Arg3,
