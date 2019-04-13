@@ -130,7 +130,7 @@ v0.980
 v0.981
  * Don't cache GDI HDCs.
  * JS_WindowMessage_Send and _Post can skip MAKEWPARAM and MAKELPARAM to send larger values.
-v0.983
+v0.982
  * New audio preview functions by Xenakios.
  * Improvements in Compositing functions, including:
     ~ Bug fix: Return original window proc when all bitmaps are unlinked.
