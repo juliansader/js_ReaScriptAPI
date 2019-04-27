@@ -70,6 +70,10 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 		for (auto& i : Julian::mapWM_toMsg)
 			Julian::mapMsgToWM_.emplace(i.second, i.first);
 
+		// Initialize VK_Ignore
+		for (auto i : Julian::setVK_Ignore)
+			Julian::VK_Ignore[i] = 1;
+
 		// UNDOCUMENTED FEATURE! "<accelerator" instead of "accelerator" places function in front of keyboard processing queue
 		plugin_register("<accelerator", &(Julian::sAccelerator));
 
@@ -172,17 +176,9 @@ void JS_Localize(const char* USEnglish, const char* LangPackSection, char* trans
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Virtual keys / Keyboard functions
 
-static unsigned char VK_State[256] { 0 };
-static unsigned char VK_History[256] { 0 };
-static unsigned char VK_HistState[256] { 0 };
-
-static unsigned char VK_Intercepts[256] { 0 };
-static constexpr size_t VK_State_sz_min1 = sizeof(VK_State)-1;
-
-static set<WPARAM> VK_Ignore{0x0A, 0x0B, 0x29, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F, 0x40, 0x5E, 0xB8, 0xB9, 0xE0, 0xFC}; // Keys to ignore.  Why?  It seems that macOS (and perhaps other platforms) sometimes send certain keystrokes (such as VK_SELECT) continuously to windows.  I don't know why.
-
 int JS_VKeys_Callback(MSG* event, accelerator_register_t*)
 {
+	using namespace Julian;
 	const WPARAM& keycode = event->wParam;
 	const UINT& uMsg = event->message;
 
@@ -190,7 +186,7 @@ int JS_VKeys_Callback(MSG* event, accelerator_register_t*)
 	{
 		case WM_KEYDOWN:
 		case WM_SYSKEYDOWN:
-			if (keycode < 256 && !VK_Ignore.count(keycode)) {
+			if (keycode < 256 && !VK_Ignore[keycode]) {
 				VK_State[keycode] = 1;
 				VK_HistState[keycode] = 1;
 				if (VK_History[keycode] < 255) VK_History[keycode]++;
@@ -198,7 +194,7 @@ int JS_VKeys_Callback(MSG* event, accelerator_register_t*)
 			break;
 		case WM_KEYUP:
 		case WM_SYSKEYUP:
-			if (keycode < 256 && !VK_Ignore.count(keycode))
+			if (keycode < 256 && !VK_Ignore[keycode])
 				VK_State[keycode] = 0; // (keycode >> 3)] &= (~((uint8_t)(1 << (keycode & 0b00000111))));
 			break;
 	}
@@ -211,6 +207,7 @@ int JS_VKeys_Callback(MSG* event, accelerator_register_t*)
 
 void JS_VKeys_ClearHistory()
 {
+	using namespace Julian;
 	std::fill_n(VK_History, 256, 0);
 	std::fill_n(VK_HistState, 256, 0);
 }
@@ -218,6 +215,7 @@ void JS_VKeys_ClearHistory()
 //void JS_VKeys_GetState(int* keys00to1FOut, int* keys20to3FOut, int* keys40to5FOut, int* keys60to7FOut, int* keys80to9FOut, int* keysA0toBFOut, int* keysC0toDFOut, int* keysE0toFFOut)
 bool JS_VKeys_GetState(char* stateOutNeedBig, int stateOutNeedBig_sz)
 {
+	using namespace Julian;
 	if (realloc_cmd_ptr(&stateOutNeedBig, &stateOutNeedBig_sz, VK_State_sz_min1)) {
 		if (stateOutNeedBig_sz == VK_State_sz_min1) {
 			memcpy(stateOutNeedBig, VK_State+1, VK_State_sz_min1);
@@ -229,6 +227,7 @@ bool JS_VKeys_GetState(char* stateOutNeedBig, int stateOutNeedBig_sz)
 
 bool JS_VKeys_GetHistory(char* stateOutNeedBig, int stateOutNeedBig_sz)
 {
+	using namespace Julian;
 	if (realloc_cmd_ptr(&stateOutNeedBig, &stateOutNeedBig_sz, VK_State_sz_min1)) {
 		if (stateOutNeedBig_sz == VK_State_sz_min1) {
 			memcpy(stateOutNeedBig, VK_History+1, VK_State_sz_min1);
@@ -240,6 +239,7 @@ bool JS_VKeys_GetHistory(char* stateOutNeedBig, int stateOutNeedBig_sz)
 
 bool JS_VKeys_GetHistState(char* stateOutNeedBig, int stateOutNeedBig_sz)
 {
+	using namespace Julian;
 	if (realloc_cmd_ptr(&stateOutNeedBig, &stateOutNeedBig_sz, VK_State_sz_min1)) {
 		if (stateOutNeedBig_sz == VK_State_sz_min1) {
 			memcpy(stateOutNeedBig, VK_HistState + 1, VK_State_sz_min1);
@@ -251,6 +251,7 @@ bool JS_VKeys_GetHistState(char* stateOutNeedBig, int stateOutNeedBig_sz)
 
 int JS_VKeys_Intercept(int keyCode, int intercept)
 {
+	using namespace Julian;
 	if (0 <= keyCode && keyCode < 256) {
 		if (intercept > 0 && VK_Intercepts[keyCode] < 255) VK_Intercepts[keyCode]++;
 		else if (intercept < 0 && VK_Intercepts[keyCode] > 0) VK_Intercepts[keyCode]--;

@@ -69,6 +69,18 @@ namespace Julian
 
 
 	///////////////////////////////////////////////////////////////////////////////////////
+	// VKeys stuff
+	static unsigned char VK_State[256]{ 0 };
+	static unsigned char VK_History[256]{ 0 };
+	static unsigned char VK_HistState[256]{ 0 };
+
+	static unsigned char VK_Intercepts[256]{ 0 };
+	static constexpr size_t VK_State_sz_min1 = sizeof(VK_State) - 1;
+
+	static set<WPARAM> setVK_Ignore{ 0x0A, 0x0B, 0x29, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F, 0x40, 0x5E, 0xB8, 0xB9, 0xE0, 0xFC }; // Keys to ignore.  Why?  It seems that macOS (and perhaps other platforms) sometimes send certain keystrokes (such as VK_SELECT) continuously to windows.  I don't know why.
+	static unsigned char VK_Ignore[256]{ 0 }; // Will be initialized during REAPER_PLUGIN_ENTRYPOINT, using setVK_Ignore
+
+	///////////////////////////////////////////////////////////////////////////////////////
 	// Window Message intercept stuff
 
 	// Error codes for WindowMessage_Intercept
