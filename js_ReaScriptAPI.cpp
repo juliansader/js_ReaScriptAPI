@@ -70,7 +70,8 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 		for (auto& i : Julian::mapWM_toMsg)
 			Julian::mapMsgToWM_.emplace(i.second, i.first);
 
-		plugin_register("accelerator", &(Julian::sAccelerator));
+		// UNDOCUMENTED FEATURE! "<accelerator" instead of "accelerator" places function in front of keyboard processing queue
+		plugin_register("<accelerator", &(Julian::sAccelerator));
 
 		return 1; // success
 	}
@@ -130,17 +131,22 @@ v0.980
 v0.981
  * Don't cache GDI HDCs.
  * JS_WindowMessage_Send and _Post can skip MAKEWPARAM and MAKELPARAM to send larger values.
-v0.982
+v0.983
  * New audio preview functions by Xenakios.
  * Improvements in Compositing functions, including:
     ~ Bug fix: Return original window proc when all bitmaps are unlinked.
 	~ Source and dest RECTs of existing linked bitmap can be changed without first having to unlink.
 v0.984
  * Hotfix for keyboard intercepts on macOS.
+v0.985
+ * Keyboard intercepts are first in queue, so work in MIDI editor too.
+ * VKeys_GetHistState
+ * LICE_MeasureText
 */
+
 void JS_ReaScriptAPI_Version(double* versionOut)
 {
-	*versionOut = 0.984;
+	*versionOut = 0.985;
 }
 
 void JS_Localize(const char* USEnglish, const char* LangPackSection, char* translationOut, int translationOut_sz)
@@ -166,10 +172,14 @@ void JS_Localize(const char* USEnglish, const char* LangPackSection, char* trans
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Virtual keys / Keyboard functions
 
-static unsigned char VK_Bitmap[256] { 0 };
-static unsigned char VK_BitmapHistory[256] { 0 };
+static unsigned char VK_State[256] { 0 };
+static unsigned char VK_History[256] { 0 };
+static unsigned char VK_HistState[256] { 0 };
+
 static unsigned char VK_Intercepts[256] { 0 };
-static constexpr size_t VK_Bitmap_sz_min1 = sizeof(VK_Bitmap)-1;
+static constexpr size_t VK_State_sz_min1 = sizeof(VK_State)-1;
+
+static set<WPARAM> VK_Ignore{0x0A, 0x0B, 0x29, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F, 0x40, 0x5E, 0xB8, 0xB9, 0xE0, 0xFC}; // Keys to ignore.  Why?  It seems that macOS (and perhaps other platforms) sometimes send certain keystrokes (such as VK_SELECT) continuously to windows.  I don't know why.
 
 int JS_VKeys_Callback(MSG* event, accelerator_register_t*)
 {
@@ -180,15 +190,16 @@ int JS_VKeys_Callback(MSG* event, accelerator_register_t*)
 	{
 		case WM_KEYDOWN:
 		case WM_SYSKEYDOWN:
-			if (keycode < 256) {
-				VK_Bitmap[keycode] = 1;
-				if (VK_BitmapHistory[keycode] < 255) VK_BitmapHistory[keycode]++;
+			if (keycode < 256 && !VK_Ignore.count(keycode)) {
+				VK_State[keycode] = 1;
+				VK_HistState[keycode] = 1;
+				if (VK_History[keycode] < 255) VK_History[keycode]++;
 			}
 			break;
 		case WM_KEYUP:
 		case WM_SYSKEYUP:
-			if (keycode < 256)
-				VK_Bitmap[keycode] = 0; // (keycode >> 3)] &= (~((uint8_t)(1 << (keycode & 0b00000111))));
+			if (keycode < 256 && !VK_Ignore.count(keycode))
+				VK_State[keycode] = 0; // (keycode >> 3)] &= (~((uint8_t)(1 << (keycode & 0b00000111))));
 			break;
 	}
 
@@ -200,16 +211,16 @@ int JS_VKeys_Callback(MSG* event, accelerator_register_t*)
 
 void JS_VKeys_ClearHistory()
 {
-	std::fill_n(VK_Bitmap, 256, 0);
-	std::fill_n(VK_BitmapHistory, 256, 0);
+	std::fill_n(VK_History, 256, 0);
+	std::fill_n(VK_HistState, 256, 0);
 }
 
 //void JS_VKeys_GetState(int* keys00to1FOut, int* keys20to3FOut, int* keys40to5FOut, int* keys60to7FOut, int* keys80to9FOut, int* keysA0toBFOut, int* keysC0toDFOut, int* keysE0toFFOut)
 bool JS_VKeys_GetState(char* stateOutNeedBig, int stateOutNeedBig_sz)
 {
-	if (realloc_cmd_ptr(&stateOutNeedBig, &stateOutNeedBig_sz, VK_Bitmap_sz_min1)) {
-		if (stateOutNeedBig_sz == VK_Bitmap_sz_min1) {
-			memcpy(stateOutNeedBig, VK_Bitmap+1, VK_Bitmap_sz_min1);
+	if (realloc_cmd_ptr(&stateOutNeedBig, &stateOutNeedBig_sz, VK_State_sz_min1)) {
+		if (stateOutNeedBig_sz == VK_State_sz_min1) {
+			memcpy(stateOutNeedBig, VK_State+1, VK_State_sz_min1);
 			return true;
 		}
 	}
@@ -218,9 +229,20 @@ bool JS_VKeys_GetState(char* stateOutNeedBig, int stateOutNeedBig_sz)
 
 bool JS_VKeys_GetHistory(char* stateOutNeedBig, int stateOutNeedBig_sz)
 {
-	if (realloc_cmd_ptr(&stateOutNeedBig, &stateOutNeedBig_sz, VK_Bitmap_sz_min1)) {
-		if (stateOutNeedBig_sz == VK_Bitmap_sz_min1) {
-			memcpy(stateOutNeedBig, VK_BitmapHistory+1, VK_Bitmap_sz_min1);
+	if (realloc_cmd_ptr(&stateOutNeedBig, &stateOutNeedBig_sz, VK_State_sz_min1)) {
+		if (stateOutNeedBig_sz == VK_State_sz_min1) {
+			memcpy(stateOutNeedBig, VK_History+1, VK_State_sz_min1);
+			return true;
+		}
+	}
+	return false;
+}
+
+bool JS_VKeys_GetHistState(char* stateOutNeedBig, int stateOutNeedBig_sz)
+{
+	if (realloc_cmd_ptr(&stateOutNeedBig, &stateOutNeedBig_sz, VK_State_sz_min1)) {
+		if (stateOutNeedBig_sz == VK_State_sz_min1) {
+			memcpy(stateOutNeedBig, VK_HistState + 1, VK_State_sz_min1);
 			return true;
 		}
 	}
@@ -338,12 +360,7 @@ int JS_Dialog_BrowseForSaveFile(const char* windowTitle, const char* initialFold
 	if (fileNameOutNeedBig_sz < 16000) return -1;
 
 	// Set default extension and filter.
-	// OSX dialogs do not understand *.*, and in any case do not show filter text, so don't change if on OSX.
-#ifdef __APPLE__
-	const char* newExtList = extensionList;
-#else
 	const char* newExtList = ((strlen(extensionList) > 0) ? extensionList : "All files (*.*)\0*.*\0\0");
-#endif
 
 #ifdef _WIN32
 	// These Windows file dialogs do not understand /, so v0.970 added this quick hack to replace with \.
@@ -430,8 +447,8 @@ int JS_Dialog_BrowseForOpenFiles(const char* windowTitle, const char* initialFol
 		strncpy(fileNames, initialFile, LONGLEN);
 		fileNames[LONGLEN - 1] = 0;
 
-		DWORD flags = allowMultiple ? (OFN_EXPLORER | OFN_LONGNAMES | OFN_PATHMUSTEXIST | OFN_CREATEPROMPT | OFN_ALLOWMULTISELECT)
-			: (OFN_EXPLORER | OFN_LONGNAMES | OFN_CREATEPROMPT | OFN_PATHMUSTEXIST);
+		DWORD flags = allowMultiple ? (OFN_EXPLORER | OFN_LONGNAMES | OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_ALLOWMULTISELECT)
+									: (OFN_EXPLORER | OFN_LONGNAMES | OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST);
 
 		OPENFILENAME info{
 			sizeof(OPENFILENAME),	//DWORD         lStructSize;
@@ -2120,26 +2137,26 @@ int JS_Mouse_GetState(int flags)
 int JS_Mouse_GetHistory(int flags)
 {
 	int state = 0;
-	if (VK_BitmapHistory[VK_LBUTTON]) state |= 1;
-	if (VK_BitmapHistory[VK_RBUTTON]) state |= 2;
-	if (VK_BitmapHistory[VK_MBUTTON]) state |= 64;
-	if (VK_BitmapHistory[VK_CONTROL]) state |= 4;
-	if (VK_BitmapHistory[VK_SHIFT]) state |= 8;
-	if (VK_BitmapHistory[VK_MENU]) state |= 16;
-	if (VK_BitmapHistory[VK_LWIN]) state |= 32;
+	if (VK_History[VK_LBUTTON]) state |= 1;
+	if (VK_History[VK_RBUTTON]) state |= 2;
+	if (VK_History[VK_MBUTTON]) state |= 64;
+	if (VK_History[VK_CONTROL]) state |= 4;
+	if (VK_History[VK_SHIFT]) state |= 8;
+	if (VK_History[VK_MENU]) state |= 16;
+	if (VK_History[VK_LWIN]) state |= 32;
 	state = state & flags;
 	return state;
 }
 
 void JS_Mouse_ClearHistory()
 {
-	VK_BitmapHistory[VK_LBUTTON] = 0;
-	VK_BitmapHistory[VK_RBUTTON] = 0;
-	VK_BitmapHistory[VK_MBUTTON] = 0;
-	VK_BitmapHistory[VK_CONTROL] = 0;
-	VK_BitmapHistory[VK_SHIFT] = 0;
-	VK_BitmapHistory[VK_MENU] = 0;
-	VK_BitmapHistory[VK_LWIN] = 0;
+	VK_History[VK_LBUTTON] = 0;
+	VK_History[VK_RBUTTON] = 0;
+	VK_History[VK_MBUTTON] = 0;
+	VK_History[VK_CONTROL] = 0;
+	VK_History[VK_SHIFT] = 0;
+	VK_History[VK_MENU] = 0;
+	VK_History[VK_LWIN] = 0;
 }
 */
 
@@ -2461,9 +2478,6 @@ int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap
 	// If window not already intercepted, get original window proc and emplace new struct
 	if (mapWindowData.count(hwnd) == 0) {
 		if (!JS_Window_IsWindow(hwnd)) return ERR_NOT_WINDOW;
-		
-		//!!HDC windowDC = (HDC)JS_GDI_GetClientDC(hwnd);
-		//!!if (!windowDC) return ERR_WINDOW_HDC;
 		
 		WNDPROC origProc = nullptr;
 #ifdef _WIN32

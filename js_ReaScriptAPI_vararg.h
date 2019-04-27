@@ -29,6 +29,11 @@ static void* __vararg_JS_VKeys_GetHistory(void** arglist, int numparms)
 	return (void*)(intptr_t)JS_VKeys_GetHistory((char*)arglist[0], (int)(intptr_t)arglist[1]);
 }
 
+static void* __vararg_JS_VKeys_GetHistState(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_VKeys_GetHistState((char*)arglist[0], (int)(intptr_t)arglist[1]);
+}
+
 static void* __vararg_JS_VKeys_ClearHistory(void** arglist, int numparms)
 {
 	JS_VKeys_ClearHistory();
@@ -742,6 +747,12 @@ static void* __vararg_JS_LICE_SetFontColor(void** arglist, int numparms)
 static void* __vararg_JS_LICE_SetFontBkColor(void** arglist, int numparms)
 {
 	JS_LICE_SetFontBkColor((void*)arglist[0], (int)(intptr_t)arglist[1]);
+	return NULL;
+}
+
+static void* __vararg_JS_LICE_MeasureText(void** arglist, int numparms)
+{
+	JS_LICE_MeasureText((const char*)arglist[0], (int*)arglist[1], (int*)arglist[2]);
 	return NULL;
 }
 

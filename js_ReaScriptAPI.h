@@ -1,7 +1,6 @@
 #pragma once
 
 extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance, reaper_plugin_info_t *rec);
-
 void  JS_ReaScriptAPI_Version(double* versionOut);
 
 void  JS_Localize(const char* USEnglish, const char* LangPackSection, char* translationOut, int translationOut_sz);
@@ -79,6 +78,7 @@ int   JS_VKeys_Callback(MSG* event, accelerator_register_t*);
 bool  JS_VKeys_GetState(char* stateOutNeedBig, int stateOutNeedBig_sz);
 void  JS_VKeys_ClearHistory();
 bool  JS_VKeys_GetHistory(char* stateOutNeedBig, int stateOutNeedBig_sz);
+bool  JS_VKeys_GetHistState(char* stateOutNeedBig, int stateOutNeedBig_sz);
 int   JS_VKeys_Intercept(int keyCode, int intercept);
 
 int   JS_WindowMessage_Intercept(void* windowHWND, const char* message, bool passThrough);
@@ -135,15 +135,15 @@ void  JS_GDI_Polyline(void* deviceHDC, const char* packedX, const char* packedY,
 void  JS_GDI_Blit(void* destHDC, int dstx, int dsty, void* sourceHDC, int srcx, int srcy, int width, int height, const char* modeOptional);
 void  JS_GDI_StretchBlit(void* destHDC, int dstx, int dsty, int dstw, int dsth, void* sourceHDC, int srcx, int srcy, int srcw, int srch, const char* modeOptional);
 
+int   JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap* sysBitmap, int srcx, int srcy, int srcw, int srch);
+void  JS_Composite_Unlink(HWND hwnd, LICE_IBitmap* bitmap);
+int   JS_Composite_ListBitmaps(HWND hwnd, char* listOutNeedBig, int listOutNeedBig_sz);
+
 void* JS_LICE_CreateBitmap(bool isSysBitmap, int width, int height);
 int	  JS_LICE_GetHeight(void* bitmap);
 int   JS_LICE_GetWidth(void* bitmap);
 void* JS_LICE_GetDC(void* bitmap);
 void  JS_LICE_DestroyBitmap(LICE_IBitmap* bitmap);
-
-int   JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap* sysBitmap, int srcx, int srcy, int srcw, int srch);
-void  JS_Composite_Unlink(HWND hwnd, LICE_IBitmap* bitmap);
-int   JS_Composite_ListBitmaps(HWND hwnd, char* listOutNeedBig, int listOutNeedBig_sz);
 
 void  JS_LICE_Blit(void* destBitmap, int dstx, int dsty, void* sourceBitmap, int srcx, int srcy, int width, int height, double alpha, const char* mode);
 void  JS_LICE_RotatedBlit(void* destBitmap, int dstx, int dsty, int dstw, int dsth, void* sourceBitmap, double srcx, double srcy, double srcw, double srch, double angle, double rotxcent, double rotycent, bool cliptosourcerect, double alpha, const char* mode);
