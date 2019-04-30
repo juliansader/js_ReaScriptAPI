@@ -75,10 +75,9 @@ void  JS_Window_AddressFromHandle(void* handle, double* addressOut);
 bool  JS_Window_IsWindow(void* windowHWND);
 
 int   JS_VKeys_Callback(MSG* event, accelerator_register_t*);
-bool  JS_VKeys_GetState(char* stateOutNeedBig, int stateOutNeedBig_sz);
-void  JS_VKeys_ClearHistory();
-bool  JS_VKeys_GetHistory(char* stateOutNeedBig, int stateOutNeedBig_sz);
-bool  JS_VKeys_GetHistState(char* stateOutNeedBig, int stateOutNeedBig_sz);
+void  JS_VKeys_GetState(double cutoffTime, char* stateOutNeedBig, int stateOutNeedBig_sz);
+void  JS_VKeys_GetDown(double cutoffTime, char* stateOutNeedBig, int stateOutNeedBig_sz);
+void  JS_VKeys_GetUp(double cutoffTime, char* stateOutNeedBig, int stateOutNeedBig_sz);
 int   JS_VKeys_Intercept(int keyCode, int intercept);
 
 int   JS_WindowMessage_Intercept(void* windowHWND, const char* message, bool passThrough);

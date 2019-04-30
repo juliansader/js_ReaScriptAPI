@@ -70,12 +70,10 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 		for (auto& i : Julian::mapWM_toMsg)
 			Julian::mapMsgToWM_.emplace(i.second, i.first);
 
-		// Initialize VK_Ignore
-		for (auto i : Julian::setVK_Ignore)
-			Julian::VK_Ignore[i] = 1;
-
 		// UNDOCUMENTED FEATURE! "<accelerator" instead of "accelerator" places function in front of keyboard processing queue
 		plugin_register("<accelerator", &(Julian::sAccelerator));
+
+		Julian::REAPER_VERSION = atof(GetAppVersion());
 
 		return 1; // success
 	}
@@ -143,9 +141,9 @@ v0.983
 v0.984
  * Hotfix for keyboard intercepts on macOS.
 v0.985
- * Keyboard intercepts are first in queue, so work in MIDI editor too.
- * VKeys_GetHistState
- * LICE_MeasureText
+ * VKeys: Keyboard intercepts are first in queue, so work in MIDI editor too.
+ * VKeys: Cutoff time, new functions for KeyUp and KeyDown
+ * LICE: MeasureText
 */
 
 void JS_ReaScriptAPI_Version(double* versionOut)
@@ -175,10 +173,13 @@ void JS_Localize(const char* USEnglish, const char* LangPackSection, char* trans
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Virtual keys / Keyboard functions
+static double VK_KeyDown[256]{ 0 }; // time stamp of latest WM_KEYDOWN message
+static double VK_KeyUp[256]{ 0 }; // time stamp of latest WM_KEYUP message
+static unsigned char VK_Intercepts[256]{ 0 }; // Should the VK be intercepted?
+static constexpr size_t VK_Size = 255; // sizeof(VK_Intercepts);
 
 int JS_VKeys_Callback(MSG* event, accelerator_register_t*)
 {
-	using namespace Julian;
 	const WPARAM& keycode = event->wParam;
 	const UINT& uMsg = event->message;
 
@@ -186,67 +187,71 @@ int JS_VKeys_Callback(MSG* event, accelerator_register_t*)
 	{
 		case WM_KEYDOWN:
 		case WM_SYSKEYDOWN:
-			if (keycode < 256 && !VK_Ignore[keycode]) {
-				VK_State[keycode] = 1;
-				VK_HistState[keycode] = 1;
-				if (VK_History[keycode] < 255) VK_History[keycode]++;
-			}
+			if (keycode < 256) 
+				VK_KeyDown[keycode] = time_precise();
 			break;
 		case WM_KEYUP:
 		case WM_SYSKEYUP:
-			if (keycode < 256 && !VK_Ignore[keycode])
-				VK_State[keycode] = 0; // (keycode >> 3)] &= (~((uint8_t)(1 << (keycode & 0b00000111))));
+			if (keycode < 256) 
+				VK_KeyUp[keycode] = time_precise();
 			break;
 	}
 
-	if ((keycode < 256) && (VK_Intercepts[keycode] != 0) && (uMsg != WM_KEYUP) && (uMsg != WM_SYSKEYUP)) // Block keystroke, but not when releasing key
+	if ((keycode < 256) && VK_Intercepts[keycode] && (uMsg != WM_KEYUP) && (uMsg != WM_SYSKEYUP)) // Block keystroke, but not when releasing key
 		return 1; // Eat keystroke
 	else
 		return 0; // "Not my window", whatever this means?
 }
 
-void JS_VKeys_ClearHistory()
+void JS_VKeys_GetState(double cutoffTime, char* stateOutNeedBig, int stateOutNeedBig_sz)
 {
-	using namespace Julian;
-	std::fill_n(VK_History, 256, 0);
-	std::fill_n(VK_HistState, 256, 0);
-}
-
-//void JS_VKeys_GetState(int* keys00to1FOut, int* keys20to3FOut, int* keys40to5FOut, int* keys60to7FOut, int* keys80to9FOut, int* keysA0toBFOut, int* keysC0toDFOut, int* keysE0toFFOut)
-bool JS_VKeys_GetState(char* stateOutNeedBig, int stateOutNeedBig_sz)
-{
-	using namespace Julian;
-	if (realloc_cmd_ptr(&stateOutNeedBig, &stateOutNeedBig_sz, VK_State_sz_min1)) {
-		if (stateOutNeedBig_sz == VK_State_sz_min1) {
-			memcpy(stateOutNeedBig, VK_State+1, VK_State_sz_min1);
-			return true;
+	if (realloc_cmd_ptr(&stateOutNeedBig, &stateOutNeedBig_sz, VK_Size)) {
+		if (stateOutNeedBig_sz == VK_Size) {
+			if (cutoffTime < 0)
+				cutoffTime = time_precise() + cutoffTime;
+			for (int i = 1; i <= VK_Size; i++)
+			{
+				if (VK_KeyDown[i] > VK_KeyUp[i] && VK_KeyDown[i] > cutoffTime)
+					stateOutNeedBig[i-1] = 1;
+				else
+					stateOutNeedBig[i-1] = 0;
+			}
 		}
 	}
-	return false;
 }
 
-bool JS_VKeys_GetHistory(char* stateOutNeedBig, int stateOutNeedBig_sz)
+void JS_VKeys_GetDown(double cutoffTime, char* stateOutNeedBig, int stateOutNeedBig_sz)
 {
-	using namespace Julian;
-	if (realloc_cmd_ptr(&stateOutNeedBig, &stateOutNeedBig_sz, VK_State_sz_min1)) {
-		if (stateOutNeedBig_sz == VK_State_sz_min1) {
-			memcpy(stateOutNeedBig, VK_History+1, VK_State_sz_min1);
-			return true;
+	if (realloc_cmd_ptr(&stateOutNeedBig, &stateOutNeedBig_sz, VK_Size)) {
+		if (stateOutNeedBig_sz == VK_Size) {
+			if (cutoffTime < 0)
+				cutoffTime = time_precise() + cutoffTime;
+			for (int i = 1; i <= VK_Size; i++)
+			{
+				if (VK_KeyDown[i] > cutoffTime)
+					stateOutNeedBig[i-1] = 1;
+				else
+					stateOutNeedBig[i-1] = 0;
+			}
 		}
 	}
-	return false;
 }
 
-bool JS_VKeys_GetHistState(char* stateOutNeedBig, int stateOutNeedBig_sz)
+void JS_VKeys_GetUp(double cutoffTime, char* stateOutNeedBig, int stateOutNeedBig_sz)
 {
-	using namespace Julian;
-	if (realloc_cmd_ptr(&stateOutNeedBig, &stateOutNeedBig_sz, VK_State_sz_min1)) {
-		if (stateOutNeedBig_sz == VK_State_sz_min1) {
-			memcpy(stateOutNeedBig, VK_HistState + 1, VK_State_sz_min1);
-			return true;
+	if (realloc_cmd_ptr(&stateOutNeedBig, &stateOutNeedBig_sz, VK_Size)) {
+		if (stateOutNeedBig_sz == VK_Size) {
+			if (cutoffTime < 0)
+				cutoffTime = time_precise() + cutoffTime;
+			for (int i = 1; i <= VK_Size; i++)
+			{
+				if (VK_KeyUp[i] > cutoffTime)
+					stateOutNeedBig[i-1] = 1;
+				else
+					stateOutNeedBig[i-1] = 0;
+			}
 		}
 	}
-	return false;
 }
 
 int JS_VKeys_Intercept(int keyCode, int intercept)
@@ -1490,35 +1495,39 @@ bool  JS_Window_IsWindow(void* windowHWND)
 #ifdef _WIN32
 	return !!IsWindow((HWND)windowHWND);
 #else
-	// This implementation will enumerate all WDL/swell windows, looking for a match.
-	// The "target" HWND will be passed to each callback function.
-	// If a match is found, target will be replaced with NULL;
-	if (!windowHWND) return false;
-	HWND target = (HWND)windowHWND;
+	if (Julian::REAPER_VERSION >= 5.974)
+		return ValidatePtr(windowHWND, "HWND");
+	else {
+		// This implementation will enumerate all WDL/swell windows, looking for a match.
+		// The "target" HWND will be passed to each callback function.
+		// If a match is found, target will be replaced with NULL;
+		if (!windowHWND) return false;
+		HWND target = (HWND)windowHWND;
 
-	HWND editor = MIDIEditor_GetActive();
-	if (editor) 
-	{
-		if (target == editor)
-			return true;
-		HWND midiview = GetDlgItem(editor, 1000);
-		if (target == midiview)
-			return true;
-	}
+		HWND editor = MIDIEditor_GetActive();
+		if (editor)
+		{
+			if (target == editor)
+				return true;
+			HWND midiview = GetDlgItem(editor, 1000);
+			if (target == midiview)
+				return true;
+		}
 
-	/*HWND main = GetMainHwnd();
-	if (main) {
-		if (target == main)
-			return true;
-		else {
-			EnumChildWindows(main, JS_Window_IsWindow_Callback_Child, reinterpret_cast<LPARAM>(&target));
-			if (!target) return true;
+		/*HWND main = GetMainHwnd();
+		if (main) {
+			if (target == main)
+				return true;
+			else {
+				EnumChildWindows(main, JS_Window_IsWindow_Callback_Child, reinterpret_cast<LPARAM>(&target));
+				if (!target) return true;
 		}
 	}*/
 
-	EnumWindows(JS_Window_IsWindow_Callback_Top, reinterpret_cast<LPARAM>(&target));
+		EnumWindows(JS_Window_IsWindow_Callback_Top, reinterpret_cast<LPARAM>(&target));
 
-	return !target;
+		return !target;
+	}
 #endif
 }
 

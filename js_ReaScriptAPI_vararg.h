@@ -21,23 +21,20 @@ static void* __vararg_JS_Localize(void** arglist, int numparms)
 
 static void* __vararg_JS_VKeys_GetState(void** arglist, int numparms)
 {
-	return (void*)(intptr_t)JS_VKeys_GetState((char*)arglist[0], (int)(intptr_t)arglist[1]);
+	JS_VKeys_GetState(arglist[0] ? *(double*)arglist[0] : 0.0, (char*)arglist[1], (int)(intptr_t)arglist[2]);
+	return NULL;
 }
 
-static void* __vararg_JS_VKeys_GetHistory(void** arglist, int numparms)
+static void* __vararg_JS_VKeys_GetDown(void** arglist, int numparms)
 {
-	return (void*)(intptr_t)JS_VKeys_GetHistory((char*)arglist[0], (int)(intptr_t)arglist[1]);
+	JS_VKeys_GetDown(arglist[0] ? *(double*)arglist[0] : 0.0, (char*)arglist[1], (int)(intptr_t)arglist[2]);
+	return NULL;
 }
 
-static void* __vararg_JS_VKeys_GetHistState(void** arglist, int numparms)
+static void* __vararg_JS_VKeys_GetUp(void** arglist, int numparms)
 {
-	return (void*)(intptr_t)JS_VKeys_GetHistState((char*)arglist[0], (int)(intptr_t)arglist[1]);
-}
-
-static void* __vararg_JS_VKeys_ClearHistory(void** arglist, int numparms)
-{
-	JS_VKeys_ClearHistory();
-	return nullptr;
+	JS_VKeys_GetUp(arglist[0] ? *(double*)arglist[0] : 0.0, (char*)arglist[1], (int)(intptr_t)arglist[2]);
+	return NULL;
 }
 
 static void* __vararg_JS_VKeys_Intercept(void** arglist, int numparms)
