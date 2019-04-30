@@ -144,6 +144,7 @@ v0.985
  * VKeys: Keyboard intercepts are first in queue, so work in MIDI editor too.
  * VKeys: Cutoff time, new functions for KeyUp and KeyDown
  * LICE: MeasureText
+ * BrowseForOpenFiles: On WindowsOS, prevent creation of new file.
 */
 
 void JS_ReaScriptAPI_Version(double* versionOut)
