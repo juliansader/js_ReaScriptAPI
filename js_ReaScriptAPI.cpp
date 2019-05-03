@@ -371,6 +371,8 @@ int JS_Dialog_BrowseForSaveFile(const char* windowTitle, const char* initialFold
 	// Set default extension and filter.
 	const char* newExtList = ((strlen(extensionList) > 0) ? extensionList : "All files (*.*)\0*.*\0\0");
 
+	BOOL gotfile = FALSE;
+	
 #ifdef _WIN32
 	// These Windows file dialogs do not understand /, so v0.970 added this quick hack to replace with \.
 	size_t folderLen = strlen(initialFolder) + 1; // Include terminating \0.
@@ -408,11 +410,17 @@ int JS_Dialog_BrowseForSaveFile(const char* windowTitle, const char* initialFold
 		NULL,					//DWORD         dwReserved;
 		0						//DWORD         FlagsEx;
 	};
-	BOOL gotFile = GetSaveFileName(&info);
+	gotFile = GetSaveFileName(&info);
 	free(newInitFolder);
 #else
-	// returns TRUE if file was chosen. 
-	BOOL gotFile = (BOOL)BrowseForSaveFile(windowTitle, initialFolder, initialFile, newExtList, fileNameOutNeedBig, fileNameOutNeedBig_sz);
+	// On macOS, this function easily crashes if the extList is empty or not properly formatted.
+	try {
+		// returns TRUE if file was chosen.
+		gotFile = (BOOL)BrowseForSaveFile(windowTitle, initialFolder, initialFile, newExtList, fileNameOutNeedBig, fileNameOutNeedBig_sz);
+	}
+	catch(...) {
+		return(-3);
+	}
 #endif
 	if(!gotFile)
 		fileNameOutNeedBig[0] = '\0';
