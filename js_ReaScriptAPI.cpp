@@ -371,7 +371,7 @@ int JS_Dialog_BrowseForSaveFile(const char* windowTitle, const char* initialFold
 	// Set default extension and filter.
 	const char* newExtList = ((strlen(extensionList) > 0) ? extensionList : "All files (*.*)\0*.*\0\0");
 
-	BOOL gotfile = FALSE;
+	BOOL gotFile = FALSE;
 	
 #ifdef _WIN32
 	// These Windows file dialogs do not understand /, so v0.970 added this quick hack to replace with \.
@@ -419,7 +419,7 @@ int JS_Dialog_BrowseForSaveFile(const char* windowTitle, const char* initialFold
 		gotFile = (BOOL)BrowseForSaveFile(windowTitle, initialFolder, initialFile, newExtList, fileNameOutNeedBig, fileNameOutNeedBig_sz);
 	}
 	catch(...) {
-		return(-3);
+		return -3;
 	}
 #endif
 	if(!gotFile)
@@ -497,7 +497,13 @@ int JS_Dialog_BrowseForOpenFiles(const char* windowTitle, const char* initialFol
 	// free() the result of this, if non-NULL.
 	// if allowmul is set, the multiple files are specified the same way GetOpenFileName() returns.
 	char slash = '/';
-	fileNames = BrowseForFiles(windowTitle, initialFolder, initialFile, allowMultiple, newExtList);
+	try {
+		fileNames = BrowseForFiles(windowTitle, initialFolder, initialFile, allowMultiple, newExtList);
+	}
+	catch(...) {
+		return -3;
+	}
+			
 	retval = (fileNames ? -1 : 0);
 	{
 #endif
