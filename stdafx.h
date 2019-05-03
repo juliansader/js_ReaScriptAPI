@@ -34,6 +34,7 @@
 // So probably only necessary to #include reaper_plugins_functions.h
 #include "reaper_plugin_functions.h" 
 
+// Localization
 #define LOCALIZE_IMPORT_PREFIX "js_"
 #include "localize-import.h"
 #include "localize.h"
@@ -47,7 +48,8 @@
 	#define WINAPI __stdcall
 #elif __linux__
 	#include <gtk/gtk.h>
-	#include "swell-internal.h" // For definition of HWND__
+    //#include <png.h>
+	#include "./WDL/swell/swell-internal.h" // For definition of HWND__
 	#define WINAPI
 #else
 	#define WINAPI

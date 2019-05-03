@@ -678,9 +678,14 @@ static void* __vararg_JS_LICE_LoadPNG(void** arglist, int numparms)
 	return (void*)(intptr_t)JS_LICE_LoadPNG((const char*)arglist[0]);
 }
 
-/*static void* __vararg_JS_LICE_WritePNG(void** arglist, int numparms)
+static void* __vararg_JS_LICE_WritePNG(void** arglist, int numparms)
 {
 	return (void*)(intptr_t)JS_LICE_WritePNG((const char*)arglist[0], (LICE_IBitmap*)arglist[1], (bool)arglist[2]);
+}
+
+/*static void* __vararg_JS_LICE_WriteJPG(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_LICE_WriteJPG((const char*)arglist[0], (LICE_IBitmap*)arglist[1], (int)(intptr_t)arglist[2], (bool)arglist[2]);
 }*/
 
 static void* __vararg_JS_LICE_Blit(void** arglist, int numparms)

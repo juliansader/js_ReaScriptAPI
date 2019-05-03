@@ -144,12 +144,14 @@ v0.985
  * VKeys: Keyboard intercepts are first in queue, so work in MIDI editor too.
  * VKeys: Cutoff time, new functions for KeyUp and KeyDown
  * LICE: MeasureText
- * BrowseForOpenFiles: On WindowsOS, prevent creation of new file.
+ * BrowseForOpenFiles: On WindowsOS, prevent creating new file.
+v0.986
+ * New: JS_LICE_WritePNG.
 */
 
 void JS_ReaScriptAPI_Version(double* versionOut)
 {
-	*versionOut = 0.985;
+	*versionOut = 0.986;
 }
 
 void JS_Localize(const char* USEnglish, const char* LangPackSection, char* translationOut, int translationOut_sz)
@@ -210,7 +212,7 @@ void JS_VKeys_GetState(double cutoffTime, char* stateOutNeedBig, int stateOutNee
 		if (stateOutNeedBig_sz == VK_Size) {
 			if (cutoffTime < 0)
 				cutoffTime = time_precise() + cutoffTime;
-			for (int i = 1; i <= VK_Size; i++)
+			for (unsigned int i = 1; i <= VK_Size; i++)
 			{
 				if (VK_KeyDown[i] > VK_KeyUp[i] && VK_KeyDown[i] > cutoffTime)
 					stateOutNeedBig[i-1] = 1;
@@ -227,7 +229,7 @@ void JS_VKeys_GetDown(double cutoffTime, char* stateOutNeedBig, int stateOutNeed
 		if (stateOutNeedBig_sz == VK_Size) {
 			if (cutoffTime < 0)
 				cutoffTime = time_precise() + cutoffTime;
-			for (int i = 1; i <= VK_Size; i++)
+			for (unsigned int i = 1; i <= VK_Size; i++)
 			{
 				if (VK_KeyDown[i] > cutoffTime)
 					stateOutNeedBig[i-1] = 1;
@@ -244,7 +246,7 @@ void JS_VKeys_GetUp(double cutoffTime, char* stateOutNeedBig, int stateOutNeedBi
 		if (stateOutNeedBig_sz == VK_Size) {
 			if (cutoffTime < 0)
 				cutoffTime = time_precise() + cutoffTime;
-			for (int i = 1; i <= VK_Size; i++)
+			for (unsigned int i = 1; i <= VK_Size; i++)
 			{
 				if (VK_KeyUp[i] > cutoffTime)
 					stateOutNeedBig[i-1] = 1;
@@ -2673,10 +2675,10 @@ void* JS_LICE_LoadPNG(const char* filename)
 	return png;
 }
 
-/*bool JS_LICE_WritePNG(const char* filename, LICE_IBitmap* bitmap, bool wantAlpha)
+bool JS_LICE_WritePNG(const char* filename, LICE_IBitmap* bitmap, bool wantAlpha)
 {
 	return LICE_WritePNG(filename, bitmap, wantAlpha);
-}*/
+}
 
 void JS_LICE_Circle(void* bitmap, double cx, double cy, double r, int color, double alpha, const char* mode, bool antialias)
 {
@@ -3027,6 +3029,10 @@ int JS_ListView_ListAllSelItems(HWND listviewHWND, char* itemsOutNeedBig, int it
 	}
 	return retval;
 }
+
+///////////////////////////////////////////////////////////////////////
+
+
 
 
 ///////////////////////////////////////////////////////////////////////

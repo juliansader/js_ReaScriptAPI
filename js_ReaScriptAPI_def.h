@@ -223,7 +223,10 @@ APIdef aAPIdefs[] =
 	{ APIFUNC(JS_LICE_GetDC), "void*", "void*", "bitmap", "", },
 	{ APIFUNC(JS_LICE_DestroyBitmap), "void", "void*", "bitmap", "", },
 	{ APIFUNC(JS_LICE_LoadPNG), "void*", "const char*", "filename", "Returns a system LICE bitmap containing the PNG.", },
-	//{ APIFUNC(JS_LICE_WritePNG), "bool", "const char*,void*,bool","filename,bitmap,wantAlpha", "", },
+	{ APIFUNC(JS_LICE_WritePNG), "bool", "const char*,void*,bool","filename,bitmap,wantAlpha", "", },
+		// APIFUNC(funcName) becomes (void*)funcName, "funcName", (void*)__vararg_funcName, "APIvararg_funcName", "API_funcName", "APIdef_funcName"
+	//{ APIFUNC(JS_LICE_WriteJPG), "bool", "const char*,void*,int,bool","filename,bitmap,quality,forceBaseline", "", },
+	//{(void*)LICE_WriteJPG, "LICE_WriteJPG", (void*)__vararg_JS_LICE_WriteJPG, "APIvararg_JS_LICE_WriteJPG", "API_JS_LICE_WriteJPG", "APIdef_JS_LICE_WriteJPG", "bool", "const char*,void*,int,bool","filename,bitmap,quality,force_baseline", "", },
 	{ APIFUNC(JS_LICE_Blit), "void", "void*,int,int,void*,int,int,int,int,double,const char*", "destBitmap,dstx,dsty,sourceBitmap,srcx,srcy,width,height,alpha,mode", "LICE modes: \"COPY\" (default if empty string), \"MASK\", \"ADD\", \"DODGE\", \"MUL\", \"OVERLAY\" or \"HSVADJ\", any of which may be combined with \"ALPHA\" to enable per-pixel alpha blending.", },
 	{ APIFUNC(JS_LICE_RotatedBlit), "void", "void*,int,int,int,int,void*,double,double,double,double,double,double,double,bool,double,const char*", "destBitmap,dstx,dsty,dstw,dsth,sourceBitmap,srcx,srcy,srcw,srch,angle,rotxcent,rotycent,cliptosourcerect,alpha,mode", "LICE modes: \"COPY\" (default if empty string), \"MASK\", \"ADD\", \"DODGE\", \"MUL\", \"OVERLAY\" or \"HSVADJ\", any of which may be combined with \"ALPHA\" to enable per-pixel alpha blending.", },
 	{ APIFUNC(JS_LICE_ScaledBlit), "void", "void*,int,int,int,int,void*,double,double,double,double,double,const char*", "destBitmap,dstx,dsty,dstw,dsth,srcBitmap,srcx,srcy,srcw,srch,alpha,mode", "LICE modes: \"COPY\" (default if empty string), \"MASK\", \"ADD\", \"DODGE\", \"MUL\", \"OVERLAY\" or \"HSVADJ\", any of which may be combined with \"ALPHA\" to enable per-pixel alpha blending.", },

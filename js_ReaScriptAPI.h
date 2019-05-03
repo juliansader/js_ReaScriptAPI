@@ -149,7 +149,9 @@ void  JS_LICE_RotatedBlit(void* destBitmap, int dstx, int dsty, int dstw, int ds
 void  JS_LICE_ScaledBlit(void* destBitmap, int dstx, int dsty, int dstw, int dsth, void* sourceBitmap, double srcx, double srcy, double srcw, double srch, double alpha, const char* mode);
 
 void* JS_LICE_LoadPNG(const char* filename);
-//bool  JS_LICE_WritePNG(const char* filename, LICE_IBitmap* bitmap, bool wantAlpha);
+bool  JS_LICE_WritePNG(const char* filename, LICE_IBitmap* bitmap, bool wantAlpha);
+bool  LICE_WritePNG(const char* filename, LICE_IBitmap* bitmap, bool wantAlpha); // lice.h excludes these functions if LICE_PROVIDED_BY_APP, so must declare this function myself.
+//bool  JS_LICE_WriteJPG(const char *filename, LICE_IBitmap *bmp, int quality, bool force_baseline);
 bool  JS_LICE_IsFlipped(void* bitmap);
 bool  JS_LICE_Resize(void* bitmap, int width, int height);
 void  JS_LICE_Clear(void* bitmap, int color);
