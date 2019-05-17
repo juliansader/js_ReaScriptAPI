@@ -2856,54 +2856,6 @@ bool JS_LICE_Blit_AlphaMultiply(LICE_IBitmap* destBitmap, int dstx, int dsty, LI
 	}
 	return true;
 }
-/*
-void* JS_LICE_AlphaPreMultiply(void* destBitmap, int dstx, int dsty, void* sourceBitmap, int srcx, int srcy, int width, int height)
-{
-	if (Julian::LICEBitmaps.count((LICE_IBitmap*)destBitmap) && Julian::LICEBitmaps.count((LICE_IBitmap*)sourceBitmap))
-		int w = LICE__GetWidth((LICE_IBitmap*)bitmap);
-		int h = LICE__GetHeight((LICE_IBitmap*)bitmap);
-		LICE_IBitmap* bm = LICE_CreateBitmap(true, w, h); // If SysBitmap, can BitBlt to/from screen like HDC.
-		// Immediately get HDC and store, so that all scripts can use the same HDC.
-		if (bm) {
-			HDC dc = LICE__GetDC(bm);
-			Julian::LICEBitmaps[bm] = dc;
-
-			LICE_pixel *psrc = ((LICE_IBitmap*)bitmap)->getBits();
-			LICE_pixel *pdst = bm->getBits();
-			const int sp = bm->getRowSpan();
-			LICE_pixel a, a2, r, g, b, *psrcout, *pdstout;
-			register uint_fast32_t f;
-			while (h--) {
-				psrcout = psrc;
-				pdstout = pdst;
-				int n = w;
-				while (n--) {
-					f = *psrcout;
-					if
-					if (f = *pout) { // Quickly skip blank pixels
-						a = (f & (uint_fast32_t)0xFF000000);
-						if (a != 0xFF000000) { // And fully opaque pixels also don't need to change
-							if (a) {
-								a2 = a >> 24; // Normalize 1..256 instead of 0..255
-								r = (((f & 0x00FF0000) * a2) >> 8) & 0x00FF0000;
-								g = (((f & 0x0000FF00) * a2) >> 8) & 0x0000FF00;
-								b = (((f & 0x000000FF) * a2) >> 8);
-								*pout = a | r | g | b;
-							}
-							else // a == 0
-								*pout = 0;
-						}
-					}
-					pout++;
-				}
-				p += sp;
-			}
-		}
-	}
-	return bm;
-}
-*/
-
 
 
 void* JS_LICE_CreateFont()
@@ -3162,19 +3114,19 @@ bool JS_LICE_ProcessRect(LICE_IBitmap* bitmap, int x, int y, int w, int h, const
 	}
 	else if (strstr(mode, "ALPHAMUL")) {
 		LICE_pixel *pout;
-		register uint32_t f, a, a2;
+		uint32_t a, a2;
 		while (h--) {
 			pout = p;
 			int n = w;
 			while (n--) {
-				if (f = *pout) { // Quickly skip blank pixels
-					a = (f & 0xFF000000);
+				if (*pout) { // Quickly skip blank pixels
+					a = (*pout & 0xFF000000);
 					if (a != 0xFF000000) { // And fully opaque pixels also don't need to change
 						if (a == 0)
 							*pout = 0;
 						else {
 							a2 = a >> 24; // Normalize 1..256 instead of 0..255
-							*pout = a | ((((f & 0x00FF0000) * a2) >> 8) & 0x00FF0000) | ((((f & 0x0000FF00) * a2) >> 8) & 0x0000FF00) | (((f & 0x000000FF) * a2) >> 8);
+							*pout = a | ((((*pout & 0x00FF0000) * a2) >> 8) & 0x00FF0000) | ((((*pout & 0x0000FF00) * a2) >> 8) & 0x0000FF00) | (((*pout & 0x000000FF) * a2) >> 8);
 						}	
 					}
 				}
