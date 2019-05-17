@@ -1385,7 +1385,7 @@ void JS_Window_SetPosition(void* windowHWND, int left, int top, int width, int h
 
 bool JS_Window_SetZOrder(void* windowHWND, const char* ZOrder, void* insertAfterHWND)
 {
-	constexpr HWND CHECK_NO_FLAG = (HWND)(-3); // Some value that should not be one of the existing flags.
+	constexpr HWND CHECK_NO_FLAG = (-3); // Some value that should not be one of the existing flags.
 	if (ValidatePtr(windowHWND, "HWND")) {
 		HWND insertAfter = CHECK_NO_FLAG;
 		if (strstr(ZOrder, "BO"))			insertAfter = HWND_BOTTOM;
@@ -2820,20 +2820,18 @@ bool JS_LICE_Blit_AlphaMultiply(LICE_IBitmap* destBitmap, int dstx, int dsty, LI
 	else pdest += dsty*dest_span;
 	pdest += dstx * sizeof(LICE_pixel);
 
-	
 	height = srcb - srcy;
 	width = srcr - srcx;
 
-	register LICE_pixel f, a2;
-	LICE_pixel *o;
-	const LICE_pixel *in;
-	LICE_pixel a, r, g, b;
-	while (height-->0)
+	LICE_pixel* o;
+	const LICE_pixel* in;
+	LICE_pixel f, a2, a, r, g, b;
+	while (height--)
 	{
 		o = pdest;
 		in = psrc;
 		int cnt = width;
-		while (cnt-->0)
+		while (cnt--)
 		{
 			f = *in;
 			a = (LICE_pixel)(f*alpha) & 0xFF000000;
