@@ -277,10 +277,31 @@ class LICE_SubBitmap : public LICE_IBitmap // note: you should only keep these a
 #define lice_min(x,y) ((x)<(y)?(x):(y))
 #endif
 
-// bitmap saving
+
+/////////////////////////////////////////////////////////////////////////////
+// !! COPIED FROM THE ifndef LICE_PROVIDED_BY_APP SECTION BELOW,
+// !!	SO THAT CAN BE LINKED WITH EVEN IF LICE_PROVIDED_BY_APP
+
 bool LICE_WritePNG(const char *filename, LICE_IBitmap *bmp, bool wantalpha = true);
-bool LICE_WriteJPG(const char *filename, LICE_IBitmap *bmp, int quality = 95, bool force_baseline = true);
-bool LICE_WriteGIF(const char *filename, LICE_IBitmap *bmp, int transparent_alpha = 0, bool dither = true); // if alpha<transparent_alpha then transparent. if transparent_alpha<0, then intra-frame checking is used
+struct _LICE_ImageLoader_rec
+{
+	LICE_IBitmap *(*loadfunc)(const char *filename, bool checkFileName, LICE_IBitmap *bmpbase);
+	const char *(*get_extlist)(); // returns GetOpenFileName sort of list "JPEG files (*.jpg)\0*.jpg\0"
+
+	struct _LICE_ImageLoader_rec *_next;
+};
+extern _LICE_ImageLoader_rec *LICE_ImageLoader_list;
+
+//void LICE_Blit(LICE_IBitmap *dest, LICE_IBitmap *src, int dstx, int dsty, int srcx, int srcy, int srcw, int srch, float alpha, int mode);
+int  LICE_BitmapCmpEx(LICE_IBitmap* a, LICE_IBitmap* b, LICE_pixel mask, int *coordsOut = NULL);
+//void LICE_Blit(LICE_IBitmap *dest, LICE_IBitmap *src, int dstx, int dsty, const RECT *srcrect, float alpha, int mode);
+
+void LICE_AlterBitmapHSV(LICE_IBitmap* src, float d_hue, float d_saturation, float d_value);  // hue is rolled over, saturation and value are clamped, all 0..1
+void LICE_AlterRectHSV(LICE_IBitmap* src, int x, int y, int w, int h, float d_hue, float d_saturation, float d_value);  // hue is rolled over, saturation and value are clamped, all 0..1
+void LICE_ProcessRect(LICE_IBitmap *dest, int x, int y, int w, int h, void(*procFunc)(LICE_pixel *p, void *parm), void *parm);
+void LICE_SetAlphaFromColorMask(LICE_IBitmap *dest, LICE_pixel color);
+
+/////////////////////////////////////////////////////////////////////////////
 
 // Reaper exports most LICE functions, so the function declarations below
 // will collide with reaper_plugin.h
@@ -319,7 +340,7 @@ LICE_IBitmap *LICE_LoadPCX(const char *filename, LICE_IBitmap *bmp=NULL); // ret
 LICE_IBitmap *LICE_LoadSVG(const char *filename, LICE_IBitmap *bmp=NULL);
 
 // bitmap saving
-bool LICE_WritePNG(const char *filename, LICE_IBitmap *bmp, bool wantalpha=true);
+//bool LICE_WritePNG(const char *filename, LICE_IBitmap *bmp, bool wantalpha=true);
 bool LICE_WriteJPG(const char *filename, LICE_IBitmap *bmp, int quality=95, bool force_baseline=true);
 bool LICE_WriteGIF(const char *filename, LICE_IBitmap *bmp, int transparent_alpha=0, bool dither=true); // if alpha<transparent_alpha then transparent. if transparent_alpha<0, then intra-frame checking is used
 
@@ -411,7 +432,7 @@ void LICE_GradRect(LICE_IBitmap *dest, int dstx, int dsty, int dstw, int dsth,
                       int mode);
 
 void LICE_FillRect(LICE_IBitmap *dest, int x, int y, int w, int h, LICE_pixel color, float alpha = 1.0f, int mode = 0);
-void LICE_ProcessRect(LICE_IBitmap *dest, int x, int y, int w, int h, void (*procFunc)(LICE_pixel *p, void *parm), void *parm);
+//void LICE_ProcessRect(LICE_IBitmap *dest, int x, int y, int w, int h, void (*procFunc)(LICE_pixel *p, void *parm), void *parm);
 
 void LICE_Clear(LICE_IBitmap *dest, LICE_pixel color);
 void LICE_ClearRect(LICE_IBitmap *dest, int x, int y, int w, int h, LICE_pixel mask=0, LICE_pixel orbits=0);
@@ -419,7 +440,7 @@ void LICE_MultiplyAddRect(LICE_IBitmap *dest, int x, int y, int w, int h,
                           float rsc, float gsc, float bsc, float asc, // 0-1, or -100 .. +100 if you really are insane
                           float radd, float gadd, float badd, float aadd); // 0-255 is the normal range on these.. of course its clamped
 
-void LICE_SetAlphaFromColorMask(LICE_IBitmap *dest, LICE_pixel color);
+//void LICE_SetAlphaFromColorMask(LICE_IBitmap *dest, LICE_pixel color);
 
 
 // non-flood fill. simply scans up/down and left/right
@@ -507,7 +528,7 @@ void LICE_BorderedRect(LICE_IBitmap *dest, int x, int y, int w, int h, LICE_pixe
 
 // bitmap compare-by-value function
 int LICE_BitmapCmp(LICE_IBitmap* a, LICE_IBitmap* b, int *coordsOut=NULL);
-int LICE_BitmapCmpEx(LICE_IBitmap* a, LICE_IBitmap* b, LICE_pixel mask, int *coordsOut=NULL);
+//int LICE_BitmapCmpEx(LICE_IBitmap* a, LICE_IBitmap* b, LICE_pixel mask, int *coordsOut=NULL);
 
 // colorspace functions
 void LICE_RGB2HSV(int r, int g, int b, int* h, int* s, int* v); // rgb, sv: [0,256), h: [0,384)
@@ -515,8 +536,8 @@ void LICE_HSV2RGB(int h, int s, int v, int* r, int* g, int* b); // rgb, sv: [0,2
 LICE_pixel LICE_HSV2Pix(int h, int s, int v, int alpha); // sv: [0,256), h: [0,384)
 
 LICE_pixel LICE_AlterColorHSV(LICE_pixel color, float d_hue, float d_saturation, float d_value);  // hue is rolled over, saturation and value are clamped, all 0..1
-void LICE_AlterBitmapHSV(LICE_IBitmap* src, float d_hue, float d_saturation, float d_value);  // hue is rolled over, saturation and value are clamped, all 0..1
-void LICE_AlterRectHSV(LICE_IBitmap* src, int x, int y, int w, int h, float d_hue, float d_saturation, float d_value);  // hue is rolled over, saturation and value are clamped, all 0..1
+//void LICE_AlterBitmapHSV(LICE_IBitmap* src, float d_hue, float d_saturation, float d_value);  // hue is rolled over, saturation and value are clamped, all 0..1
+//void LICE_AlterRectHSV(LICE_IBitmap* src, int x, int y, int w, int h, float d_hue, float d_saturation, float d_value);  // hue is rolled over, saturation and value are clamped, all 0..1
 
 LICE_pixel LICE_CombinePixels(LICE_pixel dest, LICE_pixel src, float alpha, int mode);
 
@@ -547,7 +568,7 @@ int LICE_ExtractOctreePalette(void* octree, LICE_pixel* palette);
 int LICE_BuildPalette(LICE_IBitmap* bmp, LICE_pixel* palette, int maxcolors);
 void LICE_TestPalette(LICE_IBitmap* bmp, LICE_pixel* palette, int numcolors);
 
-
+/*
 struct _LICE_ImageLoader_rec
 {
   LICE_IBitmap *(*loadfunc)(const char *filename, bool checkFileName, LICE_IBitmap *bmpbase); 
@@ -556,7 +577,7 @@ struct _LICE_ImageLoader_rec
   struct _LICE_ImageLoader_rec *_next;
 };
 extern _LICE_ImageLoader_rec *LICE_ImageLoader_list;
-
+*/
 
 #endif // LICE_PROVIDED_BY_APP
 
