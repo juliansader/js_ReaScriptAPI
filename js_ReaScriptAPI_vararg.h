@@ -323,8 +323,7 @@ static void* __vararg_JS_Window_SetPosition(void** arglist, int numparms)
 
 static void* __vararg_JS_Window_SetZOrder(void** arglist, int numparms)
 {
-	JS_Window_SetZOrder((void*)arglist[0], (const char*)arglist[1], (void*)arglist[2]);
-	return NULL;
+	return (void*)(intptr_t)JS_Window_SetZOrder((void*)arglist[0], (const char*)arglist[1], (numparms > 2) ? (void*)arglist[2] : 0);
 }
 
 static void* __vararg_JS_Window_GetLongPtr(void** arglist, int numparms)
@@ -706,6 +705,12 @@ static void* __vararg_JS_LICE_ScaledBlit(void** arglist, int numparms)
 	return NULL;
 }
 
+static void* __vararg_JS_LICE_Blur(void** arglist, int numparms)
+{
+	JS_LICE_Blur((void*)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (void*)arglist[3], (int)(intptr_t)arglist[4], (int)(intptr_t)arglist[5], (int)(intptr_t)arglist[6], (int)(intptr_t)arglist[7]);
+	return NULL;
+}
+
 static void* __vararg_JS_LICE_IsFlipped(void** arglist, int numparms)
 {
 	return (void*)(intptr_t)JS_LICE_IsFlipped((void*)arglist[0]);
@@ -713,8 +718,7 @@ static void* __vararg_JS_LICE_IsFlipped(void** arglist, int numparms)
 
 static void* __vararg_JS_LICE_Resize(void** arglist, int numparms)
 {
-	JS_LICE_Resize((void*)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2]);
-	return NULL;
+	return (void*)(intptr_t)JS_LICE_Resize((void*)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2]);
 }
 
 static void* __vararg_JS_LICE_Clear(void** arglist, int numparms)
@@ -834,13 +838,39 @@ static void* __vararg_JS_LICE_RoundRect(void** arglist, int numparms)
 
 static void* __vararg_JS_LICE_GetPixel(void** arglist, int numparms)
 {
-	return (void*)(intptr_t)JS_LICE_GetPixel((void*)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2]);
+	JS_LICE_GetPixel((void*)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (double*)arglist[3]);
+	return NULL;
 }
 
 static void* __vararg_JS_LICE_PutPixel(void** arglist, int numparms)
 {
-	JS_LICE_PutPixel((void*)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (int)(intptr_t)arglist[3], arglist[4] ? *(double*)arglist[4] : 0.0, (const char*)arglist[5]);
+	JS_LICE_PutPixel((void*)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], arglist[3] ? *(double*)arglist[3] : 0.0, arglist[4] ? *(double*)arglist[4] : 0.0, (const char*)arglist[5]);
 	return NULL;
+}
+
+
+
+static void* __vararg_JS_LICE_SetAlphaFromColorMask(void** arglist, int numparms)
+{
+	JS_LICE_SetAlphaFromColorMask((LICE_IBitmap*)arglist[0], (LICE_pixel)(intptr_t)arglist[1]);
+	return NULL;
+}
+
+static void* __vararg_JS_LICE_AlterBitmapHSV(void** arglist, int numparms)
+{
+	JS_LICE_AlterBitmapHSV((LICE_IBitmap*)arglist[0], arglist[1] ? *(double*)arglist[1] : 0.0, arglist[2] ? *(double*)arglist[2] : 0.0, arglist[3] ? *(double*)arglist[3] : 0.0);
+	return NULL;
+}
+
+static void* __vararg_JS_LICE_AlterRectHSV(void** arglist, int numparms)
+{
+	JS_LICE_AlterRectHSV((LICE_IBitmap*)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (int)(intptr_t)arglist[3], (int)(intptr_t)arglist[4], arglist[5] ? *(double*)arglist[5] : 0.0, arglist[6] ? *(double*)arglist[6] : 0.0, arglist[7] ? *(double*)arglist[7] : 0.0);
+	return NULL;
+}
+
+static void* __vararg_JS_LICE_ProcessRect(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_LICE_ProcessRect((LICE_IBitmap*)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (int)(intptr_t)arglist[3], (int)(intptr_t)arglist[4], (const char*)arglist[5], (numparms > 6 && arglist[6]) ? *(double*)arglist[6] : 0.0);
 }
 
 
@@ -848,12 +878,13 @@ static void* __vararg_JS_LICE_PutPixel(void** arglist, int numparms)
 
 static void* __vararg_JS_Window_AttachTopmostPin(void** arglist, int numparms)
 {
-	return JS_Window_AttachTopmostPin((HWND)arglist[0]);
+	JS_Window_AttachTopmostPin(arglist[0]);
+	return NULL;
 }
 
 static void* __vararg_JS_Window_AttachResizeGrip(void** arglist, int numparms)
 {
-	JS_Window_AttachResizeGrip((void*)arglist[0]);
+	JS_Window_AttachResizeGrip(arglist[0]);
 	return NULL;
 }
 

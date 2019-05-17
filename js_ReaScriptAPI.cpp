@@ -14,7 +14,7 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 		{
 			// This is the WIN32 / swell MessageBox, not REAPER's API MB.  This should create a separate window that is listed in the taskbar,
 			//		and more easily visible behind REAPER's splash screen.
-			MessageBox(NULL, "Unable to import default API functions.\n\nNOTE:\nThis extension requires REAPER v5.965 or later.", "ERROR: js_ReaScriptAPI extension", 0);  //fprintf(stderr, "Unable to import API functions.\n");
+			MessageBox(NULL, "Unable to import default API functions.\n\nNOTE:\nThis extension requires REAPER v5.974 or higher.", "ERROR: js_ReaScriptAPI extension", 0);  //fprintf(stderr, "Unable to import API functions.\n");
 			return 0;
 		}
 		//		Load each of the undocumented functions.
@@ -36,6 +36,13 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 		if (!((*(void **)&CoolSB_SetScrollPos) = (void *)rec->GetFunc("CoolSB_SetScrollPos")))
 		{
 			MessageBox(NULL, "Unable to import CoolSB_SetScrollPos function.", "ERROR: js_ReaScriptAPI extension", 0);
+			return 0;
+		}
+
+		Julian::REAPER_VERSION = atof(GetAppVersion());
+		if (Julian::REAPER_VERSION < 5.974)
+		{
+			MessageBox(NULL, "This extension requires REAPER v5.974 or higher.", "ERROR: js_ReaScriptAPI extension", 0);
 			return 0;
 		}
 
@@ -72,8 +79,6 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 
 		// UNDOCUMENTED FEATURE! "<accelerator" instead of "accelerator" places function in front of keyboard processing queue
 		plugin_register("<accelerator", &(Julian::sAccelerator));
-
-		Julian::REAPER_VERSION = atof(GetAppVersion());
 
 		return 1; // success
 	}
@@ -147,11 +152,13 @@ v0.985
  * BrowseForOpenFiles: On WindowsOS, prevent creating new file.
 v0.986
  * New: JS_LICE_WritePNG.
+v0.987
+ * New: Various functions for manipulating LICE colors.
 */
 
 void JS_ReaScriptAPI_Version(double* versionOut)
 {
-	*versionOut = 0.986;
+	*versionOut = 0.987;
 }
 
 void JS_Localize(const char* USEnglish, const char* LangPackSection, char* translationOut, int translationOut_sz)
@@ -1376,17 +1383,30 @@ void JS_Window_SetPosition(void* windowHWND, int left, int top, int width, int h
 	SetWindowPos((HWND)windowHWND, NULL, left, top, width, height, SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOOWNERZORDER );
 }
 
-void JS_Window_SetZOrder(void* windowHWND, const char* ZOrder, void* insertAfterHWND)
+bool JS_Window_SetZOrder(void* windowHWND, const char* ZOrder, void* insertAfterHWND)
 {
-	HWND insertAfter;
-	// Search for single chars that can distinguish the different ZOrder strings.
-	if      (strstr(ZOrder, "IN"))		insertAfter = (HWND)insertAfterHWND; // insertAfter
-	else if (strstr(ZOrder, "BO"))		insertAfter = HWND_BOTTOM;
-	else if (strstr(ZOrder, "NOT"))		insertAfter = HWND_NOTOPMOST;
-	else if (strstr(ZOrder, "TOPM"))	insertAfter = HWND_TOPMOST;
-	else								insertAfter = HWND_TOP; // Top
-
-	SetWindowPos((HWND)windowHWND, insertAfter, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+	constexpr HWND CHECK_NO_FLAG = (HWND)(-3); // Some value that should not be one of the existing flags.
+	if (ValidatePtr(windowHWND, "HWND")) {
+		HWND insertAfter = CHECK_NO_FLAG;
+		if (strstr(ZOrder, "BO"))			insertAfter = HWND_BOTTOM;
+		else if (strstr(ZOrder, "NOT"))		insertAfter = HWND_NOTOPMOST;
+		else if (strstr(ZOrder, "TOPM"))	insertAfter = HWND_TOPMOST;
+		else if (strstr(ZOrder, "TOP"))		insertAfter = HWND_TOP; // Top
+#ifdef _WIN32
+		else if (strstr(ZOrder, "IN")) {
+			if (ValidatePtr(insertAfterHWND, "HWND"))
+				insertAfter = (HWND)insertAfterHWND;
+		}
+		if (insertAfter != CHECK_NO_FLAG) { // Was given a proper new value?
+			return !!SetWindowPos((HWND)windowHWND, insertAfter, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+#else
+		if (insertAfter != CHECK_NO_FLAG) { // Was given a proper new value?
+			SetWindowPos((HWND)windowHWND, insertAfter, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+			return true;
+#endif
+		}
+	}
+	return false;
 }
 
 void JS_Window_Update(HWND windowHWND)
@@ -2631,7 +2651,7 @@ void JS_LICE_DestroyBitmap(LICE_IBitmap* bitmap)
 }
 
 
-#define LICE_BLIT_MODE_MASK 0xff
+#define LICE_BLIT_MODE_MASK 0xff // Similar to CHANCOPY_ATOA
 #define LICE_BLIT_MODE_COPY 0
 #define LICE_BLIT_MODE_ADD 1
 #define LICE_BLIT_MODE_DODGE 2
@@ -2654,9 +2674,26 @@ void JS_LICE_DestroyBitmap(LICE_IBitmap* bitmap)
 
 void JS_LICE_Blit(void* destBitmap, int dstx, int dsty, void* sourceBitmap, int srcx, int srcy, int width, int height, double alpha, const char* mode)
 {	
-	GETINTMODE
 	if (Julian::LICEBitmaps.count((LICE_IBitmap*)destBitmap) && Julian::LICEBitmaps.count((LICE_IBitmap*)sourceBitmap))
-		LICE_Blit((LICE_IBitmap*)destBitmap, (LICE_IBitmap*)sourceBitmap, dstx, dsty, srcx, srcy, width, height, (float)alpha, intMode);
+	{
+		if (strstr(mode, "BLUR"))
+			LICE_Blur((LICE_IBitmap*)destBitmap, (LICE_IBitmap*)sourceBitmap, dstx, dsty, srcx, srcy, width, height);
+		else if (strstr(mode, "ALPHAMUL"))
+			JS_LICE_Blit_AlphaMultiply((LICE_IBitmap*)destBitmap, dstx, dsty, (LICE_IBitmap*)sourceBitmap, srcx, srcy, width, height, alpha);
+		else {
+			GETINTMODE
+			if (strstr(mode, "CHANCOPY")) { // This mode is only available for LICE_Blit()
+				intMode = LICE_BLIT_MODE_CHANCOPY;
+				if (strstr(mode, "_G")) intMode |= 1;
+				else if (strstr(mode, "_R")) intMode |= 2;
+				else if (strstr(mode, "_A")) intMode |= 3;
+				if (strstr(mode, "TOG")) intMode |= 1 << 2;
+				else if (strstr(mode, "TOR")) intMode |= 2 << 2;
+				else if (strstr(mode, "TOA")) intMode |= 3 << 2;
+			}
+			LICE_Blit((LICE_IBitmap*)destBitmap, (LICE_IBitmap*)sourceBitmap, dstx, dsty, srcx, srcy, width, height, (float)alpha, intMode);
+		}
+	}
 }
 
 void JS_LICE_RotatedBlit(void* destBitmap, int dstx, int dsty, int dstw, int dsth, void* sourceBitmap, double srcx, double srcy, double srcw, double srch, double angle, double rotxcent, double rotycent, bool cliptosourcerect, double alpha, const char* mode)
@@ -2671,6 +2708,12 @@ void JS_LICE_ScaledBlit(void* destBitmap, int dstx, int dsty, int dstw, int dsth
 	GETINTMODE
 	if (Julian::LICEBitmaps.count((LICE_IBitmap*)destBitmap) && Julian::LICEBitmaps.count((LICE_IBitmap*)sourceBitmap))
 		LICE_ScaledBlit((LICE_IBitmap*)destBitmap, (LICE_IBitmap*)sourceBitmap, dstx, dsty, dstw, dsth, (float)srcx, (float)srcy, (float)srcw, (float)srch, (float)alpha, intMode);
+}
+
+void JS_LICE_Blur(void* destBitmap, int dstx, int dsty, void* sourceBitmap, int srcx, int srcy, int width, int height)
+{
+	if (Julian::LICEBitmaps.count((LICE_IBitmap*)destBitmap) && Julian::LICEBitmaps.count((LICE_IBitmap*)sourceBitmap))
+		LICE_Blur((LICE_IBitmap*)destBitmap, (LICE_IBitmap*)sourceBitmap, dstx, dsty, srcx, srcy, width, height);
 }
 
 void* JS_LICE_LoadPNG(const char* filename)
@@ -2729,6 +2772,137 @@ void JS_LICE_Clear(void* bitmap, int color)
 	if (Julian::LICEBitmaps.count((LICE_IBitmap*)bitmap))
 		LICE_Clear((LICE_IBitmap*)bitmap, (LICE_pixel)color);
 }
+
+bool JS_LICE_Blit_AlphaMultiply(LICE_IBitmap* destBitmap, int dstx, int dsty, LICE_IBitmap* sourceBitmap, int srcx, int srcy, int width, int height, double alpha)
+{
+	//if (Julian::LICEBitmaps.count((LICE_IBitmap*)destBitmap) && Julian::LICEBitmaps.count((LICE_IBitmap*)sourceBitmap))
+	int srcr = srcx + width;
+	int srcb = srcy + height;
+
+	// clip to input
+	if (srcx < 0) { dstx -= srcx; srcx = 0; }
+	if (srcy < 0) { dsty -= srcy; srcy = 0; }
+	if (srcr > sourceBitmap->getWidth()) srcr = sourceBitmap->getWidth();
+	if (srcb > sourceBitmap->getHeight()) srcb = sourceBitmap->getHeight();
+
+	// clip to output
+	if (dstx < 0) { srcx -= dstx; dstx = 0; }
+	if (dsty < 0) { srcy -= dsty; dsty = 0; }
+
+	const int destbm_w = destBitmap->getWidth(), destbm_h = destBitmap->getHeight();
+	if (srcr <= srcx || srcb <= srcy || dstx >= destbm_w || dsty >= destbm_h) return true;
+
+	if (srcr > srcx + (destbm_w - dstx)) srcr = srcx + (destbm_w - dstx);
+	if (srcb > srcy + (destbm_h - dsty)) srcb = srcy + (destbm_h - dsty);
+
+	// ignore blits that are 0
+	if (srcr <= srcx || srcb <= srcy) return true;
+
+	int dest_span = destBitmap->getRowSpan(); // *sizeof(LICE_pixel);
+	int src_span = sourceBitmap->getRowSpan(); // *sizeof(LICE_pixel);
+	const LICE_pixel *psrc = (LICE_pixel *)sourceBitmap->getBits();
+	LICE_pixel *pdest = (LICE_pixel *)destBitmap->getBits();
+	if (!psrc || !pdest) return false;
+
+	if (sourceBitmap->isFlipped())
+	{
+		psrc += (sourceBitmap->getHeight() - srcy - 1)*src_span;
+		src_span = -src_span;
+	}
+	else psrc += srcy*src_span;
+	psrc += srcx * sizeof(LICE_pixel);
+
+	if (destBitmap->isFlipped())
+	{
+		pdest += (destbm_h - dsty - 1)*dest_span;
+		dest_span = -dest_span;
+	}
+	else pdest += dsty*dest_span;
+	pdest += dstx * sizeof(LICE_pixel);
+
+	
+	height = srcb - srcy;
+	width = srcr - srcx;
+
+	register LICE_pixel f, a2;
+	LICE_pixel *o;
+	const LICE_pixel *in;
+	LICE_pixel a, r, g, b;
+	while (height-->0)
+	{
+		o = pdest;
+		in = psrc;
+		int cnt = width;
+		while (cnt-->0)
+		{
+			f = *in;
+			a = (LICE_pixel)(f*alpha) & 0xFF000000;
+			if (!a)
+				*o = 0;
+			else if (a == 0xFF000000)
+				*o = f;
+			else {
+				a2 = a >> 24;
+				r = (((f & 0x00FF0000) * a2) >> 8) & 0x00FF0000;
+				g = (((f & 0x0000FF00) * a2) >> 8) & 0x0000FF00;
+				b = (((f & 0x000000FF) * a2) >> 8);
+				*o = a | r | g | b;
+			}
+			o++;
+			in++;
+		}
+		pdest += dest_span;
+		psrc += src_span;
+	}
+	return true;
+}
+/*
+void* JS_LICE_AlphaPreMultiply(void* destBitmap, int dstx, int dsty, void* sourceBitmap, int srcx, int srcy, int width, int height)
+{
+	if (Julian::LICEBitmaps.count((LICE_IBitmap*)destBitmap) && Julian::LICEBitmaps.count((LICE_IBitmap*)sourceBitmap))
+		int w = LICE__GetWidth((LICE_IBitmap*)bitmap);
+		int h = LICE__GetHeight((LICE_IBitmap*)bitmap);
+		LICE_IBitmap* bm = LICE_CreateBitmap(true, w, h); // If SysBitmap, can BitBlt to/from screen like HDC.
+		// Immediately get HDC and store, so that all scripts can use the same HDC.
+		if (bm) {
+			HDC dc = LICE__GetDC(bm);
+			Julian::LICEBitmaps[bm] = dc;
+
+			LICE_pixel *psrc = ((LICE_IBitmap*)bitmap)->getBits();
+			LICE_pixel *pdst = bm->getBits();
+			const int sp = bm->getRowSpan();
+			LICE_pixel a, a2, r, g, b, *psrcout, *pdstout;
+			register uint_fast32_t f;
+			while (h--) {
+				psrcout = psrc;
+				pdstout = pdst;
+				int n = w;
+				while (n--) {
+					f = *psrcout;
+					if
+					if (f = *pout) { // Quickly skip blank pixels
+						a = (f & (uint_fast32_t)0xFF000000);
+						if (a != 0xFF000000) { // And fully opaque pixels also don't need to change
+							if (a) {
+								a2 = a >> 24; // Normalize 1..256 instead of 0..255
+								r = (((f & 0x00FF0000) * a2) >> 8) & 0x00FF0000;
+								g = (((f & 0x0000FF00) * a2) >> 8) & 0x0000FF00;
+								b = (((f & 0x000000FF) * a2) >> 8);
+								*pout = a | r | g | b;
+							}
+							else // a == 0
+								*pout = 0;
+						}
+					}
+					pout++;
+				}
+				p += sp;
+			}
+		}
+	}
+	return bm;
+}
+*/
 
 
 
@@ -2857,55 +3031,199 @@ void JS_LICE_Bezier(void* bitmap, double xstart, double ystart, double xctl1, do
 		LICE_DrawCBezier((LICE_IBitmap*)bitmap, xstart, ystart, xctl1, yctl1, xctl2, yctl2, xend, yend, (LICE_pixel)color, (float)alpha, intMode, antialias, tol);
 }
 
-int JS_LICE_GetPixel(void* bitmap, int x, int y)
+void JS_LICE_GetPixel(void* bitmap, int x, int y, double* colorOut)
 {
 	if (Julian::LICEBitmaps.count((LICE_IBitmap*)bitmap))
-		return (int)LICE_GetPixel((LICE_IBitmap*)bitmap, x, y);
+		*colorOut = (double)(LICE_GetPixel((LICE_IBitmap*)bitmap, x, y));
 	else
-		return 0;
+		*colorOut = -1;
 }
 
-void JS_LICE_PutPixel(void* bitmap, int x, int y, int color, double alpha, const char* mode)
+void JS_LICE_PutPixel(void* bitmap, int x, int y, double color, double alpha, const char* mode)
 {
 	GETINTMODE
 	if (Julian::LICEBitmaps.count((LICE_IBitmap*)bitmap))
 		LICE_PutPixel((LICE_IBitmap*)bitmap, x, y, (LICE_pixel)color, (float)alpha, intMode);
 }
 
+void JS_LICE_SetAlphaFromColorMask(LICE_IBitmap* bitmap, LICE_pixel color)
+{
+	color &= 0xFFFFFF;
+	LICE_SetAlphaFromColorMask(bitmap, color);
+	/*if (!bitmap) return;
+	LICE_pixel *p = bitmap->getBits();
+	int h = bitmap->getHeight();
+	int w = bitmap->getWidth();
+	int sp = bitmap->getRowSpan();
+	if (!p || w<1 || h<1 || sp<1) return;
+
+	while (h-->0)
+	{
+		int n = w;
+		while (n--)
+		{
+			if ((*p&LICE_RGBA(255, 255, 255, 0)) == color) *p &= LICE_RGBA(255, 255, 255, 0);
+			else *p |= LICE_RGBA(0, 0, 0, 255);
+			p++;
+		}
+		p += sp - w;
+	}*/
+}
+
+void  JS_LICE_AlterBitmapHSV(LICE_IBitmap* bitmap, float hue, float saturation, float value)  // hue is rolled over, saturation and value are clamped, all 0..1
+{
+	LICE_AlterBitmapHSV(bitmap, hue, saturation, value);
+}
+
+void  JS_LICE_AlterRectHSV(LICE_IBitmap* bitmap, int x, int y, int w, int h, float hue, float saturation, float value)  // hue is rolled over, saturation and value are clamped, all 0..1
+{
+	LICE_AlterRectHSV(bitmap, x, y, w, h, hue, saturation, value);
+}
+
+bool JS_LICE_ProcessRect(LICE_IBitmap* bitmap, int x, int y, int w, int h, const char* mode, double operand)
+{
+	// In order to avoid the overhead of a separate function call for each pixel, 
+	//		this code is copied from Cockos's lice.h.
+	if (!Julian::LICEBitmaps.count((LICE_IBitmap*)bitmap)) return false;
+
+	if (x<0) { w += x; x = 0; }
+	if (y<0) { h += y; y = 0; }
+
+	LICE_pixel *p = bitmap->getBits();
+	const int sp = bitmap->getRowSpan();
+	const int destbm_w = bitmap->getWidth(), destbm_h = bitmap->getHeight();
+	if (!p || !sp || w<1 || h < 1 || x >= destbm_w || y >= destbm_h) return false;
+
+	if (w > destbm_w - x) w = destbm_w - x;
+	if (h > destbm_h - y) h = destbm_h - y;
+
+	if (bitmap->isFlipped()) p += (destbm_h - y - h)*sp;
+	else p += sp*y;
+
+	p += x;
+
+	if (strstr(mode, "XOR")) {
+		LICE_pixel q = (uint32_t)operand;
+		LICE_pixel* pout;
+		while (h--)	{
+			pout = p;
+			int n = w;
+			while (n--) {
+				*pout ^= q;
+				pout++;
+			}
+			p += sp;
+		}
+	}
+	else if (strstr(mode, "AND")) {
+		LICE_pixel q = (uint32_t)operand;
+		LICE_pixel* pout;
+		while (h--) {
+			pout = p;
+			int n = w;
+			while (n--) {
+				*pout &= q;
+				pout++;
+			}
+			p += sp;
+		}
+	}
+	else if (strstr(mode, "OR")) {
+		LICE_pixel q = (uint32_t)operand;
+		LICE_pixel* pout;
+		while (h--) {
+			pout = p;
+			int n = w;
+			while (n--) {
+				*pout |= q;
+				pout++;
+			}
+			p += sp;
+		}
+	}
+	else if (strstr(mode, "SET_")) {
+		LICE_pixel mask = 0xFFFFFFFF; // which channels must be removed from bitmap pixels?
+		LICE_pixel* pout;
+		if (strchr(mode, 'A')) mask &= 0x00FFFFFF;
+		if (strchr(mode, 'R')) mask &= 0xFF00FFFF;
+		if (strchr(mode, 'G')) mask &= 0xFFFF00FF;
+		if (strchr(mode, 'B')) mask &= 0xFFFFFF00;
+		if (mask == 0xFFFFFFFF) return false;
+		LICE_pixel q = ((uint32_t)operand) & (uint32_t)(~mask);
+		while (h--)	{
+			pout = p;
+			int n = w;
+			while (n--) {
+				*pout = ((*pout) & mask) | q;
+				pout++;
+			}
+			p += sp;
+		}
+	}
+	else if (strstr(mode, "ALPHAMUL")) {
+		LICE_pixel *pout;
+		register uint32_t f, a, a2;
+		while (h--) {
+			pout = p;
+			int n = w;
+			while (n--) {
+				if (f = *pout) { // Quickly skip blank pixels
+					a = (f & 0xFF000000);
+					if (a != 0xFF000000) { // And fully opaque pixels also don't need to change
+						if (a == 0)
+							*pout = 0;
+						else {
+							a2 = a >> 24; // Normalize 1..256 instead of 0..255
+							*pout = a | ((((f & 0x00FF0000) * a2) >> 8) & 0x00FF0000) | ((((f & 0x0000FF00) * a2) >> 8) & 0x0000FF00) | (((f & 0x000000FF) * a2) >> 8);
+						}	
+					}
+				}
+				pout++;
+			}
+			p += sp;
+		}
+	}
+	else
+		return false;
+
+	return true;
+}
 
 ///////////////////////////////////////////////////////////
 // Undocumented functions
 
-BOOL CALLBACK JS_Window_AttachTopmost_Callback_Remove(HWND hwnd, LPARAM lparam)
+void JS_Window_AttachTopmostPin(void* windowHWND)
 {
-	std::set<HWND>& s = *(reinterpret_cast<std::set<HWND>*>(lparam));
-	s.erase(hwnd);
-	return TRUE;
-}
-
-BOOL CALLBACK JS_Window_AttachTopmost_Callback_Get(HWND hwnd, LPARAM lparam)
-{
-	std::set<HWND>& s = *(reinterpret_cast<std::set<HWND>*>(lparam));
-	s.insert(hwnd);
-	return TRUE;
-}
-
-HWND JS_Window_AttachTopmostPin(HWND windowHWND)
-{
-	std::set<HWND> childWindows;
-	EnumChildWindows(windowHWND, JS_Window_AttachTopmost_Callback_Get, reinterpret_cast<LPARAM>(&childWindows));
-	AttachWindowTopmostButton((HWND)windowHWND);
-	SetWindowPos((HWND)windowHWND, NULL, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER); // Force re-draw frame, otherwise pin only becomes visible when window is moved.
-	EnumChildWindows(windowHWND, JS_Window_AttachTopmost_Callback_Remove, reinterpret_cast<LPARAM>(&childWindows));
-	if (childWindows.size() == 1)
-		return *childWindows.begin();
-	else
-		return nullptr;
+	if (ValidatePtr((HWND)windowHWND, "HWND")) {
+#ifdef _WIN32
+		if (GetWindowLongPtr((HWND)windowHWND, GWL_STYLE) & WS_THICKFRAME)
+#elif __APPLE__
+		if (GetWindowLong((HWND)windowHWND, GWL_STYLE) & WS_THICKFRAME)
+#elif __linux__ // Not yet available on Linux
+		return;
+#endif
+		{
+			AttachWindowTopmostButton((HWND)windowHWND);
+			SetWindowPos((HWND)windowHWND, NULL, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER); // Force re-draw frame, otherwise pin only becomes visible when window is moved.
+		}
+	}
 }
 
 void JS_Window_AttachResizeGrip(void* windowHWND)
 {
-	AttachWindowResizeGrip((HWND)windowHWND);
+	if (ValidatePtr((HWND)windowHWND, "HWND")) {
+#ifdef _WIN32
+		if (GetWindowLongPtr((HWND)windowHWND, GWL_STYLE) & WS_THICKFRAME)
+#elif __APPLE__
+		if (GetWindowLong((HWND)windowHWND, GWL_STYLE) & WS_THICKFRAME)
+#elif __linux__ // Not yet available on Linux
+		return;
+#endif
+		{
+			AttachWindowResizeGrip((HWND)windowHWND);
+			SetWindowPos((HWND)windowHWND, NULL, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER); // Force re-draw frame, otherwise pin only becomes visible when window is moved.
+		}
+	}
 }
 
 

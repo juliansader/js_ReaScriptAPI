@@ -49,7 +49,7 @@ int   JS_MIDIEditor_ListAll(char* listOutNeedBig, int listOutNeedBig_sz);
 void  JS_Window_Move(void* windowHWND, int left, int top);
 void  JS_Window_Resize(void* windowHWND, int width, int height);
 void  JS_Window_SetPosition(void* windowHWND, int left, int top, int width, int height);
-void  JS_Window_SetZOrder(void* windowHWND, const char* ZOrder, void* insertAfterHWND);
+bool  JS_Window_SetZOrder(void* windowHWND, const char* ZOrder, void* insertAfterHWND);
 void* JS_Window_GetLongPtr(void* windowHWND, const char* info);
 void  JS_Window_GetLong(void* windowHWND, const char* info, double* retvalOut);
 bool  JS_Window_SetOpacity_ObjC(void* windowHWND, double alpha);
@@ -147,10 +147,12 @@ void  JS_LICE_DestroyBitmap(LICE_IBitmap* bitmap);
 void  JS_LICE_Blit(void* destBitmap, int dstx, int dsty, void* sourceBitmap, int srcx, int srcy, int width, int height, double alpha, const char* mode);
 void  JS_LICE_RotatedBlit(void* destBitmap, int dstx, int dsty, int dstw, int dsth, void* sourceBitmap, double srcx, double srcy, double srcw, double srch, double angle, double rotxcent, double rotycent, bool cliptosourcerect, double alpha, const char* mode);
 void  JS_LICE_ScaledBlit(void* destBitmap, int dstx, int dsty, int dstw, int dsth, void* sourceBitmap, double srcx, double srcy, double srcw, double srch, double alpha, const char* mode);
+void  JS_LICE_Blur(void* destBitmap, int dstx, int dsty, void* sourceBitmap, int srcx, int srcy, int width, int height);
+bool  JS_LICE_Blit_AlphaMultiply(LICE_IBitmap* destBitmap, int dstx, int dsty, LICE_IBitmap* sourceBitmap, int srcx, int srcy, int width, int height, double alpha);
 
 void* JS_LICE_LoadPNG(const char* filename);
 bool  JS_LICE_WritePNG(const char* filename, LICE_IBitmap* bitmap, bool wantAlpha);
-bool  LICE_WritePNG(const char* filename, LICE_IBitmap* bitmap, bool wantAlpha); // lice.h excludes these functions if LICE_PROVIDED_BY_APP, so must declare this function myself.
+//bool  LICE_WritePNG(const char* filename, LICE_IBitmap* bitmap, bool wantAlpha); // lice.h excludes these functions if LICE_PROVIDED_BY_APP, so must declare this function myself.
 //bool  JS_LICE_WriteJPG(const char *filename, LICE_IBitmap *bmp, int quality, bool force_baseline);
 bool  JS_LICE_IsFlipped(void* bitmap);
 bool  JS_LICE_Resize(void* bitmap, int width, int height);
@@ -177,10 +179,20 @@ void  JS_LICE_Arc(void* bitmap, double cx, double cy, double r, double minAngle,
 void  JS_LICE_Circle(void* bitmap, double cx, double cy, double r, int color, double alpha, const char* mode, bool antialias);
 void  JS_LICE_RoundRect(void* bitmap, double x, double y, double w, double h, int cornerradius, int color, double alpha, const char* mode, bool antialias);
 
-int   JS_LICE_GetPixel(void* bitmap, int x, int y);
-void  JS_LICE_PutPixel(void* bitmap, int x, int y, int color, double alpha, const char* mode);
+void  JS_LICE_GetPixel(void* bitmap, int x, int y, double* colorOut);
+void  JS_LICE_PutPixel(void* bitmap, int x, int y, double color, double alpha, const char* mode);
 
-HWND  JS_Window_AttachTopmostPin(HWND windowHWND);
+// Functions from LICE that are not provided by app (also WritePNG above)
+//void  LICE_SetAlphaFromColorMask(LICE_IBitmap *dest, LICE_pixel color);
+void  JS_LICE_SetAlphaFromColorMask(LICE_IBitmap *dest, LICE_pixel color);
+//void  LICE_AlterBitmapHSV(LICE_IBitmap* src, float d_hue, float d_saturation, float d_value);  // hue is rolled over, saturation and value are clamped, all 0..1
+//void  LICE_AlterRectHSV(LICE_IBitmap* src, int x, int y, int w, int h, float d_hue, float d_saturation, float d_value);  // hue is rolled over, saturation and value are clamped, all 0..1
+void  JS_LICE_AlterBitmapHSV(LICE_IBitmap* src, float d_hue, float d_saturation, float d_value);  // hue is rolled over, saturation and value are clamped, all 0..1
+void  JS_LICE_AlterRectHSV(LICE_IBitmap* src, int x, int y, int w, int h, float d_hue, float d_saturation, float d_value);  // hue is rolled over, saturation and value are clamped, all 0..1
+bool  JS_LICE_ProcessRect(LICE_IBitmap* bitmap, int x, int y, int w, int h, const char* mode, double operand);
+
+// Undocumented functions
+void  JS_Window_AttachTopmostPin(void* windowHWND);
 void  JS_Window_AttachResizeGrip(void* windowHWND);
 
 int   JS_ListView_GetItemCount(HWND listviewHWND);
