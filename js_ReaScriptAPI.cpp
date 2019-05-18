@@ -2823,9 +2823,8 @@ bool JS_LICE_Blit_AlphaMultiply(LICE_IBitmap* destBitmap, int dstx, int dsty, LI
 	height = srcb - srcy;
 	width = srcr - srcx;
 
-	LICE_pixel* o;
+	LICE_pixel *o, a, a2;
 	const LICE_pixel* in;
-	LICE_pixel f, a2, a, r, g, b;
 	while (height--)
 	{
 		o = pdest;
@@ -2833,18 +2832,14 @@ bool JS_LICE_Blit_AlphaMultiply(LICE_IBitmap* destBitmap, int dstx, int dsty, LI
 		int cnt = width;
 		while (cnt--)
 		{
-			f = *in;
-			a = (LICE_pixel)(f*alpha) & 0xFF000000;
+			a = (LICE_pixel)((*in) * alpha) & 0xFF000000;
 			if (!a)
 				*o = 0;
 			else if (a == 0xFF000000)
-				*o = f;
+				*o = *in;
 			else {
 				a2 = a >> 24;
-				r = (((f & 0x00FF0000) * a2) >> 8) & 0x00FF0000;
-				g = (((f & 0x0000FF00) * a2) >> 8) & 0x0000FF00;
-				b = (((f & 0x000000FF) * a2) >> 8);
-				*o = a | r | g | b;
+				*o = a | (((((*in) & 0x00FF0000) * a2) >> 8) & 0x00FF0000) | (((((*in) & 0x0000FF00) * a2) >> 8) & 0x0000FF00) | ((((*in) & 0x000000FF) * a2) >> 8);
 			}
 			o++;
 			in++;
