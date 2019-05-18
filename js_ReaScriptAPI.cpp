@@ -1385,9 +1385,9 @@ void JS_Window_SetPosition(void* windowHWND, int left, int top, int width, int h
 
 bool JS_Window_SetZOrder(void* windowHWND, const char* ZOrder, void* insertAfterHWND)
 {
-	constexpr HWND CHECK_NO_FLAG = (HWND)(intptr_t)(-3); // Some value that should not be one of the existing flags.
+	constexpr intptr_t CHECK_NO_FLAG = -3; // Some value that should not be one of the existing flags.
 	if (ValidatePtr(windowHWND, "HWND")) {
-		HWND insertAfter = CHECK_NO_FLAG;
+		HWND insertAfter = (HWND)CHECK_NO_FLAG;
 		if (strstr(ZOrder, "BO"))			insertAfter = HWND_BOTTOM;
 		else if (strstr(ZOrder, "NOT"))		insertAfter = HWND_NOTOPMOST;
 		else if (strstr(ZOrder, "TOPM"))	insertAfter = HWND_TOPMOST;
@@ -1397,10 +1397,10 @@ bool JS_Window_SetZOrder(void* windowHWND, const char* ZOrder, void* insertAfter
 			if (ValidatePtr(insertAfterHWND, "HWND"))
 				insertAfter = (HWND)insertAfterHWND;
 		}
-		if (insertAfter != CHECK_NO_FLAG) { // Was given a proper new value?
+		if (insertAfter != (HWND)CHECK_NO_FLAG) { // Was given a proper new value?
 			return !!SetWindowPos((HWND)windowHWND, insertAfter, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 #else
-		if (insertAfter != CHECK_NO_FLAG) { // Was given a proper new value?
+		if (insertAfter != (HWND)CHECK_NO_FLAG) { // Was given a proper new value?
 			SetWindowPos((HWND)windowHWND, insertAfter, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 			return true;
 #endif
