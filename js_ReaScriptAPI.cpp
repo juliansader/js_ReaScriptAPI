@@ -197,7 +197,7 @@ int JS_VKeys_Callback(MSG* event, accelerator_register_t*)
 	{
 		case WM_KEYDOWN:
 		case WM_SYSKEYDOWN:
-			sprintf(temp, "\n%i", uMsg);
+			sprintf(temp, "\n%i", keycode);
 			ShowConsoleMsg(temp);
 			if (keycode < 256) 
 				VK_KeyDown[keycode] = time_precise();
