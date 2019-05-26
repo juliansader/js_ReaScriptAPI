@@ -192,13 +192,13 @@ int JS_VKeys_Callback(MSG* event, accelerator_register_t*)
 {
 	const WPARAM& keycode = event->wParam;
 	const UINT& uMsg = event->message;
-        char temp[10];
+        char temp[20];
+	sprintf(temp, "\n%i: %i", uMsg, keycode);
+	ShowConsoleMsg(temp);
 	switch (uMsg) 
 	{
 		case WM_KEYDOWN:
 		case WM_SYSKEYDOWN:
-			sprintf(temp, "\n%i", keycode);
-			ShowConsoleMsg(temp);
 			if (keycode < 256) 
 				VK_KeyDown[keycode] = time_precise();
 			break;
