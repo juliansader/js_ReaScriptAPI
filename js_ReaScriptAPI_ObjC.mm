@@ -10,6 +10,8 @@ bool JS_Window_SetOpacity_ObjC(void* hwnd, double alpha)
       CGFloat opacity = (CGFloat) alpha;
       [window setAlphaValue:opacity];
       [window setOpaque:NO];
+      [window setBackgroundColor:[NSColor clearColor]];
+      [window setIgnoresMouseEvents:NO];
 	  return true;
    //}  
    //else
