@@ -192,9 +192,7 @@ int JS_VKeys_Callback(MSG* event, accelerator_register_t*)
 {
 	const WPARAM& keycode = event->wParam;
 	const UINT& uMsg = event->message;
-        char temp[20];
-	sprintf(temp, "\n%i: %i", uMsg, keycode);
-	ShowConsoleMsg(temp);
+
 	switch (uMsg) 
 	{
 		case WM_KEYDOWN:
