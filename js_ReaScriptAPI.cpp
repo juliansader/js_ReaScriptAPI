@@ -154,11 +154,13 @@ v0.986
  * New: JS_LICE_WritePNG.
 v0.987
  * New: Various functions for manipulating LICE colors.
+v0.988
+ * New: JS_Mouse_GetCursor
 */
 
 void JS_ReaScriptAPI_Version(double* versionOut)
 {
-	*versionOut = 0.987;
+	*versionOut = 0.988;
 }
 
 void JS_Localize(const char* USEnglish, const char* LangPackSection, char* translationOut, int translationOut_sz)
@@ -2255,6 +2257,14 @@ void JS_Mouse_SetCursor(void* cursorHandle)
 	SetCursor((HCURSOR)cursorHandle);
 }
 
+void* JS_Mouse_GetCursor()
+{
+#ifdef _WIN32
+	return (void*)GetCursor();
+#else
+	return (void*)SWELL_GetLastSetCursor();
+#endif
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2453,7 +2463,7 @@ void JS_GDI_SetPixel(void* deviceHDC, int x, int y, int color)
 
 void JS_GDI_Blit(void* destHDC, int dstx, int dsty, void* sourceHDC, int srcx, int srcy, int width, int height, const char* modeOptional)
 {
-	if (strchr(modeOptional, 'A') || strchr(modeOptional, 'a'))
+	if (modeOptional && (strchr(modeOptional, 'A') || strchr(modeOptional, 'a')))
 #ifdef _WIN32
 		AlphaBlend((HDC)destHDC, dstx, dsty, width, height, (HDC)sourceHDC, srcx, srcy, width, height, BLENDFUNCTION { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
 #else
@@ -2465,7 +2475,7 @@ void JS_GDI_Blit(void* destHDC, int dstx, int dsty, void* sourceHDC, int srcx, i
 
 void JS_GDI_StretchBlit(void* destHDC, int dstx, int dsty, int dstw, int dsth, void* sourceHDC, int srcx, int srcy, int srcw, int srch, const char* modeOptional)
 {
-	if (strchr(modeOptional, 'A') || strchr(modeOptional, 'a'))
+	if (modeOptional && (strchr(modeOptional, 'A') || strchr(modeOptional, 'a')))
 #ifdef _WIN32
 		AlphaBlend((HDC)destHDC, dstx, dsty, dstw, dsth, (HDC)sourceHDC, srcx, srcy, srcw, srch, BLENDFUNCTION{ AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
 #else

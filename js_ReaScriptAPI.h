@@ -95,7 +95,7 @@ bool  JS_Window_OnCommand(void* windowHWND, int commandID);
 
 int   JS_Mouse_GetState(int flags);
 //int   JS_Mouse_GetHistory(int flags);
-//void  JS_Mouse_ClearHistory();
+void* JS_Mouse_GetCursor();
 bool  JS_Mouse_SetPosition(int x, int y);
 void* JS_Mouse_LoadCursor(int cursorNumber);
 void* JS_Mouse_LoadCursorFromFile(const char* pathAndFileName, bool* forceNewLoadOptional);

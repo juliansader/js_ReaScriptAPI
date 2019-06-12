@@ -469,6 +469,11 @@ static void* __vararg_JS_Mouse_SetCursor(void** arglist, int numparms)
   return NULL;
 }
 
+static void* __vararg_JS_Mouse_GetCursor(void** arglist, int numparms)
+{
+	return JS_Mouse_GetCursor();
+}
+
 ///////////////////////////////////////////////////////////
 
 static void* __vararg_JS_Window_GetScrollInfo(void** arglist, int numparms)
@@ -633,13 +638,13 @@ static void* __vararg_JS_GDI_LineTo(void** arglist, int numparms)
 
 static void* __vararg_JS_GDI_Blit(void** arglist, int numparms)
 {
-	JS_GDI_Blit((void*)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (void*)arglist[3], (int)(intptr_t)arglist[4], (int)(intptr_t)arglist[5], (int)(intptr_t)arglist[6], (int)(intptr_t)arglist[7], (numparms > 8) ? (const char*)arglist[8] : "SRCCOPY");
+	JS_GDI_Blit((void*)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (void*)arglist[3], (int)(intptr_t)arglist[4], (int)(intptr_t)arglist[5], (int)(intptr_t)arglist[6], (int)(intptr_t)arglist[7], (numparms > 8) ? (const char*)arglist[8] : nullptr);
 	return NULL;
 }
 
 static void* __vararg_JS_GDI_StretchBlit(void** arglist, int numparms)
 {
-	JS_GDI_StretchBlit((void*)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (int)(intptr_t)arglist[3], (int)(intptr_t)arglist[4], (void*)arglist[5], (int)(intptr_t)arglist[6], (int)(intptr_t)arglist[7], (int)(intptr_t)arglist[8], (int)(intptr_t)arglist[9], (numparms > 10) ? (const char*)arglist[10] : "SRCCOPY");
+	JS_GDI_StretchBlit((void*)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (int)(intptr_t)arglist[3], (int)(intptr_t)arglist[4], (void*)arglist[5], (int)(intptr_t)arglist[6], (int)(intptr_t)arglist[7], (int)(intptr_t)arglist[8], (int)(intptr_t)arglist[9], (numparms > 10) ? (const char*)arglist[10] : nullptr);
 	return NULL;
 }
 
