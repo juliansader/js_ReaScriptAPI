@@ -251,14 +251,14 @@ static void* __vararg_JS_Window_FindEx(void** arglist, int numparms)
 	return (void*)JS_Window_FindEx((HWND)arglist[0], (HWND)arglist[1], (const char*)arglist[2], (const char*)arglist[3]);
 }
 
-static void* __vararg_JS_Window_Find(void** arglist, int numparms)
+static void* __vararg_JS_Window_FindTop(void** arglist, int numparms)
 {
-  return (void*)JS_Window_Find((const char*)arglist[0], (bool)arglist[1]);
+  return (void*)JS_Window_FindTop((const char*)arglist[0], (bool)arglist[1]);
 }
 
-static void* __vararg_JS_Window_FindAny(void** arglist, int numparms)
+static void* __vararg_JS_Window_Find(void** arglist, int numparms)
 {
-	return (void*)JS_Window_FindAny((const char*)arglist[0], (bool)arglist[1]);
+	return (void*)JS_Window_Find((const char*)arglist[0], (bool)arglist[1]);
 }
 
 static void* __vararg_JS_Window_FindChild(void** arglist, int numparms)

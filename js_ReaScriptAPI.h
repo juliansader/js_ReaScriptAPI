@@ -37,7 +37,7 @@ HWND  JS_Window_FindChildByID(HWND parent, int ID);  // Functions that receive a
 
 HWND  JS_Window_FindEx(HWND parentHWND, HWND childHWND, const char* className, const char* title);
 void* JS_Window_Find(const char* title, bool exact);
-void* JS_Window_FindAny(const char* title, bool exact);
+void* JS_Window_FindTop(const char* title, bool exact);
 void* JS_Window_FindChild(void* parentHWND, const char* title, bool exact);
 int   JS_Window_ArrayAllChild(void* parentHWND, double* reaperarray);
 int   JS_Window_ArrayAllTop(double* reaperarray);

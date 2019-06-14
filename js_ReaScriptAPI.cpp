@@ -163,7 +163,7 @@ v0.989
 
 void JS_ReaScriptAPI_Version(double* versionOut)
 {
-	*versionOut = 0.988;
+	*versionOut = 0.989;
 }
 
 void JS_Localize(const char* USEnglish, const char* LangPackSection, char* translationOut, int translationOut_sz)
@@ -1042,7 +1042,7 @@ int ConvertSetHWNDToString(std::set<HWND>& foundHWNDs, char*& reaperBufNeedBig, 
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
-BOOL CALLBACK JS_Window_Find_Callback_Top(HWND hwnd, LPARAM structPtr)
+BOOL CALLBACK JS_Window_FindTop_Callback_Top(HWND hwnd, LPARAM structPtr)
 {
 	using namespace Julian;
 	sEnumWindows& s = *(reinterpret_cast<sEnumWindows*>(structPtr));
@@ -1063,7 +1063,7 @@ BOOL CALLBACK JS_Window_Find_Callback_Top(HWND hwnd, LPARAM structPtr)
 // Cockos SWELL doesn't provide FindWindow, and FindWindowEx doesn't provide the NULL, NULL top-level mode,
 //		so must code own implementation...
 // This implemetation optionally matches substrings.
-void* JS_Window_Find(const char* title, bool exact)
+void* JS_Window_FindTop(const char* title, bool exact)
 {
 	using namespace Julian;
 
@@ -1078,7 +1078,7 @@ void* JS_Window_Find(const char* title, bool exact)
 	std::set<HWND> foundHWNDs;
 	char temp[API_LEN] = ""; // Will temprarily store titles as well as pointer string, so must be longer than TEMP_LEN.
 	sEnumWindows e{ titleLower, exact, temp, sizeof(temp), &foundHWNDs };
-	EnumWindows(JS_Window_Find_Callback_Top, reinterpret_cast<LPARAM>(&e));
+	EnumWindows(JS_Window_FindTop_Callback_Top, reinterpret_cast<LPARAM>(&e));
 	if (foundHWNDs.size())
 		return *(foundHWNDs.begin());
 	else
@@ -1088,7 +1088,7 @@ void* JS_Window_Find(const char* title, bool exact)
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
-BOOL CALLBACK JS_Window_FindAny_Callback_Child(HWND hwnd, LPARAM structPtr)
+BOOL CALLBACK JS_Window_Find_Callback_Child(HWND hwnd, LPARAM structPtr)
 {
 	using namespace Julian;
 	sEnumWindows& s = *(reinterpret_cast<sEnumWindows*>(structPtr));
@@ -1106,7 +1106,7 @@ BOOL CALLBACK JS_Window_FindAny_Callback_Child(HWND hwnd, LPARAM structPtr)
 		return TRUE;
 }
 
-BOOL CALLBACK JS_Window_FindAny_Callback_Top(HWND hwnd, LPARAM structPtr)
+BOOL CALLBACK JS_Window_Find_Callback_Top(HWND hwnd, LPARAM structPtr)
 {
 	using namespace Julian;
 	sEnumWindows& s = *(reinterpret_cast<sEnumWindows*>(structPtr));
@@ -1122,7 +1122,7 @@ BOOL CALLBACK JS_Window_FindAny_Callback_Top(HWND hwnd, LPARAM structPtr)
 	}
 	else
 	{
-		EnumChildWindows(hwnd, JS_Window_FindAny_Callback_Child, structPtr);
+		EnumChildWindows(hwnd, JS_Window_Find_Callback_Child, structPtr);
 		if (s.foundHWNDs->size()) return FALSE;
 		else return TRUE;
 	}
@@ -1133,7 +1133,7 @@ BOOL CALLBACK JS_Window_FindAny_Callback_Top(HWND hwnd, LPARAM structPtr)
 // This implemetation adds two features:
 //		* Searches child windows as well, so that script GUIs can be found even if docked.
 //		* Optionally matches substrings.
-void* JS_Window_FindAny(const char* title, bool exact)
+void* JS_Window_Find(const char* title, bool exact)
 {
 	using namespace Julian;
 
@@ -1148,7 +1148,7 @@ void* JS_Window_FindAny(const char* title, bool exact)
 	std::set<HWND> foundHWNDs;
 	char temp[API_LEN] = ""; // Will temprarily store titles as well as pointer string, so must be longer than TEMP_LEN.
 	sEnumWindows e{ titleLower, exact, temp, sizeof(temp), &foundHWNDs };
-	EnumWindows(JS_Window_FindAny_Callback_Top, reinterpret_cast<LPARAM>(&e));
+	EnumWindows(JS_Window_Find_Callback_Top, reinterpret_cast<LPARAM>(&e));
 	if (foundHWNDs.size())
 		return *(foundHWNDs.begin());
 	else
