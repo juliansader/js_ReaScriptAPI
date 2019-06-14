@@ -103,6 +103,11 @@ static void* __vararg_JS_Double(void** arglist, int numparms)
 
 ///////////////////////////////////////////////////////////////////////////
 
+static void* __vararg_JS_Dialog_Create(void** arglist, int numparms)
+{
+	return JS_Dialog_Create((int)(intptr_t)arglist[0]);
+}
+
 static void* __vararg_JS_Dialog_BrowseForSaveFile(void** arglist, int numparms)
 {
 	return (void*)(intptr_t)JS_Dialog_BrowseForSaveFile((const char*)arglist[0], (const char*)arglist[1], (const char*)arglist[2], (const char*)arglist[3], (char*)arglist[4], (int)(intptr_t)arglist[5]);
@@ -248,12 +253,17 @@ static void* __vararg_JS_Window_FindEx(void** arglist, int numparms)
 
 static void* __vararg_JS_Window_Find(void** arglist, int numparms)
 {
-  return (void*)(intptr_t)JS_Window_Find((const char*)arglist[0], (bool)arglist[1]);
+  return (void*)JS_Window_Find((const char*)arglist[0], (bool)arglist[1]);
+}
+
+static void* __vararg_JS_Window_FindAny(void** arglist, int numparms)
+{
+	return (void*)JS_Window_FindAny((const char*)arglist[0], (bool)arglist[1]);
 }
 
 static void* __vararg_JS_Window_FindChild(void** arglist, int numparms)
 {
-  return (void*)(intptr_t)JS_Window_FindChild((void*)arglist[0], (const char*)arglist[1], (bool)arglist[2]);
+  return (void*)JS_Window_FindChild((void*)arglist[0], (const char*)arglist[1], (bool)arglist[2]);
 }
 
 ////////////////////////////////////////////////

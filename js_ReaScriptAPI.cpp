@@ -156,6 +156,9 @@ v0.987
  * New: Various functions for manipulating LICE colors.
 v0.988
  * New: JS_Mouse_GetCursor
+v0.989
+ * Window_Find does not search child windows.
+ * New: Window_FindAny for searching top-level as well as child windows.
 */
 
 void JS_ReaScriptAPI_Version(double* versionOut)
@@ -371,6 +374,26 @@ void JS_Double(void* pointer, int offset, double* doubleOut)
 
 ///////////////////////////////////////////////////////////////////////////
 
+
+static HWND dialogHWND = nullptr;
+
+INT_PTR CALLBACK JS_Dialog_Create_Callback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
+{
+	if (msg == WM_INITDIALOG) {
+		dialogHWND = hwnd;
+		return FALSE;
+	}
+	else
+		return TRUE;
+}
+
+void* JS_Dialog_Create(int resourceID)
+{
+	dialogHWND = nullptr;
+	HWND hwnd = CreateDialogParam(NULL, MAKEINTRESOURCE(resourceID), GetMainHwnd(), JS_Dialog_Create_Callback, 0);
+	ShowWindow(hwnd, SW_SHOW);
+	return hwnd;
+}
 
 int JS_Dialog_BrowseForSaveFile(const char* windowTitle, const char* initialFolder, const char* initialFile, const char* extensionList, char* fileNameOutNeedBig, int fileNameOutNeedBig_sz)
 {			
@@ -1019,7 +1042,53 @@ int ConvertSetHWNDToString(std::set<HWND>& foundHWNDs, char*& reaperBufNeedBig, 
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
-BOOL CALLBACK JS_Window_Find_Callback_Child(HWND hwnd, LPARAM structPtr)
+BOOL CALLBACK JS_Window_Find_Callback_Top(HWND hwnd, LPARAM structPtr)
+{
+	using namespace Julian;
+	sEnumWindows& s = *(reinterpret_cast<sEnumWindows*>(structPtr));
+	s.temp[0] = '\0';
+	GetWindowText(hwnd, s.temp, s.tempLen); // WARNING: swell only returns a BOOL, not the title length
+	s.temp[s.tempLen - 1] = '\0'; // Make sure that loooong titles are properly terminated.
+	for (unsigned int i = 0; (s.temp[i] != '\0') && (i < s.tempLen); i++) s.temp[i] = (char)tolower(s.temp[i]); // FindWindow is case-insensitive, so this implementation is too
+	if (	 (s.exact  && (strcmp(s.temp, s.target) == 0))
+		|| (!(s.exact) && (strstr(s.temp, s.target) != NULL)))
+	{
+		s.foundHWNDs->insert(hwnd);
+		return FALSE;
+	}
+	else
+		return TRUE;
+}
+
+// Cockos SWELL doesn't provide FindWindow, and FindWindowEx doesn't provide the NULL, NULL top-level mode,
+//		so must code own implementation...
+// This implemetation optionally matches substrings.
+void* JS_Window_Find(const char* title, bool exact)
+{
+	using namespace Julian;
+
+	// FindWindow is case-insensitive, so this implementation is too. 
+	// Must first convert title to lowercase:
+	char titleLower[API_LEN];
+	int i = 0;
+	for (; (title[i] != '\0') && (i < API_LEN - 1); i++) titleLower[i] = (char)tolower(title[i]); // Convert to lowercase
+	titleLower[i] = '\0';
+
+	// To communicate with callback functions, use an sEnumWindows:
+	std::set<HWND> foundHWNDs;
+	char temp[API_LEN] = ""; // Will temprarily store titles as well as pointer string, so must be longer than TEMP_LEN.
+	sEnumWindows e{ titleLower, exact, temp, sizeof(temp), &foundHWNDs };
+	EnumWindows(JS_Window_Find_Callback_Top, reinterpret_cast<LPARAM>(&e));
+	if (foundHWNDs.size())
+		return *(foundHWNDs.begin());
+	else
+		return NULL;
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////////
+
+BOOL CALLBACK JS_Window_FindAny_Callback_Child(HWND hwnd, LPARAM structPtr)
 {
 	using namespace Julian;
 	sEnumWindows& s = *(reinterpret_cast<sEnumWindows*>(structPtr));
@@ -1037,7 +1106,7 @@ BOOL CALLBACK JS_Window_Find_Callback_Child(HWND hwnd, LPARAM structPtr)
 		return TRUE;
 }
 
-BOOL CALLBACK JS_Window_Find_Callback_Top(HWND hwnd, LPARAM structPtr)
+BOOL CALLBACK JS_Window_FindAny_Callback_Top(HWND hwnd, LPARAM structPtr)
 {
 	using namespace Julian;
 	sEnumWindows& s = *(reinterpret_cast<sEnumWindows*>(structPtr));
@@ -1053,7 +1122,7 @@ BOOL CALLBACK JS_Window_Find_Callback_Top(HWND hwnd, LPARAM structPtr)
 	}
 	else
 	{
-		EnumChildWindows(hwnd, JS_Window_Find_Callback_Child, structPtr);
+		EnumChildWindows(hwnd, JS_Window_FindAny_Callback_Child, structPtr);
 		if (s.foundHWNDs->size()) return FALSE;
 		else return TRUE;
 	}
@@ -1064,7 +1133,7 @@ BOOL CALLBACK JS_Window_Find_Callback_Top(HWND hwnd, LPARAM structPtr)
 // This implemetation adds two features:
 //		* Searches child windows as well, so that script GUIs can be found even if docked.
 //		* Optionally matches substrings.
-void* JS_Window_Find(const char* title, bool exact)
+void* JS_Window_FindAny(const char* title, bool exact)
 {
 	using namespace Julian;
 
@@ -1079,7 +1148,7 @@ void* JS_Window_Find(const char* title, bool exact)
 	std::set<HWND> foundHWNDs;
 	char temp[API_LEN] = ""; // Will temprarily store titles as well as pointer string, so must be longer than TEMP_LEN.
 	sEnumWindows e{ titleLower, exact, temp, sizeof(temp), &foundHWNDs };
-	EnumWindows(JS_Window_Find_Callback_Top, reinterpret_cast<LPARAM>(&e));
+	EnumWindows(JS_Window_FindAny_Callback_Top, reinterpret_cast<LPARAM>(&e));
 	if (foundHWNDs.size())
 		return *(foundHWNDs.begin());
 	else
