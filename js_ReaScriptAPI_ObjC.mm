@@ -12,7 +12,7 @@ bool JS_Window_SetOpacity_ObjC(void* hwnd, double alpha)
 	[window setWantsLayer:YES];
       	[window setAlphaValue:opacity];
 	[window setBackgroundColor:[NSColor clearColor]];
-	[window.layer setBackgroundColor:[NSColor clearColor]];
+	//[window.layer setBackgroundColor:[NSColor clearColor]];
 	return true;
    //}  
    //else
