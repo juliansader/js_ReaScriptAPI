@@ -852,12 +852,14 @@ void* JS_Window_GetForeground()
 
 void  JS_Window_Enable(void* windowHWND, bool enable)
 {
-	EnableWindow((HWND)windowHWND, (BOOL)enable); // (enable ? (int)1 : (int)0));
+	if (ValidatePtr(windowHWND, "HWND"))
+		EnableWindow((HWND)windowHWND, (BOOL)enable); // (enable ? (int)1 : (int)0));
 }
 
 void  JS_Window_Destroy(void* windowHWND)
 {
-	DestroyWindow((HWND)windowHWND);
+	if (ValidatePtr(windowHWND, "HWND"))
+		DestroyWindow((HWND)windowHWND);
 }
 
 void  JS_Window_Show(void* windowHWND, const char* state)
@@ -876,18 +878,21 @@ void  JS_Window_Show(void* windowHWND, const char* state)
 	#define SW_SHOWDEFAULT SW_SHOWNORMAL
 	#define SW_RESTORE SW_SHOWNA
 	*/
-	int intState;
-	if		(strstr(state, "SHOWNA"))	intState = SW_SHOWNA;
-	else if (strstr(state, "NOACT"))	intState = SW_SHOWNOACTIVATE;
-	else if (strstr(state, "MINI"))		intState = SW_SHOWMINIMIZED;
-	else if (strstr(state, "HIDE"))		intState = SW_HIDE;
-	else if (strstr(state, "MAX"))		intState = SW_SHOWMAXIMIZED;
-	else if (strstr(state, "REST"))		intState = SW_RESTORE;
-	else if (strstr(state, "DEF"))		intState = SW_SHOWDEFAULT;
-	else if (strstr(state, "NORM"))		intState = SW_NORMAL;
-	else if (strstr(state, "HIDE"))		intState = SW_HIDE;
-	else intState = SW_SHOW;
-	ShowWindow((HWND)windowHWND, intState);
+	if (ValidatePtr(windowHWND, "HWND"))
+	{
+		int intState;
+		if		(strstr(state, "SHOWNA"))	intState = SW_SHOWNA;
+		else if (strstr(state, "NOACT"))	intState = SW_SHOWNOACTIVATE;
+		else if (strstr(state, "MINI"))		intState = SW_SHOWMINIMIZED;
+		else if (strstr(state, "HIDE"))		intState = SW_HIDE;
+		else if (strstr(state, "MAX"))		intState = SW_SHOWMAXIMIZED;
+		else if (strstr(state, "REST"))		intState = SW_RESTORE;
+		else if (strstr(state, "DEF"))		intState = SW_SHOWDEFAULT;
+		else if (strstr(state, "NORM"))		intState = SW_NORMAL;
+		else if (strstr(state, "HIDE"))		intState = SW_HIDE;
+		else intState = SW_SHOW;
+		ShowWindow((HWND)windowHWND, intState);
+	}
 }
 
 bool JS_Window_IsVisible(void* windowHWND)
@@ -1474,9 +1479,6 @@ BEWARE, THESE NUMBERS ARE DIFFERENT FROM WIN32!!!
 #ifndef SWP_NOOWNERZORDER
 #define SWP_NOOWNERZORDER 0 // In WIN32, this would be 0x200, but in swell, use 0 so that no change when OR'ing.
 #endif
-#ifndef WS_OVERLAPPEDWINDPW
-#define WS_OVERLAPPEDWINDOW  (WS_THICKFRAME|WS_SYSMENU) // In WIN32, this would be 0x200, but in swell, use 0 so that no change when OR'ing.
-#endif
 
 // swell uses CreateDialog instead of CreateWindow to create new windows, and the callback returns INT_PTR instead of LRESULT
 #ifdef _WIN32
@@ -1503,44 +1505,55 @@ callbacktype CALLBACK JS_Window_Create_WinProc(HWND hwnd, UINT msg, WPARAM wPara
 	}
 }
 
+#ifndef _WIN32
+#define WS_SIZEBOX WS_THICKFRAME
+#define WS_OVERLAPPEDWINDOW (WS_SIZEBOX|WS_SYSMENU|WS_CAPTION)
+#define WS_OVERLAPPED WS_CAPTION
+#define WS_MAXIMIZEBOX (WS_CAPTION|WS_SIZEBOX)
+#define WS_MINIMIZEBOX WS_CAPTION
+#endif
 void* JS_Window_Create(const char* title, const char* className, int x, int y, int w, int h, char* styleOptional, void* ownerHWNDOptional)
 {
 	using namespace Julian;
 	if (!ValidatePtr((HWND)ownerHWNDOptional, "HWND")) ownerHWNDOptional = nullptr;
-	HWND hwnd = nullptr;
+	HWND hwnd = nullptr; // Deafult return value if everything doesn't go OK.
 
-	DWORD style = 0;
-	if (styleOptional) {
+	int show = SW_SHOW; // Default values if styleOptional not specified.
+	DWORD style = WS_OVERLAPPEDWINDOW;
+	
+	if (styleOptional && *styleOptional) {
+		style = 0;
+		// To distinguish MAXIMIZEBOX from MAXIMIZE, alter the M of all MAXIMIZEBOX's.
+		// swell doesn't implement WS_SHOWMAXIMIZED and WS_SHOWMINIMIZED, so wil use ShowWindow's options instead.
+		char* box;
+		while (box = strstr(styleOptional, "MAXIMIZEBOX")) { style |= WS_MAXIMIZEBOX; *box = 'N'; }
+		if (strstr(styleOptional, "MAXIMIZE"))		show = SW_SHOWMAXIMIZED;
+		while (box = strstr(styleOptional, "MINIMIZEBOX")) { style |= WS_MINIMIZEBOX; *box = 'N'; }
+		if (strstr(styleOptional, "MINIMIZE") || strstr(styleOptional, "ICONIC")) show = SW_SHOWMINIMIZED;
+		
 		if (strstr(styleOptional, "CHILD"))			style |= WS_CHILD;
-		if (strstr(styleOptional, "CHILDWINDOW"))	style |= WS_CHILDWINDOW;
+		//if (strstr(styleOptional, "CHILDWINDOW"))	style |= WS_CHILDWINDOW;
+		if (strstr(styleOptional, "CLIPSIBLINGS"))	style |= WS_CLIPSIBLINGS;
 		if (strstr(styleOptional, "DISABLED"))		style |= WS_DISABLED;
 		if (strstr(styleOptional, "VISIBLE"))		style |= WS_VISIBLE;
 		if (strstr(styleOptional, "CAPTION"))		style |= WS_CAPTION;
 		if (strstr(styleOptional, "VSCROLL"))		style |= WS_VSCROLL;
 		if (strstr(styleOptional, "HSCROLL"))		style |= WS_HSCROLL;
 		if (strstr(styleOptional, "SYSMENU"))		style |= WS_SYSMENU;
-		if (strstr(styleOptional, "THICKFRAME"))	style |= WS_THICKFRAME;
+		if (strstr(styleOptional, "THICKFRAME")  || strstr(styleOptional, "SIZEBOX"))			style |= WS_SIZEBOX;
 		if (strstr(styleOptional, "GROUP"))			style |= WS_GROUP;
 		if (strstr(styleOptional, "TABSTOP"))		style |= WS_TABSTOP;
+		if (strstr(styleOptional, "OVERLAPPED")  || strstr(styleOptional, "TILED"))				style |= WS_OVERLAPPED;		
+		if (strstr(styleOptional, "TILEDWINDOW") || strstr(styleOptional, "OVERLAPPEDWINDOW"))	style |= WS_OVERLAPPEDWINDOW;
+		if (strstr(styleOptional, "POPUP"))			style &= (~(WS_CAPTION|WS_CHILD)); // swell doesn't actually implement WS_POPUP as separate style
+		if (strstr(styleOptional, "DLGFRAME"))		style &= (~WS_CAPTION);
 #ifdef _WIN32
 		if (strstr(styleOptional, "BORDER"))		style |= WS_BORDER;
 		if (strstr(styleOptional, "CLIPCHILDREN"))	style |= WS_CLIPCHILDREN;
-		if (strstr(styleOptional, "CLIPSIBLINGS"))	style |= WS_CLIPSIBLINGS; // This one is actually defined in newer swell versions
 		if (strstr(styleOptional, "DLGFRAME"))		style |= WS_DLGFRAME;
-		if (strstr(styleOptional, "ICONIC"))		style |= WS_ICONIC;
-		char* box;
-		while (box = strstr(styleOptional, "MAXIMIZEBOX")) { style |= WS_MAXIMIZEBOX; *box = 'N'; }
-		if (strstr(styleOptional, "MAXIMIZE"))		style |= WS_MAXIMIZE;
-		while (box = strstr(styleOptional, "MINIMIZEBOX")) { style |= WS_MINIMIZEBOX; *box = 'N'; }
-		if (strstr(styleOptional, "MINIMIZE"))	style |= WS_MINIMIZE;
-		if (strstr(styleOptional, "OVERLAPPED"))	style |= WS_OVERLAPPED;
-		if (strstr(styleOptional, "OVERLAPPEDWINDOW"))		style |= WS_OVERLAPPEDWINDOW;
 		if (strstr(styleOptional, "POPUP"))			style |= WS_POPUP;
-		if (strstr(styleOptional, "TILED"))			style |= WS_TILED;
-		if (strstr(styleOptional, "TILEDWINDOW"))	style |= WS_TILEDWINDOW;
 #endif
-	};
-	if (!style) style = WS_OVERLAPPEDWINDOW; // Default style
+	}
 
 #ifdef _WIN32
 	// Does the class already exist?
@@ -1585,7 +1598,7 @@ void* JS_Window_Create(const char* title, const char* className, int x, int y, i
 		);
 		if (hwnd)
 		{
-			ShowWindow(hwnd, SW_SHOW);
+			ShowWindow(hwnd, show);
 			UpdateWindow(hwnd);
 		}
 	}
@@ -1598,10 +1611,10 @@ void* JS_Window_Create(const char* title, const char* className, int x, int y, i
 		if (!mapClassNames.count(classString))
 			mapClassNames[classString] = strdup(className);
 		SWELL_SetClassName(hwnd, mapClassNames[classString]);
+		SetWindowLong(hwnd, GWL_STYLE, style);
 		SetWindowText(hwnd, title);
-		
 		SetWindowPos(hwnd, HWND_TOPMOST, x, y, w, h, SWP_SHOWWINDOW | SWP_NOCOPYBITS);
-		ShowWindow(hwnd, SW_SHOW);
+		ShowWindow(hwnd, show);
 		//UpdateWindow(hwnd);
 	}
 #endif
@@ -1666,13 +1679,11 @@ bool JS_Window_InvalidateRect(HWND windowHWND, int left, int top, int right, int
 bool JS_Window_SetOpacity(HWND windowHWND, const char* mode, double value)
 {
 	// Opacity can only be applied to top-level framed windows, AFAIK, and in Linux, REAPER crashes if opacity is applied to a child window.
-	// So must check that style is WS_THICKFRAME.
 	bool OK = false;
 	if (ValidatePtr(windowHWND, "HWND"))
 	{
 #ifdef _WIN32
 		windowHWND = GetAncestor(windowHWND, GA_ROOT);
-		//if (GetWindowLongPtr(windowHWND, GWL_STYLE) & WS_THICKFRAME)
 		{
 			if (SetWindowLongPtr(windowHWND, GWL_EXSTYLE, GetWindowLongPtr(windowHWND, GWL_EXSTYLE) | WS_EX_LAYERED))
 			{
@@ -1688,6 +1699,7 @@ bool JS_Window_SetOpacity(HWND windowHWND, const char* mode, double value)
 #elif __linux__
 		GetNextAncestorWindow:
 		{
+			// Definitions of swell's HWND, m_oswindow etc can be found in swell-internal.h
 			if (windowHWND->m_oswindow) // Does this HWND correspond to a GDKWindow?
 			{
 				GdkWindow* w = gdk_window_get_effective_toplevel((GdkWindow*)windowHWND->m_oswindow);
