@@ -103,9 +103,9 @@ static void* __vararg_JS_Double(void** arglist, int numparms)
 
 ///////////////////////////////////////////////////////////////////////////
 
-static void* __vararg_JS_Dialog_Create(void** arglist, int numparms)
+static void* __vararg_JS_Window_Create(void** arglist, int numparms)
 {
-	return JS_Dialog_Create((int)(intptr_t)arglist[0]);
+	return JS_Window_Create((const char*)arglist[0], (const char*)arglist[1], (int)(intptr_t)arglist[2], (int)(intptr_t)arglist[3], (int)(intptr_t)arglist[4], (int)(intptr_t)arglist[5], numparms > 6 ? (char*)arglist[6] : nullptr, numparms > 7 ? arglist[7] : nullptr);
 }
 
 static void* __vararg_JS_Dialog_BrowseForSaveFile(void** arglist, int numparms)
@@ -344,6 +344,12 @@ static void* __vararg_JS_Window_GetLongPtr(void** arglist, int numparms)
 static void* __vararg_JS_Window_GetLong(void** arglist, int numparms)
 {
 	JS_Window_GetLong((void*)arglist[0], (const char*)arglist[1], (double*)arglist[2]);
+	return nullptr;
+}
+
+static void* __vararg_JS_Window_SetLong(void** arglist, int numparms)
+{
+	JS_Window_SetLong((void*)arglist[0], (const char*)arglist[1], arglist[2] ? *(double*)arglist[2] : 0.0, (double*)arglist[3]);
 	return nullptr;
 }
 
@@ -925,6 +931,12 @@ static void* __vararg_JS_ListView_GetFocusedItem(void** arglist, int numparms)
 static void* __vararg_JS_ListView_EnumSelItems(void** arglist, int numparms)
 {
 	return (void*)(intptr_t)JS_ListView_EnumSelItems((HWND)arglist[0], (int)(intptr_t)arglist[1]);
+}
+
+static void* __vararg_JS_ListView_EnsureVisible(void** arglist, int numparms)
+{
+	JS_ListView_EnsureVisible((HWND)arglist[0], (int)(intptr_t)arglist[1], (bool)(intptr_t)arglist[2]);
+	return nullptr;
 }
 
 static void* __vararg_JS_ListView_GetItem(void** arglist, int numparms)

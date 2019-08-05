@@ -15,6 +15,11 @@
 #include <cstdint>
 #include <memory>
 
+
+// WARNING: THIS EXTENSION USES AN ALTERED lice.h, SINCE STANDARD lice.h HIDES SOME FUNCTIONS WHEN LICE_PROVIDED_BY_APP, 
+// EVEN THOUGH THOSE FUNCTIONS ARE NOT ACTUALLY PROVIDED BY REAPER.
+
+
 #define REAPERAPI_IMPLEMENT
 //#ifndef LICE_PROVIDED_BY_APP
 //#error "LICE_PROVIDED_BY_APP should be defined for entire project (if using command line, add -DLICE_PROVIDED_BY_APP to command)."

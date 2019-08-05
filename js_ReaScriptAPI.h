@@ -13,7 +13,7 @@ void  JS_Int(void* pointer, int offset, int* intOut);
 void  JS_Byte(void* pointer, int offset, int* byteOut);
 void  JS_Double(void* pointer, int offset, double* doubleOut);
 
-void* JS_Dialog_Create(int resourceID);
+void* JS_Window_Create(const char* title, const char* className, int x, int y, int w, int h, char* styleOptional, void* ownerHWNDOptional);
 int   JS_Dialog_BrowseForSaveFile(const char* windowTitle, const char* initialFolder, const char* initialFile, const char* extensionList, char* fileNameOutNeedBig, int fileNameOutNeedBig_sz);
 int   JS_Dialog_BrowseForFolder(const char* caption, const char* initialFolder, char* folderOutNeedBIg, int folderOutNeedBig_sz);
 int   JS_Dialog_BrowseForOpenFiles(const char* windowTitle, const char* initialFolder, const char* initialFile, const char* extensionList, bool allowMultiple, char* fileNamesOutNeedBig, int fileNamesOutNeedBig_sz);
@@ -54,6 +54,7 @@ void  JS_Window_SetPosition(void* windowHWND, int left, int top, int width, int 
 bool  JS_Window_SetZOrder(void* windowHWND, const char* ZOrder, void* insertAfterHWND);
 void* JS_Window_GetLongPtr(void* windowHWND, const char* info);
 void  JS_Window_GetLong(void* windowHWND, const char* info, double* retvalOut);
+void  JS_Window_SetLong(void* windowHWND, const char* info, double value, double* retvalOut);
 bool  JS_Window_SetOpacity_ObjC(void* windowHWND, double alpha);
 bool  JS_Window_SetOpacity(HWND windowHWND, const char* mode, double value);
 
@@ -200,6 +201,7 @@ void  JS_Window_AttachResizeGrip(void* windowHWND);
 int   JS_ListView_GetItemCount(HWND listviewHWND);
 int   JS_ListView_GetSelectedCount(HWND listviewHWND);
 int   JS_ListView_GetFocusedItem(HWND listviewHWND, char* textOut, int textOut_sz);
+void  JS_ListView_EnsureVisible(HWND listviewHWND, int index, bool partialOK);
 int   JS_ListView_EnumSelItems(HWND listviewHWND, int index);
 void  JS_ListView_GetItem(HWND listviewHWND, int index, int subItem, char* textOut, int textOut_sz, int* stateOut);
 int   JS_ListView_GetItemState(HWND listviewHWND, int index);
