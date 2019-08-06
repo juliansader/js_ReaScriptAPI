@@ -1,1 +1,1 @@
-Bunch of ReaScript API functions
+Experimental macOS and Linux builds of the ReaScriptAPI extension.
