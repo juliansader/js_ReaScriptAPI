@@ -1517,7 +1517,7 @@ void* JS_Window_Create(const char* title, const char* className, int x, int y, i
 	using namespace Julian;
 	HWND hwnd = nullptr; // Default return value if everything doesn't go OK.
 	
-	if (!ownerHWNDOptional || ValidatePtr((HWND)ownerHWNDOptional, "HWND")) // NULL owner is allowed
+	if (!ownerHWNDOptional || ValidatePtr((HWND)ownerHWNDOptional, "HWND")) // NULL owner is allowed, but not an invalid one
 	{
 		int show = SW_SHOW; // Default values if styleOptional not specified.
 		DWORD style = WS_OVERLAPPEDWINDOW;
@@ -1607,7 +1607,7 @@ void* JS_Window_Create(const char* title, const char* className, int x, int y, i
 
 	#else
 		// Does the class already exist?
-		hwnd = CreateDialog(nullptr, MAKEINTRESOURCE(0), (HWND)ownerHWNDOptional, JS_Window_Create_WinProc);
+		hwnd = CreateDialog(nullptr, MAKEINTRESOURCE(0), nullptr, JS_Window_Create_WinProc);
 		if (hwnd) {
 			std::string classString = className;
 			if (!mapClassNames.count(classString))
@@ -1617,9 +1617,9 @@ void* JS_Window_Create(const char* title, const char* className, int x, int y, i
 			SetWindowText(hwnd, title);
 			SetWindowPos(hwnd, HWND_TOPMOST, x, y, w, h, SWP_SHOWWINDOW | SWP_NOCOPYBITS | SWP_FRAMECHANGED);
 			ShowWindow(hwnd, show);
-			//char tmp[2000];
-			//sprintf(tmp, "\nm_style: %x \nm_exstyle: %x \nvis: %s \nenabled: %s \nwantfocus: %s \nm_israised: %s \nm_oswindow_fullscreen: %s \nm_owner: %p", hwnd->m_style, hwnd->m_exstyle, hwnd->m_visible?"true":"false", hwnd->m_enabled?"true":"false", hwnd->m_wantfocus?"true":"false", hwnd->m_israised?"true":"false", hwnd->m_oswindow_fullscreen?"true":"false", hwnd->m_owner);
-			//ShowConsoleMsg(tmp);
+			char tmp[2000];
+			sprintf(tmp, "\nm_style: %x \nm_exstyle: %x \nvis: %s \nenabled: %s \nwantfocus: %s \nm_israised: %s \nm_oswindow_fullscreen: %s \nm_owner: %p", hwnd->m_style, hwnd->m_exstyle, hwnd->m_visible?"true":"false", hwnd->m_enabled?"true":"false", hwnd->m_wantfocus?"true":"false", hwnd->m_israised?"true":"false", hwnd->m_oswindow_fullscreen?"true":"false", hwnd->m_owner);
+			ShowConsoleMsg(tmp);
 			//UpdateWindow(hwnd);
 		}
 	#endif
