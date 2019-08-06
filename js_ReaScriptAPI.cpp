@@ -1515,113 +1515,115 @@ callbacktype CALLBACK JS_Window_Create_WinProc(HWND hwnd, UINT msg, WPARAM wPara
 void* JS_Window_Create(const char* title, const char* className, int x, int y, int w, int h, char* styleOptional, void* ownerHWNDOptional)
 {
 	using namespace Julian;
-	if (!ValidatePtr((HWND)ownerHWNDOptional, "HWND")) ownerHWNDOptional = nullptr;
-	HWND hwnd = nullptr; // Deafult return value if everything doesn't go OK.
-
-	int show = SW_SHOW; // Default values if styleOptional not specified.
-	DWORD style = WS_OVERLAPPEDWINDOW;
+	HWND hwnd = nullptr; // Default return value if everything doesn't go OK.
 	
-	if (styleOptional && *styleOptional) {
-		style = 0;
-		// To distinguish MAXIMIZEBOX from MAXIMIZE, alter the M of all MAXIMIZEBOX's.
-		// swell doesn't implement WS_SHOWMAXIMIZED and WS_SHOWMINIMIZED, so will use ShowWindow's options instead.
-		char* box;
-		while (box = strstr(styleOptional, "MAXIMIZEBOX")) { style |= WS_MAXIMIZEBOX; *box = 'N'; }
-		if (strstr(styleOptional, "MAXIMIZE"))		show = SW_SHOWMAXIMIZED;
-		while (box = strstr(styleOptional, "MINIMIZEBOX")) { style |= WS_MINIMIZEBOX; *box = 'N'; }
-		if (strstr(styleOptional, "MINIMIZE") || strstr(styleOptional, "ICONIC")) show = SW_SHOWMINIMIZED;
-		
-		if (strstr(styleOptional, "CHILD"))			style |= WS_CHILD;
-		//if (strstr(styleOptional, "CHILDWINDOW"))	style |= WS_CHILDWINDOW;
-		if (strstr(styleOptional, "CLIPSIBLINGS"))	style |= WS_CLIPSIBLINGS;
-		if (strstr(styleOptional, "DISABLED"))		style |= WS_DISABLED;
-		if (strstr(styleOptional, "VISIBLE"))		style |= WS_VISIBLE;
-		if (strstr(styleOptional, "CAPTION"))		style |= WS_CAPTION;
-		if (strstr(styleOptional, "VSCROLL"))		style |= WS_VSCROLL;
-		if (strstr(styleOptional, "HSCROLL"))		style |= WS_HSCROLL;
-		if (strstr(styleOptional, "SYSMENU"))		style |= WS_SYSMENU;
-		if (strstr(styleOptional, "THICKFRAME")  || strstr(styleOptional, "SIZEBOX"))			style |= WS_SIZEBOX;
-		if (strstr(styleOptional, "GROUP"))			style |= WS_GROUP;
-		if (strstr(styleOptional, "TABSTOP"))		style |= WS_TABSTOP;
-		if (strstr(styleOptional, "OVERLAPPED")  || strstr(styleOptional, "TILED"))				style |= WS_OVERLAPPED;		
-		if (strstr(styleOptional, "TILEDWINDOW") || strstr(styleOptional, "OVERLAPPEDWINDOW"))	style |= WS_OVERLAPPEDWINDOW;
-		if (strstr(styleOptional, "POPUP"))			style &= (~(WS_CAPTION|WS_CHILD)); // swell doesn't actually implement WS_POPUP as separate style
-		if (strstr(styleOptional, "DLGFRAME"))		style &= (~WS_CAPTION);
-#ifdef _WIN32
-		if (strstr(styleOptional, "BORDER"))		style |= WS_BORDER;
-		if (strstr(styleOptional, "CLIPCHILDREN"))	style |= WS_CLIPCHILDREN;
-		if (strstr(styleOptional, "DLGFRAME"))		style |= WS_DLGFRAME;
-		if (strstr(styleOptional, "POPUP"))			style |= WS_POPUP;
-#endif
-	}
-
-#ifdef _WIN32
-	// Does the class already exist?
-	std::string classString = className;
-	if (!mapClassNames.count(classString))
+	if (!ownerHWNDOptional || ValidatePtr((HWND)ownerHWNDOptional, "HWND")) // NULL owner is allowed
 	{
-		WNDCLASSEX structWindowClass
-		{
-			sizeof(WNDCLASSEX),		//UINT cbSize;
-			CS_DBLCLKS | CS_HREDRAW | CS_VREDRAW | CS_OWNDC, //UINT style;
-			JS_Window_Create_WinProc, //WNDPROC     lpfnWndProc;
-			0,			//int         cbClsExtra;
-			0,			//int         cbWndExtra;
-			ReaScriptAPI_Instance,		//HINSTANCE   hInstance;
-			NULL,		//HICON       hIcon;
-			NULL,		//HCURSOR     hCursor;
-			NULL,		//HBRUSH      hbrBackground;
-			NULL,		//LPCSTR      lpszMenuName;
-			className,	//LPCSTR      lpszClassName;
-			NULL,		//HICON       hIconSm;
-		};
+		int show = SW_SHOW; // Default values if styleOptional not specified.
+		DWORD style = WS_OVERLAPPEDWINDOW;
 
-		if (RegisterClassEx(&structWindowClass))
-			mapClassNames[classString] = strdup(className);
-	}
+		if (styleOptional && *styleOptional) {
+			style = 0;
+			// To distinguish MAXIMIZEBOX from MAXIMIZE, alter the M of all MAXIMIZEBOX's.
+			// swell doesn't implement WS_SHOWMAXIMIZED and WS_SHOWMINIMIZED, so will use ShowWindow's options instead.
+			char* box;
+			while (box = strstr(styleOptional, "MAXIMIZEBOX")) { style |= WS_MAXIMIZEBOX; *box = 'N'; }
+			if (strstr(styleOptional, "MAXIMIZE"))		show = SW_SHOWMAXIMIZED;
+			while (box = strstr(styleOptional, "MINIMIZEBOX")) { style |= WS_MINIMIZEBOX; *box = 'N'; }
+			if (strstr(styleOptional, "MINIMIZE") || strstr(styleOptional, "ICONIC")) show = SW_SHOWMINIMIZED;
 
-	if (mapClassNames.count(classString))
-	{
-		hwnd = CreateWindowEx(
-			WS_EX_LEFT | WS_EX_ACCEPTFILES | WS_EX_APPWINDOW | WS_EX_CONTEXTHELP,	//DWORD     dwExStyle,
-			mapClassNames[classString], 	//LPCSTR    lpClassName,
-			title, 	//LPCSTR    lpWindowName,
-			style, //WS_POPUP, //WS_OVERLAPPEDWINDOW, //WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_VISIBLE | WS_MINIMIZEBOX,	//DWORD     dwStyle,
-			x, 		//int       X,
-			y, 		//int       Y,
-			w, 		//int       nWidth,
-			h, 		//int       nHeight,
-			(HWND)ownerHWNDOptional,	//HWND      hWndParent,
-			NULL,	//HMENU     hMenu,
-			ReaScriptAPI_Instance,//HINSTANCE hInstance,
-			NULL	//LPVOID    lpParam
-		);
-		if (hwnd)
-		{
-			ShowWindow(hwnd, show);
-			UpdateWindow(hwnd);
+			if (strstr(styleOptional, "CHILD"))			style |= WS_CHILD;
+			//if (strstr(styleOptional, "CHILDWINDOW"))	style |= WS_CHILDWINDOW;
+			if (strstr(styleOptional, "CLIPSIBLINGS"))	style |= WS_CLIPSIBLINGS;
+			if (strstr(styleOptional, "DISABLED"))		style |= WS_DISABLED;
+			if (strstr(styleOptional, "VISIBLE"))		style |= WS_VISIBLE;
+			if (strstr(styleOptional, "CAPTION"))		style |= WS_CAPTION;
+			if (strstr(styleOptional, "VSCROLL"))		style |= WS_VSCROLL;
+			if (strstr(styleOptional, "HSCROLL"))		style |= WS_HSCROLL;
+			if (strstr(styleOptional, "SYSMENU"))		style |= WS_SYSMENU;
+			if (strstr(styleOptional, "THICKFRAME")  || strstr(styleOptional, "SIZEBOX"))			style |= WS_SIZEBOX;
+			if (strstr(styleOptional, "GROUP"))			style |= WS_GROUP;
+			if (strstr(styleOptional, "TABSTOP"))		style |= WS_TABSTOP;
+			if (strstr(styleOptional, "OVERLAPPED")  || strstr(styleOptional, "TILED"))				style |= WS_OVERLAPPED;		
+			if (strstr(styleOptional, "TILEDWINDOW") || strstr(styleOptional, "OVERLAPPEDWINDOW"))	style |= WS_OVERLAPPEDWINDOW;
+			if (strstr(styleOptional, "POPUP"))			style &= (~(WS_CAPTION|WS_CHILD)); // swell doesn't actually implement WS_POPUP as separate style
+			if (strstr(styleOptional, "DLGFRAME"))		style &= (~WS_CAPTION);
+	#ifdef _WIN32
+			if (strstr(styleOptional, "BORDER"))		style |= WS_BORDER;
+			if (strstr(styleOptional, "CLIPCHILDREN"))	style |= WS_CLIPCHILDREN;
+			if (strstr(styleOptional, "DLGFRAME"))		style |= WS_DLGFRAME;
+			if (strstr(styleOptional, "POPUP"))		style |= WS_POPUP;
+	#endif
 		}
-	}
 
-#else
-	// Does the class already exist?
-	hwnd = CreateDialog(nullptr, MAKEINTRESOURCE(0), ownerHWNDOptional, JS_Window_Create_WinProc);
-	if (hwnd) {
+	// On Windows, each new class name requires a new class.
+	#ifdef _WIN32
+		// Does the class already exist?
 		std::string classString = className;
 		if (!mapClassNames.count(classString))
-			mapClassNames[classString] = strdup(className);
-		SWELL_SetClassName(hwnd, mapClassNames[classString]);
-		SetWindowLong(hwnd, GWL_STYLE, style);
-		SetWindowText(hwnd, title);
-		SetWindowPos(hwnd, HWND_TOPMOST, x, y, w, h, SWP_SHOWWINDOW | SWP_NOCOPYBITS);
-		ShowWindow(hwnd, show);
-		//char tmp[2000];
-		//sprintf(tmp, "\nm_style: %x \nm_exstyle: %x \nvis: %s \nenabled: %s \nwantfocus: %s \nm_israised: %s \nm_oswindow_fullscreen: %s \nm_owner: %p", hwnd->m_style, hwnd->m_exstyle, hwnd->m_visible?"true":"false", hwnd->m_enabled?"true":"false", hwnd->m_wantfocus?"true":"false", hwnd->m_israised?"true":"false", hwnd->m_oswindow_fullscreen?"true":"false", hwnd->m_owner);
-		//ShowConsoleMsg(tmp);
-		//UpdateWindow(hwnd);
-	}
-#endif
+		{
+			WNDCLASSEX structWindowClass
+			{
+				sizeof(WNDCLASSEX),		//UINT cbSize;
+				CS_DBLCLKS | CS_HREDRAW | CS_VREDRAW | CS_OWNDC, //UINT style;
+				JS_Window_Create_WinProc, //WNDPROC     lpfnWndProc;
+				0,			//int         cbClsExtra;
+				0,			//int         cbWndExtra;
+				ReaScriptAPI_Instance,		//HINSTANCE   hInstance;
+				NULL,		//HICON       hIcon;
+				NULL,		//HCURSOR     hCursor;
+				NULL,		//HBRUSH      hbrBackground;
+				NULL,		//LPCSTR      lpszMenuName;
+				className,	//LPCSTR      lpszClassName;
+				NULL,		//HICON       hIconSm;
+			};
 
+			if (RegisterClassEx(&structWindowClass))
+				mapClassNames[classString] = strdup(className);
+		}
+
+		if (mapClassNames.count(classString))
+		{
+			hwnd = CreateWindowEx(
+				WS_EX_LEFT | WS_EX_ACCEPTFILES | WS_EX_APPWINDOW | WS_EX_CONTEXTHELP,	//DWORD     dwExStyle,
+				mapClassNames[classString], 	//LPCSTR    lpClassName,
+				title, 	//LPCSTR    lpWindowName,
+				style, //WS_POPUP, //WS_OVERLAPPEDWINDOW, //WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_VISIBLE | WS_MINIMIZEBOX,	//DWORD     dwStyle,
+				x, 		//int       X,
+				y, 		//int       Y,
+				w, 		//int       nWidth,
+				h, 		//int       nHeight,
+				(HWND)ownerHWNDOptional,	//HWND      hWndParent,
+				NULL,	//HMENU     hMenu,
+				ReaScriptAPI_Instance,//HINSTANCE hInstance,
+				NULL	//LPVOID    lpParam
+			);
+			if (hwnd)
+			{
+				ShowWindow(hwnd, show);
+				UpdateWindow(hwnd);
+			}
+		}
+
+	#else
+		// Does the class already exist?
+		hwnd = CreateDialog(nullptr, MAKEINTRESOURCE(0), ownerHWNDOptional, JS_Window_Create_WinProc);
+		if (hwnd) {
+			std::string classString = className;
+			if (!mapClassNames.count(classString))
+				mapClassNames[classString] = strdup(className);
+			SWELL_SetClassName(hwnd, mapClassNames[classString]);
+			SetWindowLong(hwnd, GWL_STYLE, style);
+			SetWindowText(hwnd, title);
+			SetWindowPos(hwnd, HWND_TOPMOST, x, y, w, h, SWP_SHOWWINDOW | SWP_NOCOPYBITS | SWP_FRAMECHANGED);
+			ShowWindow(hwnd, show);
+			//char tmp[2000];
+			//sprintf(tmp, "\nm_style: %x \nm_exstyle: %x \nvis: %s \nenabled: %s \nwantfocus: %s \nm_israised: %s \nm_oswindow_fullscreen: %s \nm_owner: %p", hwnd->m_style, hwnd->m_exstyle, hwnd->m_visible?"true":"false", hwnd->m_enabled?"true":"false", hwnd->m_wantfocus?"true":"false", hwnd->m_israised?"true":"false", hwnd->m_oswindow_fullscreen?"true":"false", hwnd->m_owner);
+			//ShowConsoleMsg(tmp);
+			//UpdateWindow(hwnd);
+		}
+	#endif
+	}
 	return hwnd;
 }
 
