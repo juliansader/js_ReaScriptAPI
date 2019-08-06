@@ -26,7 +26,7 @@
 //#endif
 #define LICE_PROVIDED_BY_APP
 #define LICE_FAVOR_SPEED
-#include "./WDL/lice/lice.h"
+#include "./WDL/lice/lice.h" // !!!!!!!!!!!!!!!! CUSTOMIZED LICE.H !!!!!!!!!!!!!!!!
 #include "./WDL/lice/lice_text.h"
 #ifndef SWELL_PROVIDED_BY_APP
 #error "SWELL_PROVIDED_BY_APP should be defined for entire project (if using command line, add -DSWELL_PROVIDED_BY_APP to command)."
@@ -51,11 +51,12 @@
 #elif __linux__
 	#include <gtk/gtk.h>
         //#include <png.h>
+	#define SWELL_TARGET_GDK // This is important since some parts of swell .h files are only compiled if this flag is set.
 	#include "./WDL/swell/swell-internal.h" // For definition of HWND__
 	#define WINAPI
 #else
-	#include "./WDL/swell/swell-internal.h" // For definition of HWND__
-	#pragma message ( "inside elif" )
+	#define SWELL_TARGET_OSX
+	#include "./WDL/swell/swell-internal.h"
 	#define WINAPI
 #endif
 
