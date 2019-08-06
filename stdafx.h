@@ -50,10 +50,11 @@
 	#define WINAPI __stdcall
 #elif __linux__
 	#include <gtk/gtk.h>
-    //#include <png.h>
+        //#include <png.h>
 	#include "./WDL/swell/swell-internal.h" // For definition of HWND__
 	#define WINAPI
 #else
+	#include "./WDL/swell/swell-internal.h" // For definition of HWND__
 	#define WINAPI
 #endif
 
