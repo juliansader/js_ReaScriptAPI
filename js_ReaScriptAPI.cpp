@@ -1615,6 +1615,9 @@ void* JS_Window_Create(const char* title, const char* className, int x, int y, i
 		SetWindowText(hwnd, title);
 		SetWindowPos(hwnd, HWND_TOPMOST, x, y, w, h, SWP_SHOWWINDOW | SWP_NOCOPYBITS);
 		ShowWindow(hwnd, show);
+		char tmp[2000];
+		sprintf(tmp, "\nm_style: %x \nm_exstyle: %x \nvis: %s \nenabled: %s \nwantfocus: %s \nm_israised: %s \nm_oswindow_fullscreen: %s \nm_owner: %p", hwnd->m_style, hwnd->m_exstyle, hwnd->m_visible?"true":"false", hwnd->m_enabled?"true":"false", hwnd->m_wantfocus?"true":"false", hwnd->m_israised?"true":"false", hwnd->m_oswindow_fullscreen?"true":"false", hwnd->m_owner);
+		ShowConsoleMsg(tmp);
 		//UpdateWindow(hwnd);
 	}
 #endif
