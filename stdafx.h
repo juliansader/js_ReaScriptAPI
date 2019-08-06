@@ -55,6 +55,7 @@
 	#define WINAPI
 #else
 	#include "./WDL/swell/swell-internal.h" // For definition of HWND__
+	#pragma message ( "your warning text here" )
 	#define WINAPI
 #endif
 
