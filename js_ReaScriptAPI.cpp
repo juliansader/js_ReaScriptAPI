@@ -1607,7 +1607,7 @@ void* JS_Window_Create(const char* title, const char* className, int x, int y, i
 
 	#else
 		// Does the class already exist?
-		hwnd = CreateDialog(nullptr, MAKEINTRESOURCE(0), ownerHWNDOptional, JS_Window_Create_WinProc);
+		hwnd = CreateDialog(nullptr, MAKEINTRESOURCE(0), (HWND)ownerHWNDOptional, JS_Window_Create_WinProc);
 		if (hwnd) {
 			std::string classString = className;
 			if (!mapClassNames.count(classString))
