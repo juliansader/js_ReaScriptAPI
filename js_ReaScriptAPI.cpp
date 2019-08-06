@@ -1524,7 +1524,7 @@ void* JS_Window_Create(const char* title, const char* className, int x, int y, i
 	if (styleOptional && *styleOptional) {
 		style = 0;
 		// To distinguish MAXIMIZEBOX from MAXIMIZE, alter the M of all MAXIMIZEBOX's.
-		// swell doesn't implement WS_SHOWMAXIMIZED and WS_SHOWMINIMIZED, so wil use ShowWindow's options instead.
+		// swell doesn't implement WS_SHOWMAXIMIZED and WS_SHOWMINIMIZED, so will use ShowWindow's options instead.
 		char* box;
 		while (box = strstr(styleOptional, "MAXIMIZEBOX")) { style |= WS_MAXIMIZEBOX; *box = 'N'; }
 		if (strstr(styleOptional, "MAXIMIZE"))		show = SW_SHOWMAXIMIZED;
@@ -1605,7 +1605,7 @@ void* JS_Window_Create(const char* title, const char* className, int x, int y, i
 
 #else
 	// Does the class already exist?
-	hwnd = CreateDialog(nullptr, MAKEINTRESOURCE(0), nullptr, JS_Window_Create_WinProc);
+	hwnd = CreateDialog(nullptr, MAKEINTRESOURCE(0), ownerHWNDOptional, JS_Window_Create_WinProc);
 	if (hwnd) {
 		std::string classString = className;
 		if (!mapClassNames.count(classString))
@@ -1615,9 +1615,9 @@ void* JS_Window_Create(const char* title, const char* className, int x, int y, i
 		SetWindowText(hwnd, title);
 		SetWindowPos(hwnd, HWND_TOPMOST, x, y, w, h, SWP_SHOWWINDOW | SWP_NOCOPYBITS);
 		ShowWindow(hwnd, show);
-		char tmp[2000];
-		sprintf(tmp, "\nm_style: %x \nm_exstyle: %x \nvis: %s \nenabled: %s \nwantfocus: %s \nm_israised: %s \nm_oswindow_fullscreen: %s \nm_owner: %p", hwnd->m_style, hwnd->m_exstyle, hwnd->m_visible?"true":"false", hwnd->m_enabled?"true":"false", hwnd->m_wantfocus?"true":"false", hwnd->m_israised?"true":"false", hwnd->m_oswindow_fullscreen?"true":"false", hwnd->m_owner);
-		ShowConsoleMsg(tmp);
+		//char tmp[2000];
+		//sprintf(tmp, "\nm_style: %x \nm_exstyle: %x \nvis: %s \nenabled: %s \nwantfocus: %s \nm_israised: %s \nm_oswindow_fullscreen: %s \nm_owner: %p", hwnd->m_style, hwnd->m_exstyle, hwnd->m_visible?"true":"false", hwnd->m_enabled?"true":"false", hwnd->m_wantfocus?"true":"false", hwnd->m_israised?"true":"false", hwnd->m_oswindow_fullscreen?"true":"false", hwnd->m_owner);
+		//ShowConsoleMsg(tmp);
 		//UpdateWindow(hwnd);
 	}
 #endif
