@@ -634,6 +634,7 @@ typedef GdkWindow *SWELL_OSWINDOW;
 typedef void *SWELL_OSWINDOW; // maps to the HWND__ itself on visible, non-GDK, top level windows
 #endif
 
+#pragma message ("before HWND__")
 struct HWND__
 {
 	#pragma message ("inside HWND__")
