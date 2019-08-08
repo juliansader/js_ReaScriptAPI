@@ -6,7 +6,7 @@
 
 static void* __vararg_JS_GetLevel(void** arglist, int numparms)
 {
-	return (int)(intptr_t)JS_GetLevel(arglist[0]);
+	return (void*)(intptr_t)JS_GetLevel(arglist[0]);
 }
 
 static void* __vararg_JS_ReaScriptAPI_Version(void** arglist, int numparms)
