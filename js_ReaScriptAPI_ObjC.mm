@@ -58,7 +58,6 @@ bool JS_Window_SetZOrder_ObjC(void* hwnd, int order, void* insertAfterHWND)
 				[window orderWindow:NSWindowBelow relativeTo:0];
 				return true;
 			default:
-			{
 				NSWindow* afterNSWindow = NULL;
 				if (insertAfterHWND)
 				{
