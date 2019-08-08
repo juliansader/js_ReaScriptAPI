@@ -69,16 +69,12 @@ bool JS_Window_SetZOrder_ObjC(void* hwnd, void* insertAfterHWND)
 		which is just slightly above the main window at 0 = NSNormalWindowLevel.
 */
 {
-	NSView*   view = NULL; // Declare everything here, since can't do inside switch
-	//NSWindow* window = NULL;
-	NSWindow* afterWindow = NULL;
-	NSInteger afterWinNum = 0;
-	NSInteger level = 0;
-	
 	NSWindow* window = JS_GetNSWindowFromSwellHWND(hwnd);
 	
 	if (window)
 	{
+		NSWindow* afterThisWindow = NULL; // Declare here, since can't inside switch
+		
 		switch ((intptr_t)insertAfterHWND)
 		{
 			case -1: //HWND_TOPMOST:
@@ -101,7 +97,7 @@ bool JS_Window_SetZOrder_ObjC(void* hwnd, void* insertAfterHWND)
 				if (afterThisWindow)
 				{
 					[window setLevel: [afterThisWindow level]];
-					[window orderWindow:NSWindowAbove relativeTo:[afterThisWindow windowNumber]];
+					[window orderWindow:NSWindowBelow relativeTo:[afterThisWindow windowNumber]];
 					return true;
 				}
 		}
