@@ -51,11 +51,12 @@ int   JS_MIDIEditor_ListAll(char* listOutNeedBig, int listOutNeedBig_sz);
 void  JS_Window_Move(void* windowHWND, int left, int top);
 void  JS_Window_Resize(void* windowHWND, int width, int height);
 void  JS_Window_SetPosition(void* windowHWND, int left, int top, int width, int height);
+bool  JS_Window_SetZOrder_ObjC(void* hwnd, int order);
 bool  JS_Window_SetZOrder(void* windowHWND, const char* ZOrder, void* insertAfterHWND);
 void* JS_Window_GetLongPtr(void* windowHWND, const char* info);
 void  JS_Window_GetLong(void* windowHWND, const char* info, double* retvalOut);
 void  JS_Window_SetLong(void* windowHWND, const char* info, double value, double* retvalOut);
-bool  JS_Window_SetOpacity_ObjC(void* windowHWND, double alpha);
+bool  JS_Window_SetOpacity_ObjC(void* hwnd, double alpha);
 bool  JS_Window_SetOpacity(HWND windowHWND, const char* mode, double value);
 
 void  JS_Window_SetFocus(void* windowHWND);
