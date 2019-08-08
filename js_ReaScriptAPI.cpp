@@ -1622,6 +1622,7 @@ void* JS_Window_Create(const char* title, const char* className, int x, int y, i
 			ShowWindow(hwnd, show);
 			//UpdateWindow(hwnd);
 		}
+	#endif
 	}
 	return hwnd;
 }
