@@ -26,55 +26,53 @@ bool JS_Window_SetOpacity_ObjC(void* hwnd, double alpha)
 		return false;
 }
 
-bool JS_Window_SetZOrder_ObjC(void* hwnd, int order, void* insertAfterHWND)
+bool JS_Window_SetZOrder_ObjC(void* hwnd, void* insertAfterHWND)
 {
+	NSView*   view = NULL; // Declare everything here, since can't do inside switch
 	NSWindow* window = NULL;
-	NSWindow* afterNSWindow = NULL;
+	NSWindow* afterWindow = NULL;
 	NSInteger afterWinNum = 0;
 	
 	if (hwnd) 
 	{
 		if ([(id)hwnd isKindOfClass:[NSView class]])
 		{
-			NSView* view = (NSView*)hwnd;
+			view   = (NSView*)hwnd;
 			window = (NSWindow*)[view window]; // The view’s window object, if it is installed in a window.
 		}
 		else if ([(id)hwnd isKindOfClass:[NSWindow class]])
 			window = (NSWindow*)hwnd;
 	}
-
-	if (insertAfterHWND)
-	{
-		if ([(id)insertAfterHWND isKindOfClass:[NSView class]])
-		{
-			NSView* view = (NSView*)insertAfterHWND;
-			afterNSWindow = (NSWindow*)[view window]; // The view’s window object, if it is installed in a window.
-		}
-		else if ([(id)insertAfterHWND isKindOfClass:[NSWindow class]])
-			afterNSWindow = (NSWindow*)insertAfterHWND;
-	}
 	
 	if (window)
 	{
-		switch (order)
+		switch ((intptr_t)insertAfterHWND)
 		{
-			case HWND_TOPMOST:
+			case -1: //HWND_TOPMOST:
 				[window setLevel: NSFloatingWindowLevel];
 				return true;
-			case HWND_NOTOPMOST:
+			case -2: //HWND_NOTOPMOST:
 				[window setLevel: NSNormalWindowLevel];
 				return true;
-			case HWND_TOP:
+			case 0: //HWND_TOP:
 				[window orderWindow:NSWindowAbove relativeTo:0];
 				return true;
-			case HWND_BELOW:
+			case 1: //HWND_BELOW:
 				[window setLevel: NSNormalWindowLevel];
 				[window orderWindow:NSWindowBelow relativeTo:0];
 				return true;
 			default:
-				if (afterNSWindow)
+				if ([(id)insertAfterHWND isKindOfClass:[NSView class]])
 				{
-					afterWinNum = [afterNSWindow windowNumber];
+					view = (NSView*)insertAfterHWND;
+					afterWindow = (NSWindow*)[view window]; // The view’s window object, if it is installed in a window.
+				}
+				else if ([(id)insertAfterHWND isKindOfClass:[NSWindow class]])
+					afterWindow = (NSWindow*)insertAfterHWND;
+
+				if (afterWindow)
+				{
+					afterWinNum = [afterWindow windowNumber];
 					if (afterWinNum)
 					{
 						[window orderWindow:NSWindowAbove relativeTo:afterWinNum];
