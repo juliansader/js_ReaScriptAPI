@@ -1,8 +1,7 @@
 #pragma once
 
 extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_HINSTANCE hInstance, reaper_plugin_info_t *rec);
-int  JS_GetLevel_ObjC(void* hwnd);
-int  JS_GetLevel(void* hwnd);
+
 void  JS_ReaScriptAPI_Version(double* versionOut);
 
 void  JS_Localize(const char* USEnglish, const char* LangPackSection, char* translationOut, int translationOut_sz);
@@ -53,6 +52,8 @@ int   JS_MIDIEditor_ListAll(char* listOutNeedBig, int listOutNeedBig_sz);
 void  JS_Window_Move(void* windowHWND, int left, int top);
 void  JS_Window_Resize(void* windowHWND, int width, int height);
 void  JS_Window_SetPosition(void* windowHWND, int left, int top, int width, int height);
+int   JS_GetLevel_ObjC(void* hwnd);
+int   JS_GetLevel(void* hwnd);
 bool  JS_Window_SetZOrder_ObjC(void* hwnd, void* insertAfterHWND);
 bool  JS_Window_SetZOrder(void* windowHWND, const char* ZOrder, void* insertAfterHWND);
 void* JS_Window_GetLongPtr(void* windowHWND, const char* info);
