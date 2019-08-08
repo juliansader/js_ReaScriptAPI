@@ -1,6 +1,23 @@
 #import <Cocoa/Cocoa.h>
 #import <objc/objc-runtime.h>
 
+int JS_GetLevel(void* hwnd)
+{
+	NSWindow* window = NULL;
+   	if ([(id)hwnd isKindOfClass:[NSView class]])
+	{
+		NSView* view = (NSView*)hwnd;
+		window = (NSWindow*)[view window]; // The view’s window object, if it is installed in a window.
+	}
+	else if ([(id)hwnd isKindOfClass:[NSWindow class]])
+		window = (NSWindow*)hwnd;
+	
+	if (window)
+		return (int)[window level];
+	else
+		return 0;
+}
+
 bool JS_Window_SetOpacity_ObjC(void* hwnd, double alpha)
 {
 	NSWindow* window = NULL;
