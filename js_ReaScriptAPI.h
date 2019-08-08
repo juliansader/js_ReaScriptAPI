@@ -51,7 +51,7 @@ int   JS_MIDIEditor_ListAll(char* listOutNeedBig, int listOutNeedBig_sz);
 void  JS_Window_Move(void* windowHWND, int left, int top);
 void  JS_Window_Resize(void* windowHWND, int width, int height);
 void  JS_Window_SetPosition(void* windowHWND, int left, int top, int width, int height);
-bool  JS_Window_SetZOrder_ObjC(void* hwnd, int order, void* insertAfterHWND);
+bool  JS_Window_SetZOrder_ObjC(void* hwnd, void* order, void* insertAfterHWND);
 bool  JS_Window_SetZOrder(void* windowHWND, const char* ZOrder, void* insertAfterHWND);
 void* JS_Window_GetLongPtr(void* windowHWND, const char* info);
 void  JS_Window_GetLong(void* windowHWND, const char* info, double* retvalOut);
