@@ -17,10 +17,10 @@
        misrepresented as being the original software.
     3. This notice may not be removed or altered from any source distribution.
 */
-#pragma message ("voor ifndef")
+  
 #ifndef _SWELL_INTERNAL_H_
 #define _SWELL_INTERNAL_H_
-#pragma message ("na ifndef")
+
 #include "../ptrlist.h"
 
 class SWELL_ListView_Row
@@ -38,7 +38,7 @@ public:
 struct HTREEITEM__;
 
 #ifdef SWELL_TARGET_OSX
-#pragma message ("41")
+
 #if 0
   // at some point we should enable this and use it in most SWELL APIs that call Cocoa code...
   #define SWELL_BEGIN_TRY @try { 
@@ -88,7 +88,7 @@ struct HTREEITEM__;
 #define SWELL_Menu __SWELL_PREFIX_CLASSNAME(_menu)
 
 #ifdef __OBJC__
-#pragma message ("91")
+
 
 #if MAC_OS_X_VERSION_MAX_ALLOWED <= MAC_OS_X_VERSION_10_4
 typedef int NSInteger;
@@ -197,7 +197,7 @@ typedef struct WindowPropRec
 
   // these are for the new yosemite mouse handling code
   int m_last_plainly_clicked_item, m_last_shift_clicked_item;
-#pragma message ("200")
+
 }
 -(LONG)getSwellStyle;
 -(void)setSwellStyle:(LONG)st;
@@ -320,7 +320,7 @@ typedef struct WindowPropRec
 -(WNDPROC)getSwellWindowProc;
 -(void)setSwellDialogProc:(DLGPROC)val;
 -(DLGPROC)getSwellDialogProc;
-#pragma message ("323")
+
 - (NSArray*) namesOfPromisedFilesDroppedAtDestination:(NSURL*)droplocation;
 
 -(void) getSwellPaintInfo:(PAINTSTRUCT *)ps;
@@ -404,7 +404,7 @@ typedef struct WindowPropRec
 - (id)swellGetOwner;
 - (void **)swellGetOwnerWindowHead;
 -(void)swellDoDestroyStuff;
-#pragma message ("407")
+
 -(void)swellSetModalRetVal:(int)r;
 -(int)swellGetModalRetVal;
 -(bool)swellHasModalRetVal;
@@ -497,7 +497,7 @@ struct HGDIOBJ__
   //
   // if ATSUI used, meaning IsCoreTextSupported() returned false
   ATSUStyle atsui_font_style;
-#pragma message ("500")
+
   float font_rotation;
 
   bool _infreelist;
@@ -602,7 +602,7 @@ struct HTREEITEM__
   HTREEITEM__();
   ~HTREEITEM__();
   bool FindItem(HTREEITEM it, HTREEITEM__ **parOut, int *idxOut);
-  #pragma message ("605")
+  
 #ifdef SWELL_TARGET_OSX
   SWELL_DataHold *m_dh;
 #else
@@ -633,10 +633,9 @@ typedef GdkWindow *SWELL_OSWINDOW;
 #else
 typedef void *SWELL_OSWINDOW; // maps to the HWND__ itself on visible, non-GDK, top level windows
 #endif
-#pragma message ("voor HWND__")
+
 struct HWND__
 {
-	#pragma message ("binne HWND")
   HWND__(HWND par, int wID=0, RECT *wndr=NULL, const char *label=NULL, bool visible=false, WNDPROC wndproc=NULL, DLGPROC dlgproc=NULL, HWND ownerWindow=NULL);
   ~HWND__(); // DO NOT USE!!! We would make this private but it breaks PtrList using it on gcc. 
 
@@ -700,7 +699,7 @@ struct HMENU__
   WDL_PtrList<MENUITEMINFO> items;
   int sel_vis; // for mouse/keyboard nav
   int m_refcnt;
-#pragma message ("703")
+
   HMENU__ *Duplicate();
   static void freeMenuItem(void *p);
 
@@ -797,7 +796,7 @@ void VALIDATE_HWND_LIST(HWND list, HWND par);
 #endif // !OSX
 
 HDC SWELL_CreateGfxContext(void *);
-#pragma message ("800")
+
 // GDP internals
 #define TYPE_PEN 1
 #define TYPE_BRUSH 2
@@ -914,7 +913,7 @@ HTREEITEM__::~HTREEITEM__()
   [m_dh release];
 #endif
 }
-#pragma message ("917")
+
 
 bool HTREEITEM__::FindItem(HTREEITEM it, HTREEITEM__ **parOut, int *idxOut)
 {
@@ -1005,7 +1004,7 @@ static void __listview_mergesort_internal(void *base, size_t nmemb, size_t size,
   f(scrollbar_width, 14) \
   f(scrollbar_min_thumb_height, 4) \
   f(combo_height, 20) \
-#pragma message ("1008")
+
 
 #define SWELL_GENERIC_THEMEDEFS(f,fd) \
   SWELL_GENERIC_THEMESIZEDEFS(f,fd) \
@@ -1099,7 +1098,7 @@ SWELL_GENERIC_THEMEDEFS(__def_theme_ent,__def_theme_ent_fb)
 #undef __def_theme_ent
 #undef __def_theme_ent_fb
 };
-#pragma message ("1102")
+
 #define SWELL_UI_SCALE(x) (((x)*g_swell_ui_scale)/256)
 void swell_scaling_init(bool no_auto_hidpi);
 extern int g_swell_ui_scale;
