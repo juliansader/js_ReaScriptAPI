@@ -181,12 +181,9 @@ v0.990
  * New: JS_Window_Create.
  * New: JS_ListView_EnsureVisible.
  * New: More options for Window_Show.
+ * New: JS_Window_SetZOrder options work on macOS.
 */
 
-int JS_GetLevel(void* hwnd)
-{
-	return JS_GetLevel_ObjC(hwnd);
-}
 
 void JS_ReaScriptAPI_Version(double* versionOut)
 {
@@ -1621,8 +1618,7 @@ void* JS_Window_Create(const char* title, const char* className, int x, int y, i
 			SetWindowText(hwnd, title);
 			SetWindowPos(hwnd, HWND_TOP, x, y, w, h, SWP_SHOWWINDOW | SWP_NOCOPYBITS | SWP_FRAMECHANGED);
 			#ifdef __APPLE__
-			//JS_Window_SetZOrder_ObjC(hwnd, HWND_NOTOPMOST);
-			//JS_Window_SetZOrder_ObjC(hwnd, HWND_TOP);
+			JS_Window_SetZOrder_ObjC(hwnd, HWND_TOP); // swell's SetWindowPos doesn't work well for Z-ordering
 			#endif
 			ShowWindow(hwnd, show);
 			//UpdateWindow(hwnd);
@@ -1649,6 +1645,16 @@ void JS_Window_SetPosition(void* windowHWND, int left, int top, int width, int h
 	SetWindowPos((HWND)windowHWND, NULL, left, top, width, height, SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOOWNERZORDER );
 }
 
+// Gets the NSWindowLevel on macOS
+int JS_GetLevel(void* hwnd)
+{
+	#ifdef __APPLE__
+	return JS_GetLevel_ObjC(hwnd);
+	#else
+	return 0
+	#endif
+}
+	
 // swell's Z ordering doesn't work well, and doesn't even interpret TOPMOST and NOTOPMOST.
 // So I tried to code my own Z ordering
 bool JS_Window_SetZOrder(void* windowHWND, const char* ZOrder, void* insertAfterHWND)
@@ -1656,26 +1662,26 @@ bool JS_Window_SetZOrder(void* windowHWND, const char* ZOrder, void* insertAfter
 	constexpr intptr_t CHECK_NO_FLAG = -3; // Some value that should not be one of the existing flags.
 	if (ValidatePtr(windowHWND, "HWND")) {
 		HWND insertAfter = (HWND)CHECK_NO_FLAG;
-		if (strstr(ZOrder, "BO"))			insertAfter = HWND_BOTTOM;
+		if (strstr(ZOrder, "BO"))		insertAfter = HWND_BOTTOM;
 		else if (strstr(ZOrder, "NOT"))		insertAfter = HWND_NOTOPMOST;
 		else if (strstr(ZOrder, "TOPM"))	insertAfter = HWND_TOPMOST;
 		else if (strstr(ZOrder, "TOP"))		insertAfter = HWND_TOP; // Top
-#ifndef __linux__ // swell doesn't provide 
+		#ifndef __linux__ // swell doesn't provide all options
 		else if (strstr(ZOrder, "IN")) {
 			if (ValidatePtr(insertAfterHWND, "HWND"))
 				insertAfter = (HWND)insertAfterHWND;
-#endif
+		#endif
 		}
 
 		if (insertAfter != (HWND)CHECK_NO_FLAG) { // Was given a proper new value?
-#ifdef _WIN32
+		#ifdef _WIN32
 			return !!SetWindowPos((HWND)windowHWND, insertAfter, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-#elif __linux__
+		#elif __linux__
 			SetWindowPos((HWND)windowHWND, insertAfter, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 			return true;
-#else
+		#else
 			return JS_Window_SetZOrder_ObjC(windowHWND, insertAfter);
-#endif
+		#endif
 		}
 	}
 	return false;
