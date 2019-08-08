@@ -17,10 +17,10 @@
        misrepresented as being the original software.
     3. This notice may not be removed or altered from any source distribution.
 */
-  
+#pragma message ("voor ifndef")
 #ifndef _SWELL_INTERNAL_H_
 #define _SWELL_INTERNAL_H_
-
+#pragma message ("na ifndef")
 #include "../ptrlist.h"
 
 class SWELL_ListView_Row
@@ -633,11 +633,10 @@ typedef GdkWindow *SWELL_OSWINDOW;
 #else
 typedef void *SWELL_OSWINDOW; // maps to the HWND__ itself on visible, non-GDK, top level windows
 #endif
-
-#pragma message ("before HWND__")
+#pragma message ("voor HWND__")
 struct HWND__
 {
-	#pragma message ("inside HWND__")
+	#pragma message ("binne HWND")
   HWND__(HWND par, int wID=0, RECT *wndr=NULL, const char *label=NULL, bool visible=false, WNDPROC wndproc=NULL, DLGPROC dlgproc=NULL, HWND ownerWindow=NULL);
   ~HWND__(); // DO NOT USE!!! We would make this private but it breaks PtrList using it on gcc. 
 
