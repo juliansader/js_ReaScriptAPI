@@ -29,6 +29,9 @@ bool JS_Window_SetOpacity_ObjC(void* hwnd, double alpha)
 bool JS_Window_SetZOrder_ObjC(void* hwnd, int order, void* insertAfterHWND)
 {
 	NSWindow* window = NULL;
+	NSWindow* afterNSWindow = NULL;
+	NSInteger afterWinNum = 0;
+	
 	if (hwnd) 
 	{
 		if ([(id)hwnd isKindOfClass:[NSView class]])
@@ -40,6 +43,17 @@ bool JS_Window_SetZOrder_ObjC(void* hwnd, int order, void* insertAfterHWND)
 			window = (NSWindow*)hwnd;
 	}
 
+	if (insertAfterHWND)
+	{
+		if ([(id)insertAfterHWND isKindOfClass:[NSView class]])
+		{
+			NSView* view = (NSView*)insertAfterHWND;
+			afterNSWindow = (NSWindow*)[view window]; // The view’s window object, if it is installed in a window.
+		}
+		else if ([(id)insertAfterHWND isKindOfClass:[NSWindow class]])
+			afterNSWindow = (NSWindow*)insertAfterHWND;
+	}
+	
 	if (window)
 	{
 		switch (order):
@@ -58,23 +72,12 @@ bool JS_Window_SetZOrder_ObjC(void* hwnd, int order, void* insertAfterHWND)
 				[window orderWindow:NSWindowBelow relativeTo:0];
 				return true;
 			default:
-				NSWindow* afterNSWindow = NULL;
-				if (insertAfterHWND)
-				{
-					if ([(id)insertAfterHWND isKindOfClass:[NSView class]])
-					{
-						NSView* view = (NSView*)insertAfterHWND;
-						afterNSWindow = (NSWindow*)[view window]; // The view’s window object, if it is installed in a window.
-					}
-					else if ([(id)insertAfterHWND isKindOfClass:[NSWindow class]])
-						afterNSWindow = (NSWindow*)insertAfterHWND;
-				}
 				if (afterNSWindow)
 				{
-					NSInteger winNum = [afterNSWindow windowNumber];
-					if (winNum)
+					afterWinNum = [afterNSWindow windowNumber];
+					if (afterWinNum)
 					{
-						[window orderWindow:NSWindowAbove relativeTo:winNum];
+						[window orderWindow:NSWindowAbove relativeTo:afterWinNum];
 						return true;
 					}
 				}
