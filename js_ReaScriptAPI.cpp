@@ -1617,7 +1617,8 @@ void* JS_Window_Create(const char* title, const char* className, int x, int y, i
 			SetWindowText(hwnd, title);
 			SetWindowPos(hwnd, HWND_TOPMOST, x, y, w, h, SWP_SHOWWINDOW | SWP_NOCOPYBITS | SWP_FRAMECHANGED);
 			#ifdef __APPLE__
-			JS_Window_SetZOrder_ObjC(hwnd, 1);
+			JS_Window_SetZOrder_ObjC(hwnd, HWND_NOTOPMOST, NULL);
+			JS_Window_SetZOrder_ObjC(hwnd, HWND_TOP, NULL);
 			#endif
 			ShowWindow(hwnd, show);
 			//UpdateWindow(hwnd);
@@ -1644,6 +1645,8 @@ void JS_Window_SetPosition(void* windowHWND, int left, int top, int width, int h
 	SetWindowPos((HWND)windowHWND, NULL, left, top, width, height, SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOOWNERZORDER );
 }
 
+// swell's Z ordering doesn't work well, and doesn't even interpret TOPMOST and NOTOPMOST.
+// So I tried to code my own Z ordering
 bool JS_Window_SetZOrder(void* windowHWND, const char* ZOrder, void* insertAfterHWND)
 {
 	constexpr intptr_t CHECK_NO_FLAG = -3; // Some value that should not be one of the existing flags.
@@ -1653,24 +1656,21 @@ bool JS_Window_SetZOrder(void* windowHWND, const char* ZOrder, void* insertAfter
 		else if (strstr(ZOrder, "NOT"))		insertAfter = HWND_NOTOPMOST;
 		else if (strstr(ZOrder, "TOPM"))	insertAfter = HWND_TOPMOST;
 		else if (strstr(ZOrder, "TOP"))		insertAfter = HWND_TOP; // Top
-#ifdef _WIN32
+#ifndef __linux__ // swell doesn't provide 
 		else if (strstr(ZOrder, "IN")) {
 			if (ValidatePtr(insertAfterHWND, "HWND"))
 				insertAfter = (HWND)insertAfterHWND;
+#endif
 		}
+
 		if (insertAfter != (HWND)CHECK_NO_FLAG) { // Was given a proper new value?
+#ifdef _WIN32
 			return !!SetWindowPos((HWND)windowHWND, insertAfter, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 #elif __linux__
-		if (insertAfter != (HWND)CHECK_NO_FLAG) { // Was given a proper new value?
 			SetWindowPos((HWND)windowHWND, insertAfter, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 			return true;
 #else
-		if (insertAfter != (HWND)CHECK_NO_FLAG) { // Was given a proper new value?
-			SetWindowPos((HWND)windowHWND, insertAfter, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-			if (insertAfter == HWND_TOPMOST) 
-				return JS_Window_SetZOrder_ObjC(windowHWND, 1);
-			else
-				return true;
+			return JS_Window_SetZOrder_ObjC(windowHWND, insertAfter, insertAfterHWND);
 #endif
 		}
 	}
