@@ -183,6 +183,10 @@ v0.990
  * New: More options for Window_Show.
 */
 
+int JS_GetLevel(void* hwnd)
+{
+	return JS_GetLevel_ObjC(hwnd);
+}
 
 void JS_ReaScriptAPI_Version(double* versionOut)
 {
