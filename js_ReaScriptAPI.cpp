@@ -177,7 +177,7 @@ v0.989
  * New: Window_FindAny for searching top-level as well as child windows.
 v0.990
  * Fix: Window_SetOpacity works on macOS.
- * Fix: Defstring memory leak, GDI Objects are atomatically destroyed on exit.
+ * Fix: Defstring memory leak, GDI Objects are automatically destroyed on exit.
  * New: JS_Window_Create.
  * New: JS_ListView_EnsureVisible.
  * New: More options for Window_Show.
