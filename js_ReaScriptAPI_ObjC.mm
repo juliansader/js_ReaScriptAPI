@@ -1,7 +1,7 @@
 #import <Cocoa/Cocoa.h>
 #import <objc/objc-runtime.h>
 
-int JS_GetLevel(void* hwnd)
+int JS_GetLevel_ObjC(void* hwnd)
 {
 	NSWindow* window = NULL;
    	if ([(id)hwnd isKindOfClass:[NSView class]])
