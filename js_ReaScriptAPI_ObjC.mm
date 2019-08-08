@@ -26,7 +26,7 @@ bool JS_Window_SetOpacity_ObjC(void* hwnd, double alpha)
 		return false;
 }
 
-bool JS_Window_SetZOrder(void* hwnd, int order)
+bool JS_Window_SetZOrder_ObjC(void* hwnd, int order)
 {
 	NSWindow* window = NULL;
 	if ([(id)hwnd isKindOfClass:[NSView class]])
