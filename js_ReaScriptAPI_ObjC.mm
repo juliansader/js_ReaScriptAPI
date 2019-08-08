@@ -56,7 +56,7 @@ bool JS_Window_SetZOrder_ObjC(void* hwnd, int order, void* insertAfterHWND)
 	
 	if (window)
 	{
-		switch (order):
+		switch (order)
 		{
 			case HWND_TOPMOST:
 				[window setLevel: NSFloatingWindowLevel];
