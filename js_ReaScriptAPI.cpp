@@ -1617,8 +1617,8 @@ void* JS_Window_Create(const char* title, const char* className, int x, int y, i
 			SetWindowText(hwnd, title);
 			SetWindowPos(hwnd, HWND_TOPMOST, x, y, w, h, SWP_SHOWWINDOW | SWP_NOCOPYBITS | SWP_FRAMECHANGED);
 			#ifdef __APPLE__
-			JS_Window_SetZOrder_ObjC(hwnd, (int)HWND_NOTOPMOST, NULL);
-			JS_Window_SetZOrder_ObjC(hwnd, (int)HWND_TOP, NULL);
+			JS_Window_SetZOrder_ObjC(hwnd, HWND_NOTOPMOST, NULL);
+			JS_Window_SetZOrder_ObjC(hwnd, HWND_TOP, NULL);
 			#endif
 			ShowWindow(hwnd, show);
 			//UpdateWindow(hwnd);
@@ -1670,7 +1670,7 @@ bool JS_Window_SetZOrder(void* windowHWND, const char* ZOrder, void* insertAfter
 			SetWindowPos((HWND)windowHWND, insertAfter, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 			return true;
 #else
-			return JS_Window_SetZOrder_ObjC(windowHWND, (int)insertAfter, insertAfterHWND);
+			return JS_Window_SetZOrder_ObjC(windowHWND, insertAfter, insertAfterHWND);
 #endif
 		}
 	}
