@@ -1657,7 +1657,7 @@ int JS_GetLevel(void* hwnd)
 	
 // swell's Z ordering doesn't work well, and doesn't even interpret TOPMOST and NOTOPMOST.
 // So I tried to code my own Z ordering
-bool JS_Window_SetZOrder(void* windowHWND, const char* ZOrder, void* insertAfterHWND)
+bool JS_Window_SetZOrder(void* windowHWND, const char* ZOrder, void* insertAfterHWNDOptional)
 {
 	constexpr intptr_t CHECK_NO_FLAG = -3; // Some value that should not be one of the existing flags.
 	if (ValidatePtr(windowHWND, "HWND")) {
@@ -1668,8 +1668,8 @@ bool JS_Window_SetZOrder(void* windowHWND, const char* ZOrder, void* insertAfter
 		else if (strstr(ZOrder, "TOP"))		insertAfter = HWND_TOP; // Top
 		#ifndef __linux__ // swell doesn't provide all options
 		else if (strstr(ZOrder, "IN")) {
-			if (ValidatePtr(insertAfterHWND, "HWND"))
-				insertAfter = (HWND)insertAfterHWND;
+			if (insertAfterHWNDOptional && ValidatePtr(insertAfterHWNDOptional, "HWND"))
+				insertAfter = (HWND)insertAfterHWNDOptional;
 		#endif
 		}
 
