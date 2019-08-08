@@ -55,7 +55,7 @@ void  JS_Window_SetPosition(void* windowHWND, int left, int top, int width, int 
 int   JS_GetLevel_ObjC(void* hwnd);
 int   JS_GetLevel(void* hwnd);
 bool  JS_Window_SetZOrder_ObjC(void* hwnd, void* insertAfterHWND);
-bool  JS_Window_SetZOrder(void* windowHWND, const char* ZOrder, void* insertAfterHWND);
+bool  JS_Window_SetZOrder(void* windowHWND, const char* ZOrder, void* insertAfterHWNDOptional);
 void* JS_Window_GetLongPtr(void* windowHWND, const char* info);
 void  JS_Window_GetLong(void* windowHWND, const char* info, double* retvalOut);
 void  JS_Window_SetLong(void* windowHWND, const char* info, double value, double* retvalOut);
