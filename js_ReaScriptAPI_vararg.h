@@ -4,11 +4,6 @@
 #pragma warning(disable:4800) // disable "forcing value to bool..." warnings
 #endif
 
-static void* __vararg_JS_GetLevel(void** arglist, int numparms)
-{
-	return (void*)(intptr_t)JS_GetLevel(arglist[0]);
-}
-
 static void* __vararg_JS_ReaScriptAPI_Version(void** arglist, int numparms)
 {
 	JS_ReaScriptAPI_Version((double*)arglist[0]);
@@ -333,6 +328,11 @@ static void* __vararg_JS_Window_SetPosition(void** arglist, int numparms)
 {
   JS_Window_SetPosition((void*)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (int)(intptr_t)arglist[3], (int)(intptr_t)arglist[4]);
   return NULL;
+}
+
+static void* __vararg_JS_GetLevel(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_GetLevel(arglist[0]);
 }
 
 static void* __vararg_JS_Window_SetZOrder(void** arglist, int numparms)
