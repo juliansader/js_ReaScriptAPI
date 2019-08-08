@@ -3,10 +3,15 @@
 
 bool JS_Window_SetOpacity_ObjC(void* hwnd, double alpha)
 {
-   if ([hwnd isKindOfClass:[NSView class]])
-   {
-      	NSView* view = (NSView*)hwnd;
-	NSWindow* window = (NSWindow*)[view window]; // The view’s window object, if it is installed in a window.
+	NSWindow* window = NULL;
+   	if ([(id)hwnd isKindOfClass:[NSView class]])
+	{
+		NSView* view = (NSView*)hwnd;
+		window = (NSWindow*)[view window]; // The view’s window object, if it is installed in a window.
+	}
+	else if ([(id)hwnd isKindOfClass:[NSWindow class]])
+		window = (NSWindow*)hwnd;
+	
 	if (window)
 	{
 		CGFloat opacity = (CGFloat)alpha;
@@ -17,6 +22,29 @@ bool JS_Window_SetOpacity_ObjC(void* hwnd, double alpha)
 		//[window.layer setBackgroundColor:[NSColor clearColor]];
 		return true;
 	}
-   }  
-   return false;
+	else
+		return false;
+}
+
+bool JS_Window_SetZOrder(void* hwnd, int order)
+{
+	NSWindow* window = NULL;
+	if ([(id)hwnd isKindOfClass:[NSView class]])
+	{
+		NSView* view = (NSView*)hwnd;
+		window = (NSWindow*)[view window]; // The view’s window object, if it is installed in a window.
+	}
+	else if ([(id)hwnd isKindOfClass:[NSWindow class]])
+		window = (NSWindow*)hwnd;
+
+	if (window)
+	{
+		if (order == 1)
+		{
+			[window setLevel: NSScreenSaverWindowLevel];
+			[window makeKeyAndOrderFront:NULL];
+			return true;
+		}
+	}
+   	return false;
 }
