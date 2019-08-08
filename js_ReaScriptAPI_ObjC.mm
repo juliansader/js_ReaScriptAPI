@@ -1,33 +1,26 @@
 #import <Cocoa/Cocoa.h>
 #import <objc/objc-runtime.h>
 
-int JS_GetLevel_ObjC(void* hwnd)
+// The NSWindow is the container of the NSView child windows.
+NSWindow* JS_GetNSWindowFromSwellHWND(void* hwnd)
 {
 	NSWindow* window = NULL;
-   	if ([(id)hwnd isKindOfClass:[NSView class]])
+	if (hwnd)
 	{
-		NSView* view = (NSView*)hwnd;
-		window = (NSWindow*)[view window]; // The view’s window object, if it is installed in a window.
+		if ([(id)hwnd isKindOfClass:[NSView class]])
+		{
+			NSView* view = (NSView*)hwnd;
+			window = (NSWindow*)[view window]; // The view’s window object, if it is installed in a window.
+		}
+		else if ([(id)hwnd isKindOfClass:[NSWindow class]])
+			window = (NSWindow*)hwnd;
 	}
-	else if ([(id)hwnd isKindOfClass:[NSWindow class]])
-		window = (NSWindow*)hwnd;
-	
-	if (window)
-		return (int)[window level];
-	else
-		return 0;
+	return window;
 }
 
 bool JS_Window_SetOpacity_ObjC(void* hwnd, double alpha)
 {
-	NSWindow* window = NULL;
-   	if ([(id)hwnd isKindOfClass:[NSView class]])
-	{
-		NSView* view = (NSView*)hwnd;
-		window = (NSWindow*)[view window]; // The view’s window object, if it is installed in a window.
-	}
-	else if ([(id)hwnd isKindOfClass:[NSWindow class]])
-		window = (NSWindow*)hwnd;
+	NSWindow* window = JS_GetNSWindowFromSwellHWND(hwnd);
 	
 	if (window)
 	{
@@ -43,58 +36,73 @@ bool JS_Window_SetOpacity_ObjC(void* hwnd, double alpha)
 		return false;
 }
 
+// Get the NSWindowLevel of a swell HWND.
+int JS_GetLevel_ObjC(void* hwnd)
+{
+	NSWindow* window = JS_GetNSWindowFromSwellHWND(hwnd);
+	
+	if (window)
+		return (int)[window level];
+	else
+		return 0;
+}
+
+// swell doesn't provide full functionality for SetWindowPos. In particular, TOPMOST and NOTOPMOST aren't implemented.
+// So I have tried to code my own.
+// This was necessary for JS_Window_Create, since swell automatically gives the window a level of 0, which is below REAPER's floating windows.
 bool JS_Window_SetZOrder_ObjC(void* hwnd, void* insertAfterHWND)
+/*
+	Here are some of the standard macOS window levels:
+	backstopMenu: -20
+	normalWindow: 0
+	floatingWindow: 3
+	tornOffMenuWindow: 3
+	modalPanelWindow: 8
+	utilityWindow: 19
+	dockWindow: 20
+	mainMenuWindow: 24
+	statusWindow: 25
+	popUpMenuWindow: 101
+	overlayWindow: 102
+	
+	REAPER uses a non-standard level for its floating windows, namely 1, 
+		which is just slightly above the main window at 0 = NSNormalWindowLevel.
+*/
 {
 	NSView*   view = NULL; // Declare everything here, since can't do inside switch
-	NSWindow* window = NULL;
+	//NSWindow* window = NULL;
 	NSWindow* afterWindow = NULL;
 	NSInteger afterWinNum = 0;
+	NSInteger level = 0;
 	
-	if (hwnd) 
-	{
-		if ([(id)hwnd isKindOfClass:[NSView class]])
-		{
-			view   = (NSView*)hwnd;
-			window = (NSWindow*)[view window]; // The view’s window object, if it is installed in a window.
-		}
-		else if ([(id)hwnd isKindOfClass:[NSWindow class]])
-			window = (NSWindow*)hwnd;
-	}
+	NSWindow* window = JS_GetNSWindowFromSwellHWND(hwnd);
 	
 	if (window)
 	{
 		switch ((intptr_t)insertAfterHWND)
 		{
 			case -1: //HWND_TOPMOST:
-				[window setLevel: NSFloatingWindowLevel];
+				[window setLevel: NSFloatingWindowLevel]; // = 3
 				return true;
 			case -2: //HWND_NOTOPMOST:
-				[window setLevel: NSNormalWindowLevel];
+				[window setLevel: 1]; // Standard level for REAPER's floating windows
 				return true;
 			case 0: //HWND_TOP:
-				[window orderWindow:NSWindowAbove relativeTo:0];
+				if ([window level] < 1)
+					[window setLevel: 1];
+				[window orderWindow:NSWindowAbove relativeTo:0]; // Bring to top within current level
 				return true;
 			case 1: //HWND_BELOW:
-				[window setLevel: NSNormalWindowLevel];
+				[window setLevel: NSNormalWindowLevel]; // Below REAPER's floating windoww, same level as main
 				[window orderWindow:NSWindowBelow relativeTo:0];
 				return true;
-			default:
-				if ([(id)insertAfterHWND isKindOfClass:[NSView class]])
+			default: // insertAfter is a target window
+				afterThisWindow = JS_GetNSWindowFromSwellHWND(insertAfterHWND);
+				if (afterThisWindow)
 				{
-					view = (NSView*)insertAfterHWND;
-					afterWindow = (NSWindow*)[view window]; // The view’s window object, if it is installed in a window.
-				}
-				else if ([(id)insertAfterHWND isKindOfClass:[NSWindow class]])
-					afterWindow = (NSWindow*)insertAfterHWND;
-
-				if (afterWindow)
-				{
-					afterWinNum = [afterWindow windowNumber];
-					if (afterWinNum)
-					{
-						[window orderWindow:NSWindowAbove relativeTo:afterWinNum];
-						return true;
-					}
+					[window setLevel: [afterThisWindow level]];
+					[window orderWindow:NSWindowAbove relativeTo:[afterThisWindow windowNumber]];
+					return true;
 				}
 		}
 	}
