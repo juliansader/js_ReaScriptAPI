@@ -26,24 +26,59 @@ bool JS_Window_SetOpacity_ObjC(void* hwnd, double alpha)
 		return false;
 }
 
-bool JS_Window_SetZOrder_ObjC(void* hwnd, int order)
+bool JS_Window_SetZOrder_ObjC(void* hwnd, int order, void* insertAfterHWND)
 {
 	NSWindow* window = NULL;
-	if ([(id)hwnd isKindOfClass:[NSView class]])
+	if (hwnd) 
 	{
-		NSView* view = (NSView*)hwnd;
-		window = (NSWindow*)[view window]; // The view’s window object, if it is installed in a window.
+		if ([(id)hwnd isKindOfClass:[NSView class]])
+		{
+			NSView* view = (NSView*)hwnd;
+			window = (NSWindow*)[view window]; // The view’s window object, if it is installed in a window.
+		}
+		else if ([(id)hwnd isKindOfClass:[NSWindow class]])
+			window = (NSWindow*)hwnd;
 	}
-	else if ([(id)hwnd isKindOfClass:[NSWindow class]])
-		window = (NSWindow*)hwnd;
 
 	if (window)
 	{
-		if (order == 1)
+		switch (order):
 		{
-			[window setLevel: NSScreenSaverWindowLevel];
-			[window makeKeyAndOrderFront:NULL];
-			return true;
+			case HWND_TOPMOST:
+				[window setLevel: NSFloatingWindowLevel];
+				return true;
+			case HWND_NOTOPMOST:
+				[window setLevel: NSNormalWindowLevel];
+				return true;
+			case HWND_TOP:
+				[window orderWindow:NSWindowAbove relativeTo:0];
+				return true;
+			case HWND_BELOW:
+				[window setLevel: NSNormalWindowLevel];
+				[window orderWindow:NSWindowBelow relativeTo:0];
+				return true;
+			default:
+			{
+				NSWindow* afterNSWindow = NULL;
+				if (insertAfterHWND)
+				{
+					if ([(id)insertAfterHWND isKindOfClass:[NSView class]])
+					{
+						NSView* view = (NSView*)insertAfterHWND;
+						afterNSWindow = (NSWindow*)[view window]; // The view’s window object, if it is installed in a window.
+					}
+					else if ([(id)insertAfterHWND isKindOfClass:[NSWindow class]])
+						afterNSWindow = (NSWindow*)insertAfterHWND;
+				}
+				if (afterNSWindow)
+				{
+					NSInteger winNum = [afterNSWindow windowNumber];
+					if (winNum)
+					{
+						[window orderWindow:NSWindowAbove relativeTo:winNum];
+						return true;
+					}
+				}
 		}
 	}
    	return false;
