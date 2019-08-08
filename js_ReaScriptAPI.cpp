@@ -1619,10 +1619,10 @@ void* JS_Window_Create(const char* title, const char* className, int x, int y, i
 			SWELL_SetClassName(hwnd, mapClassNames[classString]);
 			SetWindowLong(hwnd, GWL_STYLE, style);
 			SetWindowText(hwnd, title);
-			SetWindowPos(hwnd, HWND_TOPMOST, x, y, w, h, SWP_SHOWWINDOW | SWP_NOCOPYBITS | SWP_FRAMECHANGED);
+			SetWindowPos(hwnd, HWND_TOP, x, y, w, h, SWP_SHOWWINDOW | SWP_NOCOPYBITS | SWP_FRAMECHANGED);
 			#ifdef __APPLE__
-			JS_Window_SetZOrder_ObjC(hwnd, HWND_NOTOPMOST);
-			JS_Window_SetZOrder_ObjC(hwnd, HWND_TOP);
+			//JS_Window_SetZOrder_ObjC(hwnd, HWND_NOTOPMOST);
+			//JS_Window_SetZOrder_ObjC(hwnd, HWND_TOP);
 			#endif
 			ShowWindow(hwnd, show);
 			//UpdateWindow(hwnd);
