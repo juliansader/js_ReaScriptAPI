@@ -1512,52 +1512,60 @@ callbacktype CALLBACK JS_Window_Create_WinProc(HWND hwnd, UINT msg, WPARAM wPara
 #define WS_OVERLAPPED WS_CAPTION
 #define WS_MAXIMIZEBOX (WS_CAPTION|WS_SIZEBOX)
 #define WS_MINIMIZEBOX WS_CAPTION
+#define WS_BORDER WS_CAPTION
+#define WS_DLGFRAME WS_CAPTION
+#define WS_CLIPCHILDREN 0
+#define WS_POPUP 0
 #endif
+
+void JS_ConvertStringToStyle(char* styleString, DWORD* style, int* show)
+{
+	*show = SW_SHOW; // Default values if styleOptional not specified.
+	*style = WS_OVERLAPPEDWINDOW;
+
+	if (styleString && *styleString) {
+		*style = 0;
+		// To distinguish MAXIMIZEBOX from MAXIMIZE, alter the M of all MAXIMIZEBOX's.
+		// swell doesn't implement WS_SHOWMAXIMIZED and WS_SHOWMINIMIZED, so will use ShowWindow's options instead.
+		char* box;
+		while (box = strstr(styleString, "MAXIMIZEBOX")) { *style |= (WS_MAXIMIZEBOX | WS_SYSMENU); *box = 'N'; }
+		if (strstr(styleString, "MAXIMIZE"))		*show = SW_SHOWMAXIMIZED;
+		while (box = strstr(styleString, "MINIMIZEBOX")) { *style |= (WS_MINIMIZEBOX | WS_SYSMENU); *box = 'N'; }
+		if (strstr(styleString, "MINIMIZE") || strstr(styleString, "ICONIC")) *show = SW_SHOWMINIMIZED;
+
+		if (strstr(styleString, "CHILD"))			*style |= WS_CHILD;
+		//if (strstr(styleString, "CHILDWINDOW"))	*style |= WS_CHILDWINDOW;
+		if (strstr(styleString, "CLIPSIBLINGS"))	*style |= WS_CLIPSIBLINGS;
+		if (strstr(styleString, "DISABLED"))		*style |= WS_DISABLED;
+		if (strstr(styleString, "VISIBLE"))			*style |= WS_VISIBLE;
+		if (strstr(styleString, "CAPTION"))			*style |= WS_CAPTION;
+		if (strstr(styleString, "VSCROLL"))			*style |= WS_VSCROLL;
+		if (strstr(styleString, "HSCROLL"))			*style |= WS_HSCROLL;
+		if (strstr(styleString, "SYSMENU"))			*style |= WS_SYSMENU;
+		if (strstr(styleString, "THICKFRAME")  || strstr(styleString, "SIZEBOX"))			*style |= WS_SIZEBOX;
+		if (strstr(styleString, "GROUP"))			*style |= WS_GROUP;
+		if (strstr(styleString, "TABSTOP"))			*style |= WS_TABSTOP;
+		if (strstr(styleString, "OVERLAPPED")  || strstr(styleString, "TILED"))				*style |= WS_OVERLAPPED;
+		if (strstr(styleString, "TILEDWINDOW") || strstr(styleString, "OVERLAPPEDWINDOW"))	*style |= WS_OVERLAPPEDWINDOW;
+		if (strstr(styleString, "DLGFRAME"))		*style |= WS_DLGFRAME;
+		if (strstr(styleString, "BORDER"))			*style |= WS_BORDER;
+		if (strstr(styleString, "CLIPCHILDREN"))	*style |= WS_CLIPCHILDREN;
+		if (strstr(styleString, "POPUP"))			{ *style &= (~(WS_CAPTION | WS_CHILD)); *style |= WS_POPUP; } // swell doesn't actually implement WS_POPUP as separate *style
+	}
+}
+
 void* JS_Window_Create(const char* title, const char* className, int x, int y, int w, int h, char* styleOptional, void* ownerHWNDOptional)
 {
 	using namespace Julian;
 	HWND hwnd = nullptr; // Default return value if everything doesn't go OK.
 	
-	if (!ownerHWNDOptional || ValidatePtr((HWND)ownerHWNDOptional, "HWND")) // NULL owner is allowed, but not an invalid one
+	if ((ownerHWNDOptional==nullptr) || ValidatePtr((HWND)ownerHWNDOptional, "HWND")) // NULL owner is allowed, but not an invalid one
 	{
-		int show = SW_SHOW; // Default values if styleOptional not specified.
-		DWORD style = WS_OVERLAPPEDWINDOW;
+		int show;
+		DWORD style;
+		JS_ConvertStringToStyle(styleOptional, &style, &show);
 
-		if (styleOptional && *styleOptional) {
-			style = 0;
-			// To distinguish MAXIMIZEBOX from MAXIMIZE, alter the M of all MAXIMIZEBOX's.
-			// swell doesn't implement WS_SHOWMAXIMIZED and WS_SHOWMINIMIZED, so will use ShowWindow's options instead.
-			char* box;
-			while (box = strstr(styleOptional, "MAXIMIZEBOX")) { style |= WS_MAXIMIZEBOX; *box = 'N'; }
-			if (strstr(styleOptional, "MAXIMIZE"))		show = SW_SHOWMAXIMIZED;
-			while (box = strstr(styleOptional, "MINIMIZEBOX")) { style |= WS_MINIMIZEBOX; *box = 'N'; }
-			if (strstr(styleOptional, "MINIMIZE") || strstr(styleOptional, "ICONIC")) show = SW_SHOWMINIMIZED;
-
-			if (strstr(styleOptional, "CHILD"))			style |= WS_CHILD;
-			//if (strstr(styleOptional, "CHILDWINDOW"))	style |= WS_CHILDWINDOW;
-			if (strstr(styleOptional, "CLIPSIBLINGS"))	style |= WS_CLIPSIBLINGS;
-			if (strstr(styleOptional, "DISABLED"))		style |= WS_DISABLED;
-			if (strstr(styleOptional, "VISIBLE"))		style |= WS_VISIBLE;
-			if (strstr(styleOptional, "CAPTION"))		style |= WS_CAPTION;
-			if (strstr(styleOptional, "VSCROLL"))		style |= WS_VSCROLL;
-			if (strstr(styleOptional, "HSCROLL"))		style |= WS_HSCROLL;
-			if (strstr(styleOptional, "SYSMENU"))		style |= WS_SYSMENU;
-			if (strstr(styleOptional, "THICKFRAME")  || strstr(styleOptional, "SIZEBOX"))			style |= WS_SIZEBOX;
-			if (strstr(styleOptional, "GROUP"))			style |= WS_GROUP;
-			if (strstr(styleOptional, "TABSTOP"))		style |= WS_TABSTOP;
-			if (strstr(styleOptional, "OVERLAPPED")  || strstr(styleOptional, "TILED"))				style |= WS_OVERLAPPED;		
-			if (strstr(styleOptional, "TILEDWINDOW") || strstr(styleOptional, "OVERLAPPEDWINDOW"))	style |= WS_OVERLAPPEDWINDOW;
-			if (strstr(styleOptional, "POPUP"))			style &= (~(WS_CAPTION|WS_CHILD)); // swell doesn't actually implement WS_POPUP as separate style
-			if (strstr(styleOptional, "DLGFRAME"))		style &= (~WS_CAPTION);
-	#ifdef _WIN32
-			if (strstr(styleOptional, "BORDER"))		style |= WS_BORDER;
-			if (strstr(styleOptional, "CLIPCHILDREN"))	style |= WS_CLIPCHILDREN;
-			if (strstr(styleOptional, "DLGFRAME"))		style |= WS_DLGFRAME;
-			if (strstr(styleOptional, "POPUP"))		style |= WS_POPUP;
-	#endif
-		}
-
-	// On Windows, each new class name requires a new class.
+		// On Windows, each new class name requires a new class.
 	#ifdef _WIN32
 		// Does the class already exist?
 		std::string classString = className;
@@ -1607,9 +1615,9 @@ void* JS_Window_Create(const char* title, const char* className, int x, int y, i
 		}
 
 	#else
-		// Does the class already exist?
 		hwnd = CreateDialog(nullptr, MAKEINTRESOURCE(0), nullptr, JS_Window_Create_WinProc);
 		if (hwnd) {
+			// Does the class already exist?
 			std::string classString = className;
 			if (!mapClassNames.count(classString))
 				mapClassNames[classString] = strdup(className);
@@ -1651,7 +1659,7 @@ int JS_GetLevel(void* hwnd)
 	#ifdef __APPLE__
 	return JS_GetLevel_ObjC(hwnd);
 	#else
-	return 0
+	return 0;
 	#endif
 }
 	
@@ -1660,18 +1668,20 @@ int JS_GetLevel(void* hwnd)
 bool JS_Window_SetZOrder(void* windowHWND, const char* ZOrder, void* insertAfterHWNDOptional)
 {
 	constexpr intptr_t CHECK_NO_FLAG = -3; // Some value that should not be one of the existing flags.
-	if (ValidatePtr(windowHWND, "HWND")) {
+	if (ValidatePtr(windowHWND, "HWND")) 
+	{
 		HWND insertAfter = (HWND)CHECK_NO_FLAG;
 		if (strstr(ZOrder, "BO"))		insertAfter = HWND_BOTTOM;
 		else if (strstr(ZOrder, "NOT"))		insertAfter = HWND_NOTOPMOST;
 		else if (strstr(ZOrder, "TOPM"))	insertAfter = HWND_TOPMOST;
 		else if (strstr(ZOrder, "TOP"))		insertAfter = HWND_TOP; // Top
 		#ifndef __linux__ // swell doesn't provide all options
-		else if (strstr(ZOrder, "IN")) {
+		else if (strstr(ZOrder, "IN")) 
+		{
 			if (insertAfterHWNDOptional && ValidatePtr(insertAfterHWNDOptional, "HWND"))
 				insertAfter = (HWND)insertAfterHWNDOptional;
-		#endif
 		}
+		#endif
 
 		if (insertAfter != (HWND)CHECK_NO_FLAG) { // Was given a proper new value?
 		#ifdef _WIN32
