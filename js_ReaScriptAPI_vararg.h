@@ -1003,9 +1003,13 @@ static void* __vararg_Xen_GetMediaSourceSamples(void** arglist, int numparms)
 static void* __vararg_Xen_StartSourcePreview(void** arglist, int numparms)
 {
 	int result = 0;
-	if (numparms > 2)
+	if (numparms == 4)
 	{
-		result = Xen_StartSourcePreview((PCM_source*)arglist[0], *(double*)arglist[1], (int)(INT_PTR)arglist[2]);
+		int outchanindex = 0;
+		if (arglist[3] != nullptr)
+			outchanindex = *(int*)arglist[3];
+		result = Xen_StartSourcePreview((PCM_source*)arglist[0], *(double*)arglist[1], (int)(INT_PTR)arglist[2],
+				outchanindex);
 	}
 	return (void*)(INT_PTR)result;
 }

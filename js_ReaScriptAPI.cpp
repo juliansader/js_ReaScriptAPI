@@ -3748,7 +3748,7 @@ int Xen_GetMediaSourceSamples(PCM_source* src, double* destbuf, int destbufoffse
 class PreviewEntry
 {
 public:
-	PreviewEntry(int id, PCM_source* src, double gain, bool loop)
+	PreviewEntry(int id, PCM_source* src, double gain, bool loop, int startOutputChannel)
 	{
 		m_id = id;
 		memset(&m_preg, 0, sizeof(preview_register_t));
@@ -3793,6 +3793,7 @@ public:
 		if (gain > 8.0)
 			gain = 8.0;
 		m_preg.volume = gain;
+		m_preg.m_out_chan = startOutputChannel;
 	}
 	~PreviewEntry()
 	{
@@ -3838,9 +3839,9 @@ public:
 	{
 		KillTimer(NULL, m_timer_id);
 	}
-	int startPreview(PCM_source* src, double gain, bool loop)
+	int startPreview(PCM_source* src, double gain, bool loop, int startOutputChannel)
 	{
-		auto entry = std::make_unique<PreviewEntry>(m_preview_id_count, src, gain, loop);
+		auto entry = std::make_unique<PreviewEntry>(m_preview_id_count, src, gain, loop, startOutputChannel);
 		if (entry->m_preg.src)
 		{
 			PlayPreview(&entry->m_preg);
@@ -3914,11 +3915,13 @@ private:
 
 
 
-int Xen_StartSourcePreview(PCM_source* src, double gain, bool loop)
+int Xen_StartSourcePreview(PCM_source* src, double gain, bool loop, int startOutputChannel)
 {
 	if (g_sourcepreviewman == nullptr)
 		g_sourcepreviewman = new PCMSourcePlayerManager;
-	return (int)g_sourcepreviewman->startPreview(src, gain, loop);
+	if (startOutputChannel < 0 || startOutputChannel > 1000)
+		startOutputChannel = 0;
+	return (int)g_sourcepreviewman->startPreview(src, gain, loop, startOutputChannel);
 }
 
 int Xen_StopSourcePreview(int preview_id)
