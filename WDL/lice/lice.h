@@ -1,6 +1,7 @@
 #ifndef _LICE_H
 #define _LICE_H
 
+#define JS_REASCRIPTAPI_ADJUSTED_LICE_H  // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! THIS IS A CUSTOMIZED LICE.H FOR THE JS_REASCRIPTAPI EXTENSION. DEFINE THIS, SO THAT COMPILER CAN CHECK WHETHR CORRECT LICE.H IS INCLUDED.
 /*
   Cockos WDL - LICE - Lightweight Image Compositing Engine
 

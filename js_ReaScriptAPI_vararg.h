@@ -310,7 +310,12 @@ static void* __vararg_JS_MIDIEditor_ListAll(void** arglist, int numparms)
 }
 
 ////////////////////////////////////////////////
+// Functions using SetWindowPos
 
+/*static void* __vararg_JS_Window_SetPos(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_Window_SetPos((void*)arglist[0], (const char*)arglist[1], (int)(intptr_t)arglist[2], (int)(intptr_t)arglist[3], (int)(intptr_t)arglist[4], (int)(intptr_t)arglist[5], (const char*)arglist[6]);
+}*/
 
 static void* __vararg_JS_Window_Resize(void** arglist, int numparms)
 {
@@ -326,8 +331,7 @@ static void* __vararg_JS_Window_Move(void** arglist, int numparms)
 
 static void* __vararg_JS_Window_SetPosition(void** arglist, int numparms)
 {
-  JS_Window_SetPosition((void*)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (int)(intptr_t)arglist[3], (int)(intptr_t)arglist[4]);
-  return NULL;
+	return (void*)JS_Window_SetPosition((void*)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (int)(intptr_t)arglist[3], (int)(intptr_t)arglist[4], (numparms > 5) ? (char*)arglist[5] : nullptr, (numparms > 6) ? (char*)arglist[6] : nullptr);
 }
 
 static void* __vararg_JS_GetLevel(void** arglist, int numparms)
@@ -355,6 +359,11 @@ static void* __vararg_JS_Window_SetLong(void** arglist, int numparms)
 {
 	JS_Window_SetLong((void*)arglist[0], (const char*)arglist[1], arglist[2] ? *(double*)arglist[2] : 0.0, (double*)arglist[3]);
 	return nullptr;
+}
+
+static void* __vararg_JS_Window_SetStyle(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_Window_SetStyle((void*)arglist[0], (char*)arglist[1]);
 }
 
 static void* __vararg_JS_Window_SetOpacity(void** arglist, int numparms)
