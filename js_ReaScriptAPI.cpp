@@ -1510,8 +1510,6 @@ callbacktype CALLBACK JS_Window_Create_WinProc(HWND hwnd, UINT msg, WPARAM wPara
 	}
 }
 
-DWORD JS_ConvertStringToStyle(char* styleString)
-{
 #ifndef _WIN32
 #define WS_SIZEBOX WS_THICKFRAME
 #define WS_OVERLAPPEDWINDOW (WS_SIZEBOX|WS_SYSMENU|WS_CAPTION)
@@ -1522,7 +1520,12 @@ DWORD JS_ConvertStringToStyle(char* styleString)
 #define WS_DLGFRAME WS_CAPTION
 #define WS_CLIPCHILDREN 0
 #define WS_POPUP 0
+#define WS_MINIMIZE 0x20000000
+#define WS_MAXIMIZE 0x01000000
 #endif
+
+DWORD JS_ConvertStringToStyle(char* styleString)
+{
 	//*show = SW_SHOW; // Default values if styleOptional not specified.
 	DWORD style = WS_OVERLAPPEDWINDOW;
 
@@ -1555,17 +1558,6 @@ DWORD JS_ConvertStringToStyle(char* styleString)
 		if (strstr(styleString, "POPUP"))			{ style &= (~(WS_CAPTION | WS_CHILD));	style |= WS_POPUP; } // swell doesn't actually implement WS_POPUP as separate style
 	}
 	return style;
-}
-
-// Swell does not implement all window styles, so some must be affected through ShowWindow.
-// This function extracts some style values that correspond to show values.
-int JS_ExtractShowFromStyle(DWORD style)
-{
-	int show = SW_HIDE; // = 0
-	if (style&WS_VISIBLE)	show |= SW_SHOW;
-	if (style&WS_MINIMIZE)	show |= SW_MINIMIZE;
-	if (style&WS_MAXIMIZE)	show |= SW_MAXIMIZE;
-	return show;
 }
 
 void* JS_Window_Create(const char* title, const char* className, int x, int y, int w, int h, char* styleOptional, void* ownerHWNDOptional)
@@ -1643,7 +1635,7 @@ void* JS_Window_Create(const char* title, const char* className, int x, int y, i
 			JS_Window_SetZOrder_ObjC(hwnd, HWND_TOP); // swell's SetWindowPos doesn't work well for Z-ordering
 		#endif
 			if (style&WS_MINIMIZE)	ShowWindow(hwnd, SW_SHOWMINIMIZED); //swell doesn't implement WS_MAXIMIZED and WS_VISIBLE.  The latter is simply 0 in swell.
-			else					ShowWIndow(hwnd, SW_SHOW);
+			else					ShowWindow(hwnd, SW_SHOW);
 			UpdateWindow(hwnd);
 		}
 	#endif
@@ -1906,13 +1898,13 @@ void* JS_Window_GetRoot(void* windowHWND)
 #elif __linux__
 	// Definitions of swell's HWND, m_oswindow etc can be found in swell-internal.h
 	GetNextAncestorWindow:
-	if ((HWND)windowHWND->m_oswindow) // Does this HWND correspond to a GDKWindow?
+	if (((HWND)windowHWND)->m_oswindow) // Does this HWND correspond to a GDKWindow?
 	{
-		return gdk_window_get_effective_toplevel((GdkWindow*)windowHWND->m_oswindow);
+		return gdk_window_get_effective_toplevel((GdkWindow*)(((HWND)windowHWND)->m_oswindow));
 	}
-	else if (windowHWND->m_parent) // Else, try to go high in hierarchy, until oswindow is found
+	else if (((HWND)windowHWND)->m_parent) // Else, try to go high in hierarchy, until oswindow is found
 	{
-		windowHWND = windowHWND->m_parent;
+		windowHWND = ((HWND)windowHWND)->m_parent;
 		goto GetNextAncestorWindow;
 	}
 	else 
