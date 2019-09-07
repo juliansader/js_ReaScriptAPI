@@ -63,7 +63,7 @@ void  JS_Window_SetLong(void* windowHWND, const char* info, double value, double
 bool  JS_Window_SetStyle(void* windowHWND, char* style);
 bool  JS_Window_SetOpacity(HWND windowHWND, const char* mode, double value);
 #ifdef __APPLE__
-NSWindow* JS_GetNSWindowFromSwellHWND(void* hwnd);
+void* JS_GetNSWindowFromSwellHWND(void* hwnd);
 bool  JS_Window_SetOpacity_ObjC(void* hwnd, double alpha);
 #endif
 
