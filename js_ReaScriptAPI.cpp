@@ -1865,22 +1865,28 @@ bool JS_Window_SetStyle(void* windowHWND, char* style)
 	if (JS_Window_IsWindow(windowHWND))
 	{
 		// Try to get the toplevel window, which actually has a style to display
+		// Except on macOS.  Apparently, macOS toplevel NSWindows, don't work with these styles?
+	#ifdef __APPLE__
+		HWND rootHWND = (HWND)windowHWND;
+	#else
 		HWND rootHWND = (HWND)JS_Window_GetRoot(windowHWND);
 		if (!ValidatePtr(rootHWND, "HWND")) rootHWND = (HWND)windowHWND;
-
+	#endif
+		
 		DWORD styleNumber = JS_ConvertStringToStyle(style);
 	#ifdef _WIN32
 		SetWindowLongPtr(rootHWND, GWL_STYLE, styleNumber);
 	#elif __linux__
-		ShowWindow(rootHWND, SW_HIDE);
+		ShowWindow(rootHWND, SW_HIDE); // On Linux (at least, on my distribution), must first hide
 		SetWindowLong(rootHWND, GWL_STYLE, styleNumber);
 	#else
-		SetWindowLong(rootHWND, GWL_STYLE, styleNumber);
+		SetWindowLong(rootHWND, GWL_STYLE, styleNumber); 
 	#endif
+		//According to stuff in the Web, SetWindowPos with FRAMECHANGED is necessary and sufficient to apply new frame style. Doesn't seem to work for me. Use ShowWindow instead.
 		//SetWindowPos(rootHWND, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOOWNERZORDER | SWP_NOSIZE | SWP_NOZORDER);
 		if (styleNumber&WS_MINIMIZE)		ShowWindow(rootHWND, SW_SHOWMINIMIZED);
 		else if (styleNumber&WS_MAXIMIZE)	ShowWindow(rootHWND, SW_SHOWMAXIMIZED);
-		else								ShowWindow(rootHWND, SW_SHOW);
+		else					ShowWindow(rootHWND, SW_SHOW);
 		return true;
 	}
 	return false;
