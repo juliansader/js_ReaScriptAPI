@@ -1897,6 +1897,8 @@ void JS_Window_Update(HWND windowHWND)
 	UpdateWindow(windowHWND);
 }
 
+//!!!! This function does not work yet, since the NSWindow* returned on macOS isn't really the same type of window as the NSViews
+//!!!! that most functions seem to work with.  NSWindow is more of a container.
 void* JS_Window_GetRoot(void* windowHWND)
 {
 #ifdef _WIN32
