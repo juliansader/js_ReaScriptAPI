@@ -1710,7 +1710,7 @@ bool JS_Window_SetPosition(void* windowHWND, int left, int top, int width, int h
 #elif __APPLE__
 				SetWindowPos((HWND)windowHWND, insertAfterHWND, left, top, width, height, intFlags);
 				if (!(intFlags&SWP_NOZORDER))
-					return JS_Window_SetZOrder_ObjC(void* hwnd, void* insertAfterHWND);
+					return JS_Window_SetZOrder_ObjC(windowHWND, insertAfterHWND);
 				else
 					return true;
 #elif __linux__
@@ -1774,7 +1774,7 @@ bool JS_Window_SetPos(void* windowHWND, const char* ZOrder, int x, int y, int w,
 #elif __APPLE__
 			SetWindowPos((HWND)windowHWND, insertAfterHWND, x, y, w, h, intFlags);
 			if (!(intFlags&SWP_NOZORDER))
-				return JS_Window_SetZOrder_ObjC(void* hwnd, void* insertAfterHWND);
+				return JS_Window_SetZOrder_ObjC(windowHWND, insertAfterHWND);
 			else
 				return true;
 #elif __linux__
