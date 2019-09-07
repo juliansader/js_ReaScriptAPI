@@ -93,7 +93,7 @@ bool JS_Window_SetZOrder_ObjC(void* hwnd, void* insertAfterHWND)
 				[window orderWindow:NSWindowBelow relativeTo:0];
 				return true;
 			default: // insertAfter is a target window
-				afterThisWindow = JS_GetNSWindowFromSwellHWND(insertAfterHWND);
+				afterThisWindow = (NSWindow*)JS_GetNSWindowFromSwellHWND(insertAfterHWND);
 				if (afterThisWindow)
 				{
 					[window setLevel: [afterThisWindow level]];
