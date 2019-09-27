@@ -113,7 +113,8 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 			bitmapsToDelete.insert(i.first);
 		for (LICE_IBitmap* bm : bitmapsToDelete)
 			JS_LICE_DestroyBitmap(bm);
-		
+		for (auto& i : Julian::mapClassNames)
+			free(i.second);
 		for (auto& i : Julian::mapMallocToSize)
 			free(i.first);
 		for (APIdef& i : ::aAPIdefs)
@@ -186,12 +187,15 @@ v0.991
  * Improved: Xen_StartSourcePreview: Add support for setting hardware output channels for PCM_source previews
  * Improved: JS_Window_SetZOrder and JS_Window_SetPos.
  * New: JS_Window_SetStyle: Can add or remove frames from gfx and other windows.
+v0.992
+ * Support Unicode characters for Dialog functions, Get/SetTitle/ClassName, and GDI_DrawText.
+ * VKeys functions ignore repeated KEYDOWNs.
  */
 
 
 void JS_ReaScriptAPI_Version(double* versionOut)
 {
-	*versionOut = 0.991;
+	*versionOut = 0.992;
 }
 
 void JS_Localize(const char* USEnglish, const char* LangPackSection, char* translationOut, int translationOut_sz)
@@ -225,13 +229,24 @@ int JS_VKeys_Callback(MSG* event, accelerator_register_t*)
 {
 	const WPARAM& keycode = event->wParam;
 	const UINT& uMsg = event->message;
+	double time;
 
 	switch (uMsg) 
 	{
 		case WM_KEYDOWN:
 		case WM_SYSKEYDOWN:
-			if (keycode < 256) 
-				VK_KeyDown[keycode] = time_precise();
+			if (keycode < 256)
+			{
+				if (VK_KeyUp[keycode] > VK_KeyDown[keycode]) // Ignore repeated keys. Assume keyboard repeat delay is always less than 3s.
+				{
+					VK_KeyDown[keycode] = time_precise();
+				}
+				else
+				{
+					time = time_precise();
+					if (time > VK_KeyDown[keycode] + 3) VK_KeyDown[keycode] = time;
+				}
+			}
 			break;
 		case WM_KEYUP:
 		case WM_SYSKEYUP:
@@ -240,7 +255,7 @@ int JS_VKeys_Callback(MSG* event, accelerator_register_t*)
 			break;
 	}
 
-	if ((keycode < 256) && VK_Intercepts[keycode] && (uMsg != WM_KEYUP) && (uMsg != WM_SYSKEYUP)) // Block keystroke, but not when releasing key
+	if ((keycode < 256) && VK_Intercepts[keycode] && (uMsg != WM_KEYUP) && (uMsg != WM_SYSKEYUP)) // Block keystroke (including WM_CHAR), but not when releasing key
 		return 1; // Eat keystroke
 	else
 		return 0; // "Not my window", whatever this means?
@@ -449,7 +464,7 @@ int JS_Dialog_BrowseForSaveFile(const char* windowTitle, const char* initialFold
 		NULL,					//DWORD         dwReserved;
 		0						//DWORD         FlagsEx;
 	};
-	gotFile = GetSaveFileName(&info);
+	gotFile = GetSaveFileName(&info); // On Windows, this is DEFINE'd as GetSaveFileNameUTF8 in win32_tuf8.h , which enables Windows' WCHAR and UNICODE.
 	free(newInitFolder);
 #else
 	// On macOS, this function easily crashes if the extList is empty or not properly formatted.
@@ -531,7 +546,8 @@ int JS_Dialog_BrowseForOpenFiles(const char* windowTitle, const char* initialFol
 			NULL,					//DWORD         dwReserved;
 			0						//DWORD         FlagsEx;
 		};
-		retval = (GetOpenFileName(&info) ? -1 : 0); // If return value is TRUE, retval remains -1 
+		// On Windows, this is DEFINE'd as GetSaveFileNameUTF8 in win32_tuf8.h , which enables Windows' WCHAR and UNICODE.
+		retval = (GetOpenFileName(&info) ? -1 : 0); // If return value is TRUE, retval remains -1  
 #else
 	// free() the result of this, if non-NULL.
 	// if allowmul is set, the multiple files are specified the same way GetOpenFileName() returns.
@@ -629,7 +645,7 @@ int JS_Dialog_BrowseForFolder(const char* caption, const char* initialFolder, ch
 		0						//int          iImage;	// output var: where to return the Image index.
 	};
 
-	PIDLIST_ABSOLUTE folderID = SHBrowseForFolder(&info);
+	PIDLIST_ABSOLUTE folderID = SHBrowseForFolderUTF8(&info); // Unlike GetWindowText etc, SHBrowseForFolder isn't redefined to call SHBrowseForFolderUTF8 in win32_utf8.h
 	if (folderID)
 		SHGetPathFromIDList(folderID, folderOutNeedBig);
 	ILFree(folderID);
@@ -1488,8 +1504,10 @@ BEWARE, THESE NUMBERS ARE DIFFERENT FROM WIN32!!!
 // swell uses CreateDialog instead of CreateWindow to create new windows, and the callback returns INT_PTR instead of LRESULT
 #ifdef _WIN32
 typedef LRESULT callbacktype;
+#define myDefProc DefWindowProcW
 #else
 typedef INT_PTR callbacktype;
+#define myDefProc DefWindowProc
 #endif
 
 callbacktype CALLBACK JS_Window_Create_WinProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -1506,7 +1524,7 @@ callbacktype CALLBACK JS_Window_Create_WinProc(HWND hwnd, UINT msg, WPARAM wPara
 		//	PostQuitMessage(0);
 		//	return FALSE;
 	default:
-		return (callbacktype)DefWindowProc(hwnd, msg, wParam, lParam);
+		return (callbacktype)myDefProc(hwnd, msg, wParam, lParam);
 	}
 }
 
@@ -1560,6 +1578,7 @@ DWORD JS_ConvertStringToStyle(char* styleString)
 	return style;
 }
 
+
 void* JS_Window_Create(const char* title, const char* className, int x, int y, int w, int h, char* styleOptional, void* ownerHWNDOptional)
 {
 	using namespace Julian;
@@ -1575,48 +1594,69 @@ void* JS_Window_Create(const char* title, const char* className, int x, int y, i
 		std::string classString = className;
 		if (!mapClassNames.count(classString))
 		{
-			WNDCLASSEX structWindowClass
+			int s = MultiByteToWideChar(CP_UTF8, 0, className, -1, NULL, 0);
+			if (s)
 			{
-				sizeof(WNDCLASSEX),		//UINT cbSize;
-				CS_DBLCLKS | CS_HREDRAW | CS_VREDRAW | CS_OWNDC, //UINT style;
-				JS_Window_Create_WinProc, //WNDPROC     lpfnWndProc;
-				0,			//int         cbClsExtra;
-				0,			//int         cbWndExtra;
-				ReaScriptAPI_Instance,		//HINSTANCE   hInstance;
-				NULL,		//HICON       hIcon;
-				NULL,		//HCURSOR     hCursor;
-				NULL,		//HBRUSH      hbrBackground;
-				NULL,		//LPCSTR      lpszMenuName;
-				className,	//LPCSTR      lpszClassName;
-				NULL,		//HICON       hIconSm;
-			};
+				wchar_t* classW = (wchar_t*)malloc(2 * s * sizeof(wchar_t) + 10);
+				if (classW)
+				{
+					MultiByteToWideChar(CP_UTF8, 0, className, -1, classW, 2 * s);
 
-			if (RegisterClassEx(&structWindowClass))
-				mapClassNames[classString] = strdup(className);
+					WNDCLASSEXW structWindowClass
+					{
+						sizeof(WNDCLASSEX),		//UINT cbSize;
+						CS_DBLCLKS | CS_HREDRAW | CS_VREDRAW | CS_OWNDC, //UINT style;
+						JS_Window_Create_WinProc, //WNDPROC     lpfnWndProc;
+						0,			//int         cbClsExtra;
+						0,			//int         cbWndExtra;
+						ReaScriptAPI_Instance,		//HINSTANCE   hInstance;
+						NULL,		//HICON       hIcon;
+						NULL,		//HCURSOR     hCursor;
+						NULL,		//HBRUSH      hbrBackground;
+						NULL,		//LPCWSTR      lpszMenuName;
+						classW,		//LPCWSTR      lpszClassName;
+						NULL,		//HICON       hIconSm;
+					};
+
+					if (RegisterClassExW(&structWindowClass))
+						mapClassNames[classString] = classW; // Will be freed when exiting REAPER
+				}
+			}
 		}
 
 		if (mapClassNames.count(classString))
 		{
-			hwnd = CreateWindowEx(
-				WS_EX_LEFT | WS_EX_ACCEPTFILES | WS_EX_APPWINDOW | WS_EX_CONTEXTHELP,	//DWORD     dwExStyle,
-				mapClassNames[classString], 	//LPCSTR    lpClassName,
-				title, 	//LPCSTR    lpWindowName,
-				style, //WS_POPUP, //WS_OVERLAPPEDWINDOW, //WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_VISIBLE | WS_MINIMIZEBOX,	//DWORD     dwStyle,
-				x, 		//int       X,
-				y, 		//int       Y,
-				w, 		//int       nWidth,
-				h, 		//int       nHeight,
-				(HWND)ownerHWNDOptional,	//HWND      hWndParent,
-				NULL,	//HMENU     hMenu,
-				ReaScriptAPI_Instance,//HINSTANCE hInstance,
-				NULL	//LPVOID    lpParam
-			);
-			if (hwnd)
+			int s = MultiByteToWideChar(CP_UTF8, 0, title, -1, NULL, 0);
+			if (s)
 			{
-				if		(style&WS_MINIMIZE)	ShowWindow(hwnd, SW_SHOWMINIMIZED);
-				else if (style&WS_MAXIMIZE) ShowWindow(hwnd, SW_SHOWMAXIMIZED);
-				else						ShowWindow(hwnd, SW_SHOWNORMAL);
-				UpdateWindow(hwnd);
+				wchar_t* titleW = (wchar_t*)alloca(2 * s * sizeof(wchar_t) + 10); // title name don't need to be saved, so use local alloca
+				if (titleW)
+				{
+					MultiByteToWideChar(CP_UTF8, 0, title, -1, titleW, 2 * s);
+
+					hwnd = CreateWindowExW(
+						WS_EX_LEFT | WS_EX_ACCEPTFILES | WS_EX_APPWINDOW | WS_EX_CONTEXTHELP,	//DWORD     dwExStyle,
+						mapClassNames[classString], 	//LPCWSTR    lpClassName,
+						titleW, //LPCWSTR    lpWindowName,
+						style,	//WS_POPUP, //WS_OVERLAPPEDWINDOW, //WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_VISIBLE | WS_MINIMIZEBOX,	//DWORD     dwStyle,
+						x, 		//int       X,
+						y, 		//int       Y,
+						w, 		//int       nWidth,
+						h, 		//int       nHeight,
+						(HWND)ownerHWNDOptional,	//HWND      hWndParent,
+						NULL,	//HMENU     hMenu,
+						ReaScriptAPI_Instance,//HINSTANCE hInstance,
+						NULL	//LPVOID    lpParam
+					);
+					if (hwnd)
+					{
+						//SetWindowPos(hwnd, HWND_TOP, x, y, w, h, SWP_NOMOVE | SWP_NOSIZE);
+						if (style&WS_MINIMIZE)		ShowWindow(hwnd, SW_SHOWMINIMIZED);
+						else if (style&WS_MAXIMIZE) ShowWindow(hwnd, SW_SHOWMAXIMIZED);
+						else						ShowWindow(hwnd, SW_SHOWNORMAL);
+						UpdateWindow(hwnd);
+					}
+				}
 			}
 		}
 
@@ -1710,7 +1750,7 @@ bool JS_Window_SetPosition(void* windowHWND, int left, int top, int width, int h
 #elif __APPLE__
 				SetWindowPos((HWND)windowHWND, insertAfterHWND, left, top, width, height, intFlags);
 				if (!(intFlags&SWP_NOZORDER))
-					return JS_Window_SetZOrder_ObjC(windowHWND, insertAfterHWND);
+					return JS_Window_SetZOrder_ObjC(void* hwnd, void* insertAfterHWND);
 				else
 					return true;
 #elif __linux__
@@ -1774,7 +1814,7 @@ bool JS_Window_SetPos(void* windowHWND, const char* ZOrder, int x, int y, int w,
 #elif __APPLE__
 			SetWindowPos((HWND)windowHWND, insertAfterHWND, x, y, w, h, intFlags);
 			if (!(intFlags&SWP_NOZORDER))
-				return JS_Window_SetZOrder_ObjC(windowHWND, insertAfterHWND);
+				return JS_Window_SetZOrder_ObjC(void* hwnd, void* insertAfterHWND);
 			else
 				return true;
 #elif __linux__
@@ -1976,20 +2016,27 @@ bool JS_Window_SetOpacity(HWND windowHWND, const char* mode, double value)
 	return OK;
 }
 
-
-bool JS_Window_SetTitle(void* windowHWND, const char* title)
+bool JS_Window_SetTitle(void* windowHWND, const char* title, int title_sz)
 {
-	return !!SetWindowText((HWND)windowHWND, title);
+	return !!SetWindowText((HWND)windowHWND, title); // On Windows, this is DEFINE'd in win32_tuf8.h as GetWindowTextUTF8, which enables Windows' WCHAR and UNICODE.
 }
 
-void JS_Window_GetTitle(void* windowHWND, char* titleOut, int titleOut_sz)
+void JS_Window_GetTitle(void* windowHWND, char* titleOutNeedBig, int titleOutNeedBig_sz)
 {
-	GetWindowText((HWND)windowHWND, titleOut, titleOut_sz);
+	GetWindowText((HWND)windowHWND, titleOutNeedBig, titleOutNeedBig_sz); // On Windows, this is DEFINE'd in win32_tuf8.h as GetWindowTextUTF8, which enables Windows' WCHAR and UNICODE.
 }
 
 void JS_Window_GetClassName(HWND windowHWND, char* classOut, int classOut_sz)
 {
+#ifdef _WIN32
+	classOut[0] = '\0';
+	wchar_t* classW = (wchar_t*)alloca(1024*sizeof(wchar_t));
+	if (classW)
+		if (GetClassNameW(windowHWND, classW, 1024))
+			WideCharToMultiByte(CP_UTF8, 0, classW, -1, classOut, classOut_sz, NULL, NULL)-1;
+#else
 	GetClassName(windowHWND, classOut, classOut_sz);
+#endif
 }
 
 void* JS_Window_HandleFromAddress(double address)
@@ -2973,7 +3020,11 @@ int JS_GDI_DrawText(void* deviceHDC, const char *text, int len, int left, int to
 	if (strstr(align, "ELLI"))		intMode = intMode | DT_END_ELLIPSIS ;
 
 	RECT r{ left, top, right, bottom };
+#ifdef _WIN32
+	return DrawTextUTF8((HDC)deviceHDC, text, len, &r, intMode);
+#else
 	return DrawText((HDC)deviceHDC, text, len, &r, intMode);
+#endif
 }
 
 

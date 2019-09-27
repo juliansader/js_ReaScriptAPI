@@ -29,7 +29,7 @@ struct APIdef
 
 };
 
-
+// Info copied from SWS:
 ///////////////////////////////////////////////////////////////////////////////
 //
 // Add functions you want to export in the table below (+ related #include on
@@ -85,7 +85,7 @@ APIdef aAPIdefs[] =
 {
 	{ APIFUNC(JS_ReaScriptAPI_Version), "void", "double*", "versionOut", "Returns the version of the js_ReaScriptAPI extension.", },
 	{ APIFUNC(JS_Localize), "void", "const char*,const char*,char*,int", "USEnglish,LangPackSection,translationOut,translationOut_sz", "Returns the translation of the given US English text, according to the currently loaded Language Pack.\n\nParameters:\n * LangPackSection: Language Packs are divided into sections such as \"common\" or \"DLG_102\".\n * In Lua, by default, text of up to 1024 chars can be returned. To increase (or reduce) the default buffer size, a string and size can be included as optional 3rd and 4th arguments.\n\nExample: reaper.JS_Localize(\"Actions\", \"common\", \"\", 20)", },
-
+	
 	{ APIFUNC(JS_Mem_Alloc), "void*", "int", "sizeBytes", "Allocates memory for general use by functions that require memory buffers.", },
 	{ APIFUNC(JS_Mem_Free), "bool", "void*", "mallocPointer", "Frees memory that was previously allocated by JS_Mem_Alloc.", },
 	{ APIFUNC(JS_Mem_FromString), "bool", "void*,int,const char*,int", "mallocPointer,offset,packedString,stringLength", "Copies a packed string into a memory buffer.", },
@@ -152,8 +152,8 @@ APIdef aAPIdefs[] =
 	{ APIFUNC(JS_Window_SetStyle), "bool", "void*,char*", "windowHWND,style", "Sets and applies a window style.\n\nstyle may include any combination of standard window styles, such as \"POPUP\" for a frameless window, or \"CAPTION,SIZEBOX,SYSMENU\" for a standard framed window.\n\nOn Linux and macOS, \"MAXIMIZE\" has not yet been implmented, and the remaining styles may appear slightly different from their WindowsOS counterparts.", },
 	{ APIFUNC(JS_Window_SetOpacity), "bool", "void*,const char*,double", "windowHWND,mode,value", "Sets the window opacity.\n\nParameters:\nmode: either \"ALPHA\" or \"COLOR\". \nvalue: If ALPHA, the specified value may range from zero to one, and will apply to the entire window, frame included. \nIf COLOR, value specifies a 0xRRGGBB color, and all pixels of this color will be made transparent. (All mouse clicks over transparent pixels will pass through, too).  WARNING:\nCOLOR mode is only available in Windows, not Linux or macOS.\n\nTransparency can only be applied to top-level windows. If windowHWND refers to a child window, the entire top-level window that contains windowHWND will be made transparent.", },
 
-	{ APIFUNC(JS_Window_GetTitle), "void", "void*,char*,int", "windowHWND,titleOut,titleOut_sz", "Returns the title (if any) of the specified window.", },
-	{ APIFUNC(JS_Window_SetTitle), "bool", "void*,const char*", "windowHWND,title", "Changes the title of the specified window. Returns true if successful.", },
+	{ APIFUNC(JS_Window_GetTitle), "void", "void*,char*,int", "windowHWND,titleOutNeedBig,titleOutNeedBig_sz", "Returns the title (if any) of the specified window.", },
+	{ APIFUNC(JS_Window_SetTitle), "bool", "void*,const char*,int", "windowHWND,title,title_sz", "Changes the title of the specified window. Returns true if successful.", },
 	{ APIFUNC(JS_Window_GetClassName), "void", "void*,char*,int", "windowHWND,classOut,classOut_sz", "WARNING: May not be fully implemented on macOS and Linux.", },
 
 	{ APIFUNC(JS_Window_HandleFromAddress), "void*", "double", "address", "Converts an address to a handle (such as a HWND) that can be utilized by REAPER and other API functions.", },

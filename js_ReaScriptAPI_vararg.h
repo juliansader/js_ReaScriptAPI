@@ -4,6 +4,7 @@
 #pragma warning(disable:4800) // disable "forcing value to bool..." warnings
 #endif
 
+
 static void* __vararg_JS_ReaScriptAPI_Version(void** arglist, int numparms)
 {
 	JS_ReaScriptAPI_Version((double*)arglist[0]);
@@ -374,12 +375,12 @@ static void* __vararg_JS_Window_SetOpacity(void** arglist, int numparms)
 static void* __vararg_JS_Window_GetTitle(void** arglist, int numparms)
 {
 	JS_Window_GetTitle((void*)arglist[0], (char*)arglist[1], (int)(intptr_t)arglist[2]);
-	return NULL;
+	return nullptr;
 }
 
 static void* __vararg_JS_Window_SetTitle(void** arglist, int numparms)
 {
-	return (void*)(intptr_t)JS_Window_SetTitle((void*)arglist[0], (const char*)arglist[1]);
+	return (void*)(intptr_t)JS_Window_SetTitle((void*)arglist[0], (const char*)arglist[1], (int)(intptr_t)arglist[2]);
 }
 
 static void* __vararg_JS_Window_GetClassName(void** arglist, int numparms)

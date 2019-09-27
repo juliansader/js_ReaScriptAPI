@@ -61,11 +61,8 @@ void* JS_Window_GetLongPtr(void* windowHWND, const char* info);
 void  JS_Window_GetLong(void* windowHWND, const char* info, double* retvalOut);
 void  JS_Window_SetLong(void* windowHWND, const char* info, double value, double* retvalOut);
 bool  JS_Window_SetStyle(void* windowHWND, char* style);
-bool  JS_Window_SetOpacity(HWND windowHWND, const char* mode, double value);
-#ifdef __APPLE__
-void* JS_GetNSWindowFromSwellHWND(void* hwnd);
 bool  JS_Window_SetOpacity_ObjC(void* hwnd, double alpha);
-#endif
+bool  JS_Window_SetOpacity(HWND windowHWND, const char* mode, double value);
 
 void  JS_Window_SetFocus(void* windowHWND);
 void* JS_Window_GetFocus();
@@ -77,8 +74,8 @@ void  JS_Window_Destroy(void* windowHWND);
 void  JS_Window_Show(void* windowHWND, const char* state);
 bool  JS_Window_IsVisible(void* windowHWND);
 
-bool  JS_Window_SetTitle(void* windowHWND, const char* title);
-void  JS_Window_GetTitle(void* windowHWND, char* titleOut, int titleOut_sz);
+bool  JS_Window_SetTitle(void* windowHWND, const char* title, int title_sz);
+void  JS_Window_GetTitle(void* windowHWND, char* titleOutNeedBig, int titleOutNeedBig_sz);
 
 void  JS_Window_GetClassName(HWND windowHWND, char* classOut, int classOut_sz);
 
