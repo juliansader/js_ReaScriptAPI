@@ -190,7 +190,7 @@ v0.991
 v0.992
  * Support Unicode characters for Dialog functions, Get/SetTitle/ClassName, and GDI_DrawText.
  * VKeys functions ignore repeated KEYDOWNs.
- */
+*/
 
 
 void JS_ReaScriptAPI_Version(double* versionOut)
@@ -231,7 +231,7 @@ int JS_VKeys_Callback(MSG* event, accelerator_register_t*)
 	const UINT& uMsg = event->message;
 	double time;
 
-	switch (uMsg) 
+	switch (uMsg)
 	{
 		case WM_KEYDOWN:
 		case WM_SYSKEYDOWN:
@@ -250,7 +250,7 @@ int JS_VKeys_Callback(MSG* event, accelerator_register_t*)
 			break;
 		case WM_KEYUP:
 		case WM_SYSKEYUP:
-			if (keycode < 256) 
+			if (keycode < 256)
 				VK_KeyUp[keycode] = time_precise();
 			break;
 	}
@@ -418,7 +418,7 @@ void JS_Double(void* pointer, int offset, double* doubleOut)
 ///////////////////////////////////////////////////////////////////////////
 
 int JS_Dialog_BrowseForSaveFile(const char* windowTitle, const char* initialFolder, const char* initialFile, const char* extensionList, char* fileNameOutNeedBig, int fileNameOutNeedBig_sz)
-{			
+{
 	// NeedBig buffers should be 2^15 chars by default
 	if (fileNameOutNeedBig_sz < 16000) return -1;
 
@@ -426,7 +426,7 @@ int JS_Dialog_BrowseForSaveFile(const char* windowTitle, const char* initialFold
 	const char* newExtList = ((strlen(extensionList) > 0) ? extensionList : "All files (*.*)\0*.*\0\0");
 
 	BOOL gotFile = FALSE;
-	
+
 #ifdef _WIN32
 	// These Windows file dialogs do not understand /, so v0.970 added this quick hack to replace with \.
 	size_t folderLen = strlen(initialFolder) + 1; // Include terminating \0.
@@ -519,7 +519,7 @@ int JS_Dialog_BrowseForOpenFiles(const char* windowTitle, const char* initialFol
 		fileNames[LONGLEN - 1] = 0;
 
 		DWORD flags = allowMultiple ? (OFN_EXPLORER | OFN_LONGNAMES | OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_ALLOWMULTISELECT)
-									: (OFN_EXPLORER | OFN_LONGNAMES | OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST);
+			: (OFN_EXPLORER | OFN_LONGNAMES | OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST);
 
 		OPENFILENAME info{
 			sizeof(OPENFILENAME),	//DWORD         lStructSize;
@@ -623,35 +623,49 @@ INT CALLBACK JS_Dialog_BrowseForFolder_CallBack(HWND hwnd, UINT uMsg, LPARAM lPa
 
 int JS_Dialog_BrowseForFolder(const char* caption, const char* initialFolder, char* folderOutNeedBig, int folderOutNeedBig_sz)
 {
-	if (folderOutNeedBig_sz < 32000) return -1;
-
 #ifdef _WIN32
-	// These Windows file dialogs do not understand /, so v0.970 added this quick hack to replace with \.
+	int retval = FALSE;
+	// These Windows file dialogs do not understand /, so v0.970 added this quick hack to replace / with \.
 	size_t folderLen = strlen(initialFolder) + 1; // Include terminating \0.
 	char* newInitFolder = (char*)malloc(folderLen);
-	if (!newInitFolder) return -1;
+	if (newInitFolder)
+	{
+		for (size_t i = 0; i < folderLen; i++)
+			newInitFolder[i] = (initialFolder[i] == '/') ? '\\' : initialFolder[i];
 
-	for (size_t i = 0; i < folderLen; i++)
-		newInitFolder[i] = (initialFolder[i] == '/') ? '\\' : initialFolder[i];
+		_browseinfoA info{
+			NULL,					//HWND        hwndOwner;
+			NULL,					//PCIDLIST_ABSOLUTE pidlRoot;
+			folderOutNeedBig,		//pszDisplayName;       // Return display name of item selected.
+			caption,				//LPCSTR       lpszTitle; // text to go in the banner over the tree.
+			BIF_NEWDIALOGSTYLE | BIF_BROWSEINCLUDEURLS | BIF_RETURNONLYFSDIRS , //UINT         ulFlags;                       // Flags that control the return stuff
+			JS_Dialog_BrowseForFolder_CallBack,		//BFFCALLBACK  lpfn;
+			(LPARAM)newInitFolder,	//LPARAM       lParam;	// extra info that's passed back in callbacks
+			0						//int          iImage;	// output var: where to return the Image index.
+		};
 
-	_browseinfoA info{
-		NULL,					//HWND        hwndOwner;
-		NULL,					//PCIDLIST_ABSOLUTE pidlRoot;
-		folderOutNeedBig,		//pszDisplayName;       // Return display name of item selected.
-		caption,				//LPCSTR       lpszTitle; // text to go in the banner over the tree.
-		BIF_NEWDIALOGSTYLE | BIF_BROWSEINCLUDEURLS | BIF_RETURNONLYFSDIRS , //UINT         ulFlags;                       // Flags that control the return stuff
-		JS_Dialog_BrowseForFolder_CallBack,		//BFFCALLBACK  lpfn;
-		(LPARAM)newInitFolder,	//LPARAM       lParam;	// extra info that's passed back in callbacks
-		0						//int          iImage;	// output var: where to return the Image index.
-	};
-
-	PIDLIST_ABSOLUTE folderID = SHBrowseForFolderUTF8(&info); // Unlike GetWindowText etc, SHBrowseForFolder isn't redefined to call SHBrowseForFolderUTF8 in win32_utf8.h
-	if (folderID)
-		SHGetPathFromIDList(folderID, folderOutNeedBig);
-	ILFree(folderID);
-	free(newInitFolder);
-
-	return (BOOL)!!folderID;
+		PIDLIST_ABSOLUTE folderID = SHBrowseForFolderUTF8(&info); // Unlike GetWindowText etc, SHBrowseForFolder isn't redefined to call SHBrowseForFolderUTF8 in win32_utf8.h
+		if (folderID)
+		{
+			wchar_t* folderOutW = (wchar_t*)malloc(folderOutNeedBig_sz * sizeof(wchar_t));  // 64000 may look bizarre, but UNICODE paths may be more than 32767 characters in length!
+			if (folderOutW)
+			{
+				if (SHGetPathFromIDListW(folderID, folderOutW))
+				{
+					int s = WideCharToMultiByte(CP_UTF8, 0, folderOutW, -1, NULL, 0, NULL, NULL);
+					if (s && (s < folderOutNeedBig_sz))
+					{
+						WideCharToMultiByte(CP_UTF8, 0, folderOutW, -1, folderOutNeedBig, folderOutNeedBig_sz, NULL, NULL);
+						retval = TRUE;
+					}
+				}
+				free(folderOutW);
+			}
+			ILFree(folderID);
+		}
+		free(newInitFolder);
+	}
+	return retval;
 
 #else
 	// returns TRUE if path was chosen.
@@ -1578,18 +1592,17 @@ DWORD JS_ConvertStringToStyle(char* styleString)
 	return style;
 }
 
-
 void* JS_Window_Create(const char* title, const char* className, int x, int y, int w, int h, char* styleOptional, void* ownerHWNDOptional)
 {
 	using namespace Julian;
 	HWND hwnd = nullptr; // Default return value if everything doesn't go OK.
-	
-	if ((ownerHWNDOptional==nullptr) || ValidatePtr((HWND)ownerHWNDOptional, "HWND")) // NULL owner is allowed, but not an invalid one
+
+	if ((ownerHWNDOptional == nullptr) || ValidatePtr((HWND)ownerHWNDOptional, "HWND")) // NULL owner is allowed, but not an invalid one
 	{
 		DWORD style = JS_ConvertStringToStyle(styleOptional);
 
 		// On Windows, each new class name requires a new class.
-	#ifdef _WIN32
+#ifdef _WIN32
 		// Does the class already exist?
 		std::string classString = className;
 		if (!mapClassNames.count(classString))
@@ -1622,6 +1635,7 @@ void* JS_Window_Create(const char* title, const char* className, int x, int y, i
 						mapClassNames[classString] = classW; // Will be freed when exiting REAPER
 				}
 			}
+			else MessageBox(NULL, "s=0", "", 0);
 		}
 
 		if (mapClassNames.count(classString))
@@ -1658,9 +1672,9 @@ void* JS_Window_Create(const char* title, const char* className, int x, int y, i
 					}
 				}
 			}
-		}
+				}
 
-	#else
+#else
 		hwnd = CreateDialog(nullptr, MAKEINTRESOURCE(0), nullptr, JS_Window_Create_WinProc);
 		if (hwnd) {
 			// Does the class already exist?
@@ -1671,17 +1685,17 @@ void* JS_Window_Create(const char* title, const char* className, int x, int y, i
 			SetWindowLong(hwnd, GWL_STYLE, style);
 			SetWindowText(hwnd, title);
 			SetWindowPos(hwnd, HWND_TOP, x, y, w, h, SWP_SHOWWINDOW | SWP_NOCOPYBITS | SWP_FRAMECHANGED);
-		#ifdef __APPLE__
+#ifdef __APPLE__
 			JS_Window_SetZOrder_ObjC(hwnd, HWND_TOP); // swell's SetWindowPos doesn't work well for Z-ordering
-		#endif
+#endif
 			if (style&WS_MINIMIZE)	ShowWindow(hwnd, SW_SHOWMINIMIZED); //swell doesn't implement WS_MAXIMIZED and WS_VISIBLE.  The latter is simply 0 in swell.
 			else					ShowWindow(hwnd, SW_SHOW);
 			UpdateWindow(hwnd);
 		}
-	#endif
-	}
+#endif
+			}
 	return hwnd;
-}
+		}
 
 /////////////////////////////////////////////////////////////////
 // Function based on SetWindowPos
@@ -1750,7 +1764,7 @@ bool JS_Window_SetPosition(void* windowHWND, int left, int top, int width, int h
 #elif __APPLE__
 				SetWindowPos((HWND)windowHWND, insertAfterHWND, left, top, width, height, intFlags);
 				if (!(intFlags&SWP_NOZORDER))
-					return JS_Window_SetZOrder_ObjC(void* hwnd, void* insertAfterHWND);
+					return JS_Window_SetZOrder_ObjC(windowHWND, insertAfterHWND);
 				else
 					return true;
 #elif __linux__
@@ -1814,7 +1828,7 @@ bool JS_Window_SetPos(void* windowHWND, const char* ZOrder, int x, int y, int w,
 #elif __APPLE__
 			SetWindowPos((HWND)windowHWND, insertAfterHWND, x, y, w, h, intFlags);
 			if (!(intFlags&SWP_NOZORDER))
-				return JS_Window_SetZOrder_ObjC(void* hwnd, void* insertAfterHWND);
+				return JS_Window_SetZOrder_ObjC(windowHWND, insertAfterHWND);
 			else
 				return true;
 #elif __linux__
@@ -2016,7 +2030,8 @@ bool JS_Window_SetOpacity(HWND windowHWND, const char* mode, double value)
 	return OK;
 }
 
-bool JS_Window_SetTitle(void* windowHWND, const char* title, int title_sz)
+
+bool JS_Window_SetTitle(void* windowHWND, const char* title)
 {
 	return !!SetWindowText((HWND)windowHWND, title); // On Windows, this is DEFINE'd in win32_tuf8.h as GetWindowTextUTF8, which enables Windows' WCHAR and UNICODE.
 }
@@ -2030,10 +2045,10 @@ void JS_Window_GetClassName(HWND windowHWND, char* classOut, int classOut_sz)
 {
 #ifdef _WIN32
 	classOut[0] = '\0';
-	wchar_t* classW = (wchar_t*)alloca(1024*sizeof(wchar_t));
+	wchar_t* classW = (wchar_t*)alloca(1024 * sizeof(wchar_t));
 	if (classW)
 		if (GetClassNameW(windowHWND, classW, 1024))
-			WideCharToMultiByte(CP_UTF8, 0, classW, -1, classOut, classOut_sz, NULL, NULL)-1;
+			WideCharToMultiByte(CP_UTF8, 0, classW, -1, classOut, classOut_sz, NULL, NULL);
 #else
 	GetClassName(windowHWND, classOut, classOut_sz);
 #endif
