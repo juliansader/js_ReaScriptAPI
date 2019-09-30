@@ -189,13 +189,15 @@ v0.991
  * New: JS_Window_SetStyle: Can add or remove frames from gfx and other windows.
 v0.992
  * Support Unicode characters for Dialog functions, Get/SetTitle/ClassName, and GDI_DrawText.
- * VKeys functions ignore repeated KEYDOWNs.
+ * VKeys functions ignore auto-repeated KEYDOWN messages.
+v0.993
+ * VKeys functions: improved handling of auto-repeated KEYDOWN messages.
 */
 
 
 void JS_ReaScriptAPI_Version(double* versionOut)
 {
-	*versionOut = 0.992;
+	*versionOut = 0.993;
 }
 
 void JS_Localize(const char* USEnglish, const char* LangPackSection, char* translationOut, int translationOut_sz)
@@ -220,7 +222,8 @@ void JS_Localize(const char* USEnglish, const char* LangPackSection, char* trans
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Virtual keys / Keyboard functions
-static double VK_KeyDown[256]{ 0 }; // time stamp of latest WM_KEYDOWN message
+static double VK_KeyDown[256]{ 0 }; // time stamp of latest WM_KEYDOWN message -- INcluding all auto-repeated KEYDOWNs
+static double VK_KeyDownEx[256]{ 0 }; // time stamp of latest WM_KEYDOWN message -- EXcluding auto-repeated KEYDOWNs
 static double VK_KeyUp[256]{ 0 }; // time stamp of latest WM_KEYUP message
 static unsigned char VK_Intercepts[256]{ 0 }; // Should the VK be intercepted?
 static constexpr size_t VK_Size = 255; // sizeof(VK_Intercepts);
@@ -237,15 +240,10 @@ int JS_VKeys_Callback(MSG* event, accelerator_register_t*)
 		case WM_SYSKEYDOWN:
 			if (keycode < 256)
 			{
-				if (VK_KeyUp[keycode] > VK_KeyDown[keycode]) // Ignore repeated keys. Assume keyboard repeat delay is always less than 3s.
-				{
-					VK_KeyDown[keycode] = time_precise();
-				}
-				else
-				{
-					time = time_precise();
-					if (time > VK_KeyDown[keycode] + 3) VK_KeyDown[keycode] = time;
-				}
+				time = time_precise()
+				if ((time > VK_KeyDown[keycode] + 4) || (VK_KeyUp[keycode] >= VK_KeyDown[keycode])) // Ignore repeated keys. Assume keyboard repeat delay is always less than 4s.
+					VK_KeyDownEx[keycode] = time;
+				VK_KeyDown[keycode] = time;
 			}
 			break;
 		case WM_KEYUP:
@@ -269,7 +267,7 @@ void JS_VKeys_GetState(double cutoffTime, char* stateOutNeedBig, int stateOutNee
 				cutoffTime = time_precise() + cutoffTime;
 			for (unsigned int i = 1; i <= VK_Size; i++)
 			{
-				if (VK_KeyDown[i] > VK_KeyUp[i] && VK_KeyDown[i] > cutoffTime)
+				if (VK_KeyDownEx[i] > VK_KeyUp[i] && VK_KeyDownEx[i] > cutoffTime)
 					stateOutNeedBig[i-1] = 1;
 				else
 					stateOutNeedBig[i-1] = 0;
@@ -286,7 +284,7 @@ void JS_VKeys_GetDown(double cutoffTime, char* stateOutNeedBig, int stateOutNeed
 				cutoffTime = time_precise() + cutoffTime;
 			for (unsigned int i = 1; i <= VK_Size; i++)
 			{
-				if (VK_KeyDown[i] > cutoffTime)
+				if (VK_KeyDownEx[i] > cutoffTime)
 					stateOutNeedBig[i-1] = 1;
 				else
 					stateOutNeedBig[i-1] = 0;
