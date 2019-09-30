@@ -240,7 +240,7 @@ int JS_VKeys_Callback(MSG* event, accelerator_register_t*)
 		case WM_SYSKEYDOWN:
 			if (keycode < 256)
 			{
-				time = time_precise()
+				time = time_precise();
 				if ((time > VK_KeyDown[keycode] + 4) || (VK_KeyUp[keycode] >= VK_KeyDown[keycode])) // Ignore repeated keys. Assume keyboard repeat delay is always less than 4s.
 					VK_KeyDownEx[keycode] = time;
 				VK_KeyDown[keycode] = time;
