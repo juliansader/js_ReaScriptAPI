@@ -192,12 +192,14 @@ v0.992
  * VKeys functions ignore auto-repeated KEYDOWN messages.
 v0.993
  * VKeys functions: improved handling of auto-repeated KEYDOWN messages.
+v0.994
+ * Fixed: Script-created windows crashing when subclassing.
 */
 
 
 void JS_ReaScriptAPI_Version(double* versionOut)
 {
-	*versionOut = 0.993;
+	*versionOut = 0.994;
 }
 
 void JS_Localize(const char* USEnglish, const char* LangPackSection, char* translationOut, int translationOut_sz)
@@ -2383,7 +2385,11 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 
 	// NO COMPOSITING - just return original results
 	else
+#ifdef _WIN32
+		return CallWindowProc(windowData.origProc, hwnd, uMsg, wParam, lParam);
+#else
 		return windowData.origProc(hwnd, uMsg, wParam, lParam);
+#endif
 }
 
 		//LRESULT result = windowData.origProc(hwnd, uMsg, wParam, lParam); // PRF_CLIENT | PRF_, );
