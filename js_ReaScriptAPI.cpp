@@ -192,14 +192,14 @@ v0.992
  * VKeys functions ignore auto-repeated KEYDOWN messages.
 v0.993
  * VKeys functions: improved handling of auto-repeated KEYDOWN messages.
-v0.994
+v0.995
  * Fixed: Script-created windows crashing when subclassing.
 */
 
 
 void JS_ReaScriptAPI_Version(double* versionOut)
 {
-	*versionOut = 0.994;
+	*versionOut = 0.995;
 }
 
 void JS_Localize(const char* USEnglish, const char* LangPackSection, char* translationOut, int translationOut_sz)
@@ -1518,12 +1518,12 @@ BEWARE, THESE NUMBERS ARE DIFFERENT FROM WIN32!!!
 // swell uses CreateDialog instead of CreateWindow to create new windows, and the callback returns INT_PTR instead of LRESULT
 #ifdef _WIN32
 typedef LRESULT callbacktype;
-#define myDefProc DefWindowProcW
+#define myDefProc DefWindowProc
 #else
 typedef INT_PTR callbacktype;
 #define myDefProc DefWindowProc
 #endif
-
+ 
 callbacktype CALLBACK JS_Window_Create_WinProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	switch (msg)
@@ -1538,7 +1538,7 @@ callbacktype CALLBACK JS_Window_Create_WinProc(HWND hwnd, UINT msg, WPARAM wPara
 		//	PostQuitMessage(0);
 		//	return FALSE;
 	default:
-		return (callbacktype)myDefProc(hwnd, msg, wParam, lParam);
+		return (callbacktype)DefWindowProc(hwnd, msg, wParam, lParam);
 	}
 }
 
@@ -1603,76 +1603,57 @@ void* JS_Window_Create(const char* title, const char* className, int x, int y, i
 
 		// On Windows, each new class name requires a new class.
 #ifdef _WIN32
-		// Does the class already exist?
+		// Does the class already exist?  If not, create it and save class name.
 		std::string classString = className;
 		if (!mapClassNames.count(classString))
 		{
-			int s = MultiByteToWideChar(CP_UTF8, 0, className, -1, NULL, 0);
-			if (s)
+			WNDCLASSEX structWindowClass
 			{
-				wchar_t* classW = (wchar_t*)malloc(2 * s * sizeof(wchar_t) + 10);
-				if (classW)
-				{
-					MultiByteToWideChar(CP_UTF8, 0, className, -1, classW, 2 * s);
+				sizeof(WNDCLASSEX),		//UINT cbSize;
+				CS_DBLCLKS | CS_HREDRAW | CS_VREDRAW | CS_OWNDC, //UINT style;
+				JS_Window_Create_WinProc, //WNDPROC     lpfnWndProc;
+				0,			//int         cbClsExtra;
+				0,			//int         cbWndExtra;
+				ReaScriptAPI_Instance,		//HINSTANCE   hInstance;
+				NULL,		//HICON       hIcon;
+				NULL,		//HCURSOR     hCursor;
+				NULL,		//HBRUSH      hbrBackground;
+				NULL,		//LPCSTR      lpszMenuName;
+				className,	//LPCSTR      lpszClassName;
+				NULL,		//HICON       hIconSm;
+			};
 
-					WNDCLASSEXW structWindowClass
-					{
-						sizeof(WNDCLASSEX),		//UINT cbSize;
-						CS_DBLCLKS | CS_HREDRAW | CS_VREDRAW | CS_OWNDC, //UINT style;
-						JS_Window_Create_WinProc, //WNDPROC     lpfnWndProc;
-						0,			//int         cbClsExtra;
-						0,			//int         cbWndExtra;
-						ReaScriptAPI_Instance,		//HINSTANCE   hInstance;
-						NULL,		//HICON       hIcon;
-						NULL,		//HCURSOR     hCursor;
-						NULL,		//HBRUSH      hbrBackground;
-						NULL,		//LPCWSTR      lpszMenuName;
-						classW,		//LPCWSTR      lpszClassName;
-						NULL,		//HICON       hIconSm;
-					};
-
-					if (RegisterClassExW(&structWindowClass))
-						mapClassNames[classString] = classW; // Will be freed when exiting REAPER
-				}
-			}
-			else MessageBox(NULL, "s=0", "", 0);
+			if (RegisterClassEx(&structWindowClass))
+				mapClassNames[classString] = strdup(className); // Class names must be saved, so use strdup (and remember to free memory later)
 		}
 
+		// OK, class exists, so can go ahead to create window
 		if (mapClassNames.count(classString))
 		{
-			int s = MultiByteToWideChar(CP_UTF8, 0, title, -1, NULL, 0);
-			if (s)
+			hwnd = CreateWindowEx(
+				WS_EX_LEFT | WS_EX_ACCEPTFILES | WS_EX_APPWINDOW | WS_EX_CONTEXTHELP,	//DWORD     dwExStyle,
+				mapClassNames[classString], 	//LPCSTR    lpClassName,
+				"", 	//LPCSTR    lpWindowName, // SetWindowText will be used below to set title with (potentially) Unicode text.
+				style, //WS_POPUP, //WS_OVERLAPPEDWINDOW, //WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_VISIBLE | WS_MINIMIZEBOX,	//DWORD     dwStyle,
+				x, 		//int       X,
+				y, 		//int       Y,
+				w, 		//int       nWidth,
+				h, 		//int       nHeight,
+				(HWND)ownerHWNDOptional,	//HWND      hWndParent,
+				NULL,	//HMENU     hMenu,
+				ReaScriptAPI_Instance,//HINSTANCE hInstance,
+				NULL	//LPVOID    lpParam
+			);
+			if (hwnd)
 			{
-				wchar_t* titleW = (wchar_t*)alloca(2 * s * sizeof(wchar_t) + 10); // title name don't need to be saved, so use local alloca
-				if (titleW)
-				{
-					MultiByteToWideChar(CP_UTF8, 0, title, -1, titleW, 2 * s);
-
-					hwnd = CreateWindowExW(
-						WS_EX_LEFT | WS_EX_ACCEPTFILES | WS_EX_APPWINDOW | WS_EX_CONTEXTHELP,	//DWORD     dwExStyle,
-						mapClassNames[classString], 	//LPCWSTR    lpClassName,
-						titleW, //LPCWSTR    lpWindowName,
-						style,	//WS_POPUP, //WS_OVERLAPPEDWINDOW, //WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_VISIBLE | WS_MINIMIZEBOX,	//DWORD     dwStyle,
-						x, 		//int       X,
-						y, 		//int       Y,
-						w, 		//int       nWidth,
-						h, 		//int       nHeight,
-						(HWND)ownerHWNDOptional,	//HWND      hWndParent,
-						NULL,	//HMENU     hMenu,
-						ReaScriptAPI_Instance,//HINSTANCE hInstance,
-						NULL	//LPVOID    lpParam
-					);
-					if (hwnd)
-					{
-						//SetWindowPos(hwnd, HWND_TOP, x, y, w, h, SWP_NOMOVE | SWP_NOSIZE);
-						if (style&WS_MINIMIZE)		ShowWindow(hwnd, SW_SHOWMINIMIZED);
-						else if (style&WS_MAXIMIZE) ShowWindow(hwnd, SW_SHOWMAXIMIZED);
-						else						ShowWindow(hwnd, SW_SHOWNORMAL);
-						UpdateWindow(hwnd);
-					}
-				}
+				SetWindowTextUTF8(hwnd, title); // Since non-widechar function were used to create the window, title must be set separately with potentially Unicode text.
+				//SetWindowPos(hwnd, HWND_TOP, x, y, w, h, SWP_NOMOVE | SWP_NOSIZE);
+				if (style&WS_MINIMIZE)		ShowWindow(hwnd, SW_SHOWMINIMIZED);
+				else if (style&WS_MAXIMIZE) ShowWindow(hwnd, SW_SHOWMAXIMIZED);
+				else						ShowWindow(hwnd, SW_SHOWNORMAL);
+				UpdateWindow(hwnd);
 			}
-				}
+		}
 
 #else
 		hwnd = CreateDialog(nullptr, MAKEINTRESOURCE(0), nullptr, JS_Window_Create_WinProc);
@@ -1693,9 +1674,9 @@ void* JS_Window_Create(const char* title, const char* className, int x, int y, i
 			UpdateWindow(hwnd);
 		}
 #endif
-			}
+	}
 	return hwnd;
-		}
+}
 
 /////////////////////////////////////////////////////////////////
 // Function based on SetWindowPos
@@ -2491,7 +2472,7 @@ int JS_WindowMessage_Intercept(void* windowHWND, const char* message, bool passt
 		// Try to get the original process.
 		WNDPROC origProc = nullptr;
 		#ifdef _WIN32
-		origProc = (WNDPROC)SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
+		origProc = (WNDPROC)SetWindowLongPtrA(hwnd, GWLP_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
 		#else
 		origProc = (WNDPROC)SetWindowLong(hwnd, GWL_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
 		#endif
