@@ -181,7 +181,12 @@ static void* __vararg_JS_Window_FromPoint(void** arglist, int numparms)
 
 static void* __vararg_JS_Window_GetParent(void** arglist, int numparms)
 {
-  return (void*)(intptr_t)JS_Window_GetParent((void*)arglist[0]);
+  return (void*)JS_Window_GetParent((void*)arglist[0]);
+}
+
+static void* __vararg_JS_Window_SetParent(void** arglist, int numparms)
+{
+  return (void*)JS_Window_SetParent((void*)arglist[0], (void*)arglist[1]);
 }
 
 static void* __vararg_JS_Window_IsChild(void** arglist, int numparms)
