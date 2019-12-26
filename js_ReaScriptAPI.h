@@ -32,6 +32,7 @@ bool  JS_Window_InvalidateRect(HWND windowHWND, int left, int top, int right, in
 void* JS_Window_FromPoint(int x, int y);
 
 void* JS_Window_GetParent(void* windowHWND);
+void* JS_Window_SetParent(void* childHWND, void* parentHWND);
 void* JS_Window_GetRoot(void* windowHWND);
 bool  JS_Window_IsChild(void* parentHWND, void* childHWND);
 void* JS_Window_GetRelated(void* windowHWND, const char* relation);
