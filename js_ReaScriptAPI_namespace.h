@@ -52,7 +52,7 @@ namespace Julian
 	/////////////////////////////////////////////
 	// WINDOW CLASS
 	// Remember to initialize the hInstance!
-#ifdef _WIN32
+#ifdef _WIN32skipthis // can't get wchar to work with class names yet, so skip this and use plain char
 	std::map<std::string, wchar_t*> mapClassNames;
 #else
 	std::map<std::string, char*> mapClassNames;
