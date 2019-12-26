@@ -194,12 +194,14 @@ v0.993
  * VKeys functions: improved handling of auto-repeated KEYDOWN messages.
 v0.995
  * Fixed: Script-created windows crashing when subclassing.
+v0.996
+ * JS_Window_SetParent
 */
 
 
 void JS_ReaScriptAPI_Version(double* versionOut)
 {
-	*versionOut = 0.995;
+	*versionOut = 0.996;
 }
 
 void JS_Localize(const char* USEnglish, const char* LangPackSection, char* translationOut, int translationOut_sz)
@@ -831,6 +833,11 @@ void* JS_Window_FromPoint(int x, int y)
 void* JS_Window_GetParent(void* windowHWND)
 {
 	return GetParent((HWND)windowHWND);
+}
+	
+void* JS_Window_SetParent(void* childHWND, void* parentHWND)
+{
+	return SetParent((HWND)childHWND, (HWND)parentHWND);
 }
 
 bool  JS_Window_IsChild(void* parentHWND, void* childHWND)
