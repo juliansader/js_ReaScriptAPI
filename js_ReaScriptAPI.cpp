@@ -2170,6 +2170,7 @@ bool JS_WindowMessage_ListIntercepts(void* windowHWND, char* listOutNeedBig, int
 		
 }
 
+
 bool JS_WindowMessage_Post(void* windowHWND, const char* message, double wParam, int wParamHighWord, double lParam, int lParamHighWord)
 {
 	using namespace Julian;
@@ -2187,17 +2188,17 @@ bool JS_WindowMessage_Post(void* windowHWND, const char* message, double wParam,
 			return false;
 	}
 	
-	WPARAM wP;
+	WPARAM fullWP;
 	if (wParamHighWord || ((wParam < 0) && (-(2^15) > wParam))) // WARNING: Negative values (such as mousewheel turns) are not bitwise encoded the same in low WORD vs entire WPARAM. So if small negative, assume that low WORD is intended.
-		wP = MAKEWPARAM(wParam, wParamHighWord);
+		fullWP = MAKEWPARAM(wParam, wParamHighWord);
 	else
-		wP = (WPARAM)(int64_t)wParam;
+		fullWP = (WPARAM)(int64_t)wParam;
 		
-	LPARAM lP;
+	LPARAM fullLP;
 	if (lParamHighWord || ((lParam < 0) && (-(2 ^ 15) > lParam)))
-		lP = MAKELPARAM(lParam, lParamHighWord);
+		fullLP = MAKELPARAM(lParam, lParamHighWord);
 	else
-		lP = (LPARAM)(int64_t)lParam;
+		fullLP = (LPARAM)(int64_t)lParam;
 		
 	HWND hwnd = (HWND)windowHWND;
 
@@ -2205,19 +2206,18 @@ bool JS_WindowMessage_Post(void* windowHWND, const char* message, double wParam,
 	if (mapWindowData.count(hwnd)) {
 		sWindowData& w = mapWindowData[hwnd];
 		if (w.mapMessages.count(uMsg)) {
-			//setPostedMessages.emplace(hwnd, uMsg, wP, lP);
 #ifdef _WIN32
-			CallWindowProc(w.origProc, hwnd, uMsg, wP, lP);
+			CallWindowProc(w.origProc, hwnd, uMsg, fullWP, fullLP);
 #else
-			w.origProc(hwnd, uMsg, wP, lP);
+			w.origProc(hwnd, uMsg, fullWP, fullLP);
 #endif
-			//w.origProc(hwnd, uMsg, wP, lP); // WindowProcs usually return 0 if message was handled.  But not always, 
 			return true;
 		}
 	}
-	return !!PostMessage(hwnd, uMsg, wP, lP);
+	// Not intercepted, so just pass on to Win32
+	return !!PostMessage(hwnd, uMsg, fullWP, fullLP);
 }
-
+ 
 
 int JS_WindowMessage_Send(void* windowHWND, const char* message, double wParam, int wParamHighWord, double lParam, int lParamHighWord)
 {
@@ -2233,35 +2233,38 @@ int JS_WindowMessage_Send(void* windowHWND, const char* message, double wParam, 
 		char* endPtr;
 		uMsg = strtoul(message, &endPtr, 16);
 		if (endPtr == message || errno != 0) // 0x0000 is a valid message type, so cannot assume 0 is error.
-			return FALSE;
+			return false;
 	}
-	
-	WPARAM wP;
+
+	WPARAM fullWP;
 	if (wParamHighWord || ((wParam < 0) && (-(2 ^ 15) > wParam))) // WARNING: Negative values (such as mousewheel turns) are not bitwise encoded the same in low WORD vs entire WPARAM. So if small negative, assume that low WORD is intended.
-		wP = MAKEWPARAM(wParam, wParamHighWord);
+		fullWP = MAKEWPARAM(wParam, wParamHighWord);
 	else
-		wP = (WPARAM)(int64_t)wParam;
+		fullWP = (WPARAM)(int64_t)wParam;
 
-	LPARAM lP;
+	LPARAM fullLP;
 	if (lParamHighWord || ((lParam < 0) && (-(2 ^ 15) > lParam)))
-		lP = MAKELPARAM(lParam, lParamHighWord);
+		fullLP = MAKELPARAM(lParam, lParamHighWord);
 	else
-		lP = (LPARAM)(int64_t)lParam;
+		fullLP = (LPARAM)(int64_t)lParam;
 
-	// Is this window currently being intercepted?  If yes, call original windowproc
+	HWND hwnd = (HWND)windowHWND;
+
+	// Is this window currently being intercepted?
 	if (mapWindowData.count(hwnd)) {
 		sWindowData& w = mapWindowData[hwnd];
 		if (w.mapMessages.count(uMsg)) {
 #ifdef _WIN32
-			return (int)CallWindowProc(w.origProc, hwnd, uMsg, wP, lP);
+			return (int)CallWindowProc(w.origProc, hwnd, uMsg, fullWP, fullLP);
 #else
-			return (int)w.origProc(hwnd, uMsg, wP, lP);
+			return (int)w.origProc(hwnd, uMsg, fullWP, fullLP);
 #endif
 		}
 	}
-	// If not, use standard SendMessage
-	return (int)SendMessage((HWND)windowHWND, uMsg, wP, lP);
+	// Not intercepted, so just pass on to Win32
+	return (int)SendMessage(hwnd, uMsg, fullWP, fullLP);
 }
+
 
 // swell does not define these macros:
 #ifndef GET_KEYSTATE_WPARAM

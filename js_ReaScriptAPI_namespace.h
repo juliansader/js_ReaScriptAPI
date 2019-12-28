@@ -111,6 +111,25 @@ namespace Julian
 		WPARAM wParam;
 		LPARAM lParam;
 	};
+	/*
+	// When posting a message that is being intercepted, store its info in this set,
+	//		so that can be skipped.
+	struct sPostedMsg
+	{
+		HWND hwnd;
+		UINT uMsg;
+		WPARAM wParam;
+		LPARAM lParam;
+	};
+	bool operator==(const sPostedMsg& msg1, const sPostedMsg& msg2)
+	{
+		return ((msg1.wParam == msg2.wParam)
+			&& (msg1.lParam == msg2.lParam)
+			&& (msg1.uMsg == msg2.uMsg)
+			&& (msg1.hwnd == msg2.hwnd));
+	};
+	std::multiset<sPostedMsg> setPostedMessages;
+	*/
 
 	// This struct is used to store the data of linked bitmaps for compositing.
 	struct sBitmapData 
@@ -127,13 +146,11 @@ namespace Julian
 
 	// This struct and map store the data of each HWND that is being intercepted.
 	// (Each window can only be intercepted by one script at a time.)
-	// For each window, three bitfields summarize the up/down states of most of the keyboard. 
-	// UPDATE: Apparently, REAPER's windows don't receive keystrokes via the message queue, and the keyboard can therefore not be intercepted.  
 	struct sWindowData
 	{
 		WNDPROC origProc;
-		std::map<UINT, sMsgData> mapMessages;
-		std::map<LICE_IBitmap*, sBitmapData> mapBitmaps;
+		std::map<UINT, sMsgData> mapMessages; // Most recent msg values received
+		std::map<LICE_IBitmap*, sBitmapData> mapBitmaps; // bitmaps linked to this window for compositing
 	};
 	const bool BLOCK = false;
 
