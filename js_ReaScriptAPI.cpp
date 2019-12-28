@@ -196,6 +196,8 @@ v0.995
  * Fixed: Script-created windows crashing when subclassing.
 v0.996
  * JS_Window_SetParent
+v0.997
+ * WindowMessage_Post and _Send work similarly when message type is being intercepted.
 */
 
 
@@ -2203,7 +2205,13 @@ bool JS_WindowMessage_Post(void* windowHWND, const char* message, double wParam,
 	if (mapWindowData.count(hwnd)) {
 		sWindowData& w = mapWindowData[hwnd];
 		if (w.mapMessages.count(uMsg)) {
-			w.origProc(hwnd, uMsg, wP, lP); // WindowProcs usually return 0 if message was handled.  But not always, 
+			//setPostedMessages.emplace(hwnd, uMsg, wP, lP);
+#ifdef _WIN32
+			CallWindowProc(w.origProc, hwnd, uMsg, wP, lP);
+#else
+			w.origProc(hwnd, uMsg, wP, lP);
+#endif
+			//w.origProc(hwnd, uMsg, wP, lP); // WindowProcs usually return 0 if message was handled.  But not always, 
 			return true;
 		}
 	}
@@ -2240,6 +2248,18 @@ int JS_WindowMessage_Send(void* windowHWND, const char* message, double wParam, 
 	else
 		lP = (LPARAM)(int64_t)lParam;
 
+	// Is this window currently being intercepted?  If yes, call original windowproc
+	if (mapWindowData.count(hwnd)) {
+		sWindowData& w = mapWindowData[hwnd];
+		if (w.mapMessages.count(uMsg)) {
+#ifdef _WIN32
+			return (int)CallWindowProc(w.origProc, hwnd, uMsg, wP, lP);
+#else
+			return (int)w.origProc(hwnd, uMsg, wP, lP);
+#endif
+		}
+	}
+	// If not, use standard SendMessage
 	return (int)SendMessage((HWND)windowHWND, uMsg, wP, lP);
 }
 
@@ -2720,7 +2740,7 @@ static void JS_WindowMessage_RestoreOrigProc(HWND hwnd)
 
 	if (mapWindowData.count(hwnd)) {
 		if (JS_Window_IsWindow(hwnd)) {
-			WNDPROC origProc = mapWindowData[hwnd].origProc;
+			WNDPROC& origProc = mapWindowData[hwnd].origProc;
 #ifdef _WIN32
 			SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)origProc);
 #else
