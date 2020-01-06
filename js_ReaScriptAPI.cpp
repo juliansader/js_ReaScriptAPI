@@ -198,12 +198,14 @@ v0.996
  * JS_Window_SetParent
 v0.997
  * WindowMessage_Post and _Send work similarly when message type is being intercepted.
+v0.998
+ * Proper linking against GDK on Linux.
 */
 
 
 void JS_ReaScriptAPI_Version(double* versionOut)
 {
-	*versionOut = 0.996;
+	*versionOut = 0.998;
 }
 
 void JS_Localize(const char* USEnglish, const char* LangPackSection, char* translationOut, int translationOut_sz)
