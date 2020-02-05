@@ -200,12 +200,16 @@ v0.997
  * WindowMessage_Post and _Send work similarly when message type is being intercepted.
 v0.998
  * Proper linking against GDK on Linux.
+v0.999
+ * JS_Window functions: On Linux and macOS, don't crash if handle is invalid.
+ * LoadPNG, SavePNG, LoadCursorFromFile: On Windows, accept Unicode paths.
+ * ReleaseDC: Can release screen HDCs.
 */
 
 
 void JS_ReaScriptAPI_Version(double* versionOut)
 {
-	*versionOut = 0.998;
+	*versionOut = 0.999;
 }
 
 void JS_Localize(const char* USEnglish, const char* LangPackSection, char* translationOut, int translationOut_sz)
@@ -684,6 +688,9 @@ int JS_Dialog_BrowseForFolder(const char* caption, const char* initialFolder, ch
 
 bool JS_Window_GetRect(void* windowHWND, int* leftOut, int* topOut, int* rightOut, int* bottomOut)
 {
+	#ifdef __APPLE__ || __linux__
+	if(!ValidatePtr(windowHWND, "HWND")) return false;
+	#endif
 	RECT r{ 0, 0, 0, 0 };
 	bool isOK = !!GetWindowRect((HWND)windowHWND, &r);
 #ifdef __APPLE__
@@ -706,8 +713,11 @@ bool JS_Window_GetRect(void* windowHWND, int* leftOut, int* topOut, int* rightOu
 
 void JS_Window_ScreenToClient(void* windowHWND, int x, int y, int* xOut, int* yOut)
 {
-	// Unlike Win32, Cockos WDL doesn't return a bool to confirm success.
 	POINT p{ x, y };
+	#ifdef __APPLE__ || __linux__
+	if(ValidatePtr(windowHWND, "HWND"))
+	#endif
+	// Unlike Win32, Cockos WDL doesn't return a bool to confirm success.
 	ScreenToClient((HWND)windowHWND, &p);
 	*xOut = (int)p.x;
 	*yOut = (int)p.y;
@@ -717,6 +727,9 @@ void JS_Window_ClientToScreen(void* windowHWND, int x, int y, int* xOut, int* yO
 {
 	// Unlike Win32, Cockos WDL doesn't return a bool to confirm success.
 	POINT p{ x, y };
+	#ifdef __APPLE__ || __linux__
+	if(ValidatePtr(windowHWND, "HWND"))
+	#endif
 	ClientToScreen((HWND)windowHWND, &p);
 	*xOut = (int)p.x;
 	*yOut = (int)p.y;
@@ -727,12 +740,12 @@ bool JS_Window_GetClientRect(void* windowHWND, int* leftOut, int* topOut, int* r
 {
 	// Unlike Win32, Cockos WDL doesn't return a bool to confirm success.
 	// However, if hwnd is not a true hwnd, SWELL will return a {0,0,0,0} rect.
-	HWND hwnd = (HWND)windowHWND;
 	RECT r{ 0, 0, 0, 0 };
 #ifdef _WIN32
-	bool isOK = !!GetClientRect(hwnd, &r);
+	bool isOK = !!GetClientRect((HWND)windowHWND, &r);
 #else
-	GetClientRect(hwnd, &r);
+	if(ValidatePtr(windowHWND, "HWND")) 
+		GetClientRect((HWND)windowHWND, &r);
 	bool isOK = (r.bottom != 0 || r.right != 0);
 #endif
 	if (isOK) {
@@ -758,7 +771,8 @@ bool JS_Window_GetClientSize(void* windowHWND, int* widthOut, int* heightOut)
 #ifdef _WIN32
 	bool isOK = !!GetClientRect((HWND)windowHWND, &r);
 #else
-	GetClientRect((HWND)windowHWND, &r);
+	if(ValidatePtr(windowHWND, "HWND")) 
+		GetClientRect((HWND)windowHWND, &r);
 	bool isOK = (r.bottom != 0 || r.right != 0);
 #endif
 	r.right = (r.right >= 0) ? (r.right) : (-(r.right));
@@ -836,21 +850,33 @@ void* JS_Window_FromPoint(int x, int y)
 
 void* JS_Window_GetParent(void* windowHWND)
 {
+	#ifdef __APPLE__ || __linux__
+	if(!ValidatePtr(windowHWND, "HWND")) return nullptr;
+	#endif
 	return GetParent((HWND)windowHWND);
 }
 	
 void* JS_Window_SetParent(void* childHWND, void* parentHWND)
 {
+	#ifdef __APPLE__ || __linux__
+	if(!(ValidatePtr(childHWND, "HWND") && ValidatePtr(parentHWND, "HWND"))) return nullptr;
+	#endif
 	return SetParent((HWND)childHWND, (HWND)parentHWND);
 }
 
 bool  JS_Window_IsChild(void* parentHWND, void* childHWND)
 {
+	#ifdef __APPLE__ || __linux__
+	if(!(ValidatePtr(childHWND, "HWND") && ValidatePtr(parentHWND, "HWND"))) return false;
+	#endif
 	return !!IsChild((HWND)parentHWND, (HWND)childHWND);
 }
 
 void* JS_Window_GetRelated(void* windowHWND, const char* relation)
 {
+	#ifdef __APPLE__ || __linux__
+	if(!(ValidatePtr(windowHWND, "HWND")) return nullptr;
+	#endif
 	/*
 	#define GW_HWNDFIRST        0
 	#define GW_HWNDLAST         1
@@ -874,12 +900,18 @@ void* JS_Window_GetRelated(void* windowHWND, const char* relation)
 
 void  JS_Window_SetFocus(void* windowHWND)
 {
+	#ifdef __APPLE__ || __linux__
+	if(ValidatePtr(windowHWND, "HWND"))
+	#endif
 	// SWELL returns different types than Win32, so this function won't return anything.
 	SetFocus((HWND)windowHWND);
 }
 
 void  JS_Window_SetForeground(void* windowHWND)
 {
+	#ifdef __APPLE__ || __linux__
+	if(ValidatePtr(windowHWND, "HWND"))
+	#endif
 	// SWELL returns different types than Win32, so this function won't return anything.
 	SetForegroundWindow((HWND)windowHWND);
 }
@@ -894,22 +926,27 @@ void* JS_Window_GetForeground()
 	return GetForegroundWindow();
 }
 
-
-
 void  JS_Window_Enable(void* windowHWND, bool enable)
 {
-	if (ValidatePtr(windowHWND, "HWND"))
-		EnableWindow((HWND)windowHWND, (BOOL)enable); // (enable ? (int)1 : (int)0));
+	#ifdef __APPLE__ || __linux__
+	if(ValidatePtr(windowHWND, "HWND"))
+	#endif
+	EnableWindow((HWND)windowHWND, (BOOL)enable); // (enable ? (int)1 : (int)0));
 }
 
 void  JS_Window_Destroy(void* windowHWND)
 {
-	if (ValidatePtr(windowHWND, "HWND"))
-		DestroyWindow((HWND)windowHWND);
+	#ifdef __APPLE__ || __linux__
+	if(ValidatePtr(windowHWND, "HWND"))
+	#endif
+	DestroyWindow((HWND)windowHWND);
 }
 
 void  JS_Window_Show(void* windowHWND, const char* state)
 {
+	#ifdef __APPLE__ || __linux__
+	if(ValidatePtr(windowHWND, "HWND"))
+	#endif
 	/*
 	#define SW_HIDE 0
 	#define SW_SHOWNA 1        // 8 on win32
@@ -943,6 +980,9 @@ void  JS_Window_Show(void* windowHWND, const char* state)
 
 bool JS_Window_IsVisible(void* windowHWND)
 {
+	#ifdef __APPLE__ || __linux__
+	if(!(ValidatePtr(windowHWND, "HWND"))) return false;
+	#endif
 	return !!IsWindowVisible((HWND)windowHWND);
 }
 
@@ -950,6 +990,9 @@ bool JS_Window_IsVisible(void* windowHWND)
 
 void* JS_Window_SetCapture(void* windowHWND)
 {
+	#ifdef __APPLE__ || __linux__
+	if(!(ValidatePtr(windowHWND, "HWND"))) return nullptr;
+	#endif
 	return SetCapture((HWND)windowHWND);
 }
 
@@ -966,6 +1009,10 @@ void  JS_Window_ReleaseCapture()
 
 void* JS_Window_GetLongPtr(void* windowHWND, const char* info)
 {
+	#ifdef __APPLE__ || __linux__
+	if(!(ValidatePtr(windowHWND, "HWND"))) return nullptr;
+	#endif
+	
 	int intMode;
 
 #ifdef _WIN32
@@ -995,6 +1042,10 @@ void* JS_Window_GetLongPtr(void* windowHWND, const char* info)
 
 void JS_Window_GetLong(void* windowHWND, const char* info, double* retvalOut)
 {
+	#ifdef __APPLE__ || __linux__
+	if(!(ValidatePtr(windowHWND, "HWND"))) *retvalOut = 0;
+	#endif
+	
 	int intMode;
 
 #ifdef _WIN32
@@ -1024,6 +1075,10 @@ void JS_Window_GetLong(void* windowHWND, const char* info, double* retvalOut)
 
 void JS_Window_SetLong(void* windowHWND, const char* info, double value, double* retvalOut)
 {
+	#ifdef __APPLE__ || __linux__
+	if(!(ValidatePtr(windowHWND, "HWND"))) *retvalOut = 0;
+	#endif
+	
 	int intMode;
 
 #ifdef _WIN32
@@ -1053,6 +1108,9 @@ void JS_Window_SetLong(void* windowHWND, const char* info, double value, double*
 
 HWND JS_Window_FindEx(HWND parentHWND, HWND childHWND, const char* className, const char* title)
 {
+	#ifdef __APPLE__ || __linux__
+	if(!(ValidatePtr(parentHWND, "HWND") && ValidatePtr(childHWND, "HWND"))) return nullptr;
+	#endif
 	// REAPER API cannot pass null pointers, so must do another way:
 	HWND		c = ((parentHWND == childHWND) ? nullptr : childHWND);
 	const char* t = ((strlen(title) == 0) ? nullptr : title);
@@ -1060,9 +1118,12 @@ HWND JS_Window_FindEx(HWND parentHWND, HWND childHWND, const char* className, co
 }
 
 
-HWND JS_Window_FindChildByID(HWND parent, int ID)
+HWND JS_Window_FindChildByID(HWND parentHWND, int ID)
 {
-	return GetDlgItem(parent, ID);
+	#ifdef __APPLE__ || __linux__
+	if(!(ValidatePtr(parentHWND, "HWND"))) return nullptr;
+	#endif
+	return GetDlgItem(parentHWND, ID);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1271,6 +1332,10 @@ BOOL CALLBACK JS_Window_FindChild_Callback(HWND hwnd, LPARAM structPtr)
 //		* Optionally matches substrings.
 void* JS_Window_FindChild(void* parentHWND, const char* title, bool exact)
 {
+	#ifdef __APPLE__ || __linux__
+	if(!(ValidatePtr(parentHWND, "HWND"))) return nullptr;
+	#endif
+	
 	using namespace Julian;
 
 	// FindWindow is case-insensitive, so this implementation is too. 
@@ -1413,7 +1478,11 @@ BOOL CALLBACK JS_Window_ListAllChild_Callback(HWND hwnd, LPARAM lParam)
 
 int JS_Window_ListAllChild(void* parentHWND, char* listOutNeedBig, int listOutNeedBig_sz)
 {
-	// Enumerate through all child windows and store ther HWNDs in a set. (Sets are nice, since will automatically check for uniqueness.)
+	#ifdef __APPLE__ || __linux__
+	if(!(ValidatePtr(parentHWND, "HWND"))) return -1;
+	#endif
+	
+	// Enumerate through all child windows and store their HWNDs in a set. (Sets are nice, since will automatically check for uniqueness.)
 	std::set<HWND> foundHWNDs;
 	EnumChildWindows((HWND)parentHWND, JS_Window_ListAllChild_Callback, reinterpret_cast<LPARAM>(&foundHWNDs));
 
