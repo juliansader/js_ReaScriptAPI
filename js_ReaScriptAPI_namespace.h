@@ -20,7 +20,6 @@ namespace Julian
 	// REAPER immediately converts this array into Lua strings, 
 	char longString[EXT_LEN];
 
-
 	///////////////////////////////////////////////////////////////////////////////////////////////
 	// GDI and LICE stuff
 	// Store all created HDCs and IBitmaps so that can check whether these exist, when 
@@ -28,7 +27,7 @@ namespace Julian
 	// Bitmaps can use up lots of RAM, so to ensure that all bitmaps are destroyed when REAPER exits,
 	//		all active bitmaps are stored here, and will be destroyed by the REAPER_PLUGIN_ENTRYPOINT function.
 	map<LICE_IBitmap*, HDC> LICEBitmaps;
-	set<HDC> GDIHDCs;
+	set<pair<HWND,HDC>> GDIHDCs;
 
 	// To avoid having to re-load a cursor from file every time that a script is executed,
 	//		the HCURSURS will be stored in this map.

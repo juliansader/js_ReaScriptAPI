@@ -120,7 +120,7 @@ bool  JS_Window_SetScrollPos(void* windowHWND, const char* scrollbar, int positi
 void* JS_GDI_GetClientDC(void* windowHWND);
 void* JS_GDI_GetWindowDC(void* windowHWND);
 void* JS_GDI_GetScreenDC();
-void  JS_GDI_ReleaseDC(void* windowHWND, void* deviceHDC);
+int   JS_GDI_ReleaseDC(void* deviceHDC, void* windowHWNDOptional);
 
 void* JS_GDI_CreateFillBrush(int color);
 void* JS_GDI_CreatePen(int width, int color);

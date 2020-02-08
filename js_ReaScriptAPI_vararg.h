@@ -539,8 +539,7 @@ static void* __vararg_JS_GDI_GetScreenDC(void** arglist, int numparms)
 
 static void* __vararg_JS_GDI_ReleaseDC(void** arglist, int numparms)
 {
-  JS_GDI_ReleaseDC((void*)arglist[0], (void*)arglist[1]);
-  return NULL;
+  return (void*)(intptr_t)JS_GDI_ReleaseDC((void*)arglist[0], (void*)arglist[1]);
 }
 
 /*
