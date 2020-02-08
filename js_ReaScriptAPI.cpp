@@ -879,7 +879,7 @@ bool  JS_Window_IsChild(void* parentHWND, void* childHWND)
 void* JS_Window_GetRelated(void* windowHWND, const char* relation)
 {
 	#ifndef _WIN32
-	if(!(ValidatePtr(windowHWND, "HWND")) return nullptr;
+	if (!ValidatePtr(windowHWND, "HWND")) return nullptr;
 	#endif
 	/*
 	#define GW_HWNDFIRST        0
@@ -905,7 +905,7 @@ void* JS_Window_GetRelated(void* windowHWND, const char* relation)
 void  JS_Window_SetFocus(void* windowHWND)
 {
 	#ifndef _WIN32
-	if(ValidatePtr(windowHWND, "HWND"))
+	if (ValidatePtr(windowHWND, "HWND"))
 	#endif
 	// SWELL returns different types than Win32, so this function won't return anything.
 	SetFocus((HWND)windowHWND);
@@ -933,7 +933,7 @@ void* JS_Window_GetForeground()
 void  JS_Window_Enable(void* windowHWND, bool enable)
 {
 	#ifndef _WIN32
-	if(ValidatePtr(windowHWND, "HWND"))
+	if (ValidatePtr(windowHWND, "HWND"))
 	#endif
 	EnableWindow((HWND)windowHWND, (BOOL)enable); // (enable ? (int)1 : (int)0));
 }
@@ -982,7 +982,7 @@ void  JS_Window_Show(void* windowHWND, const char* state)
 bool JS_Window_IsVisible(void* windowHWND)
 {
 	#ifndef _WIN32
-	if(!ValidatePtr(windowHWND, "HWND")) return false;
+	if (!ValidatePtr(windowHWND, "HWND")) return false;
 	#endif
 	return !!IsWindowVisible((HWND)windowHWND);
 }
@@ -992,7 +992,7 @@ bool JS_Window_IsVisible(void* windowHWND)
 void* JS_Window_SetCapture(void* windowHWND)
 {
 	#ifndef _WIN32
-	if(!ValidatePtr(windowHWND, "HWND")) return nullptr;
+	if (!ValidatePtr(windowHWND, "HWND")) return nullptr;
 	#endif
 	return SetCapture((HWND)windowHWND);
 }
@@ -1110,7 +1110,7 @@ void JS_Window_SetLong(void* windowHWND, const char* info, double value, double*
 HWND JS_Window_FindEx(HWND parentHWND, HWND childHWND, const char* className, const char* title)
 {
 	#ifndef _WIN32
-	if(!(ValidatePtr(parentHWND, "HWND") && ValidatePtr(childHWND, "HWND"))) return nullptr;
+	if (!(ValidatePtr(parentHWND, "HWND") && ValidatePtr(childHWND, "HWND"))) return nullptr;
 	#endif
 	// REAPER API cannot pass null pointers, so must do another way:
 	HWND		c = ((parentHWND == childHWND) ? nullptr : childHWND);
@@ -1122,7 +1122,7 @@ HWND JS_Window_FindEx(HWND parentHWND, HWND childHWND, const char* className, co
 HWND JS_Window_FindChildByID(HWND parentHWND, int ID)
 {
 	#ifndef _WIN32
-	if(!(ValidatePtr(parentHWND, "HWND"))) return nullptr;
+	if (!ValidatePtr(parentHWND, "HWND")) return nullptr;
 	#endif
 	return GetDlgItem(parentHWND, ID);
 }
