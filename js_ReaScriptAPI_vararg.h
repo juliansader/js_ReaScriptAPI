@@ -227,6 +227,11 @@ static void* __vararg_JS_Window_GetForeground(void** arglist, int numparms)
   return (void*)(intptr_t)JS_Window_GetForeground();
 }
 
+static void* __vararg_JS_Window_EnableMetal(void** arglist, int numparms)
+{
+  return(void*)(intptr_t)JS_Window_EnableMetal(arglist[0]);
+}
+
 static void* __vararg_JS_Window_Enable(void** arglist, int numparms)
 {
   JS_Window_Enable((void*)arglist[0], (bool)arglist[1]);
