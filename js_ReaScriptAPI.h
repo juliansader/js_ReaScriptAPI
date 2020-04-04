@@ -73,6 +73,7 @@ void* JS_Window_GetFocus();
 void  JS_Window_SetForeground(void* windowHWND);
 void* JS_Window_GetForeground();
 
+int   JS_Window_EnableMetal(void* windowHWND);
 void  JS_Window_Enable(void* windowHWND, bool enable);
 void  JS_Window_Destroy(void* windowHWND);
 void  JS_Window_Show(void* windowHWND, const char* state);
