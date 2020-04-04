@@ -204,6 +204,9 @@ v0.999
  * JS_Window functions: On Linux and macOS, don't crash if handle is invalid.
  * LoadPNG, SavePNG, LoadCursorFromFile: On Windows, accept Unicode paths.
  * ReleaseDC: Can release screen HDCs.
+v1.000
+ * JS_Composite: Less flickering on windows, but stricter requirements for InvalidateRect.
+ * New function: JS_Window_IsMetalEnabled
 */
 
 
@@ -213,7 +216,7 @@ v0.999
 
 void JS_ReaScriptAPI_Version(double* versionOut)
 {
-	*versionOut = 0.999;
+	*versionOut = 1.000;
 }
 
 void JS_Localize(const char* USEnglish, const char* LangPackSection, char* translationOut, int translationOut_sz)
@@ -930,6 +933,17 @@ void* JS_Window_GetForeground()
 	return GetForegroundWindow();
 }
 
+	
+int JS_Window_EnableMetal(void* windowHWND)
+{
+#ifdef __apple__
+	if ValidatePtr(windowHWND, "HWND") 
+		return EnableMetal((HWND)windowHWND, 0);
+#else
+	return 0;
+#endif
+}
+	
 void  JS_Window_Enable(void* windowHWND, bool enable)
 {
 	#ifndef _WIN32
