@@ -2487,7 +2487,7 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 	{
 		// If the updateRect overlaps a composited bitmap, that bitmap must be re-blitted, otherwise it will be partly removed.
 		// The updateRect must also be enlarged to include the entire bitmap, so that existing bitmaps are wiped efore blitting and transparencies don't pile up.
-		std:map<LICE_IBitmap*, RECT> nonOverlappingBitmaps;
+		std::map<LICE_IBitmap*, RECT> nonOverlappingBitmaps;
 
 		RECT cr{ 0,0,0,0 };
 		GetClientRect(hwnd, &cr);
@@ -3336,10 +3336,20 @@ int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap
 	using namespace Julian;
 	if (!LICEBitmaps.count(sysBitmap)) return ERR_NOT_BITMAP;
 	HDC bitmapDC = LICEBitmaps[sysBitmap]; if (!bitmapDC) return ERR_NOT_SYSBITMAP; // Is this a sysbitmap?
+	if (!IsWindow(hwnd)) return ERR_NOT_WINDOW;
+
+	// The composite function will call InvalidateRect to start the blitting, so the destination rect must be calculated.
+	// ALSO: If the window and bitmap were already composited, its destination coordinates may be moving, so the invalidated rect must cover the new as well as the previous dst rect.
+	RECT cr;
+	GetClientRect(hwnd, &cr);
+
+	RECT dstr{ dstx, dsty, dstx + dstw, dsty + dsth };
+	if (dstw == -1) { dstr.left = 0; dstr.right = cr.right; }
+	if (dsth == -1) { dstr.top = 0; dstr.bottom = cr.bottom; }
+
 
 	// If window not already intercepted, get original window proc and emplace new struct
 	if (mapWindowData.count(hwnd) == 0) {
-		if (!JS_Window_IsWindow(hwnd)) return ERR_NOT_WINDOW;
 		
 		WNDPROC origProc = nullptr;
 #ifdef _WIN32
@@ -3352,8 +3362,20 @@ int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap
 		mapWindowData[hwnd] = sWindowData{ origProc };
 	}
 
+	// Is window and bitmap already composited?
+	else if (mapWindowData[hwnd].mapBitmaps.count(sysBitmap))
+	{
+		auto& b = mapWindowData[hwnd].mapBitmaps[sysBitmap];
+		RECT prevr{ b.dstx, b.dsty, b.dstx + b.dstw, b.dsty + b.dsth };
+		if (b.dstw == -1) { prevr.left = 0; prevr.right = cr.right; }
+		if (b.dsth == -1) { prevr.top = 0;  prevr.bottom = cr.bottom; }
+		cr = dstr; // Using cr just as temporary storage so that next step doesn't need to use dstr as source as well as destination.
+		UnionRect(&dstr, &cr, &prevr);
+	}
+
 	// OK, hwnd should now be in map. Don't use emplace, since may need to replace previous dst or src RECT of already-linked bitmap
 	mapWindowData[hwnd].mapBitmaps[sysBitmap] = sBitmapData{ dstx, dsty, dstw, dsth, srcx, srcy, srcw, srch };
+	InvalidateRect(hwnd, &dstr, true);
 	return 1;
 }
 
