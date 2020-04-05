@@ -2485,19 +2485,58 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 	// COMPOSITE LICE BITMAPS - if any
 	if (uMsg == WM_PAINT && !windowData.mapBitmaps.empty())
 	{
-		RECT r{ 0,0,0,0 };
-		GetClientRect(hwnd, &r);
-		InvalidateRect(hwnd, &r, false);  // If entire window isn't redrawn, and if compositing destination falls outside invalidated area, bitmap may be composited multiple times over itself.
+		// If the updateRect overlaps a composited bitmap, that bitmap must be re-blitted, otherwise it will be partly removed.
+		// The updateRect must also be enlarged to include the entire bitmap, so that existing bitmaps are wiped efore blitting and transparencies don't pile up.
+		std:map<LICE_IBitmap*, RECT> nonOverlappingBitmaps;
 
+		RECT cr{ 0,0,0,0 };
+		GetClientRect(hwnd, &cr);
+
+#ifdef _WIN32
+		RECT ur{ 0,0,0,0 };
+		GetUpdateRect(hwnd, &ur, false);  // If entire window isn't redrawn, and if compositing destination falls outside invalidated area, bitmap may be composited multiple times over itself.
+		RECT newr = ur;
+		RECT prevr;
+		RECT tempr;
+
+		
+		for (auto& b : windowData.mapBitmaps)
+		{
+			sBitmapData& i = b.second;
+			nonOverlappingBitmaps[b.first] = { i.dstw == -1 ? 0 : i.dstx,
+				i.dsth == -1 ? 0 : i.dsty,
+				i.dstw == -1 ? cr.right : (i.dstx + i.dstw),
+				i.dsth == -1 ? cr.bottom : (i.dsty + i.dsth) };
+		}
+
+		do
+		{
+			prevr = newr;
+			for (auto& b : nonOverlappingBitmaps)
+			{
+				if (IntersectRect(&tempr, &b.second, &newr))
+				{
+					UnionRect(&tempr, &b.second, &newr);
+					CopyRect(&newr, &tempr);
+					nonOverlappingBitmaps.erase(b.first);
+				}
+			}
+		} while (!EqualRect(&newr, &prevr));
+
+		if (!EqualRect(&newr, &ur)) InvalidateRect(hwnd, &newr, true);
+
+		LRESULT result = CallWindowProc(windowData.origProc, hwnd, uMsg, wParam, lParam);
+#else
 		LRESULT result = windowData.origProc(hwnd, uMsg, wParam, lParam);
-
+#endif
 		HDC windowDC = GetDC(hwnd);
 		if (windowDC) {
 			for (auto& b : windowData.mapBitmaps) {
-				if (LICEBitmaps.count(b.first)) {
+				if (!nonOverlappingBitmaps.count(b.first) && LICEBitmaps.count(b.first)) {
 					HDC& bitmapDC = LICEBitmaps[b.first];
 					if (bitmapDC) {
 						sBitmapData& i = b.second;
+						RECT r = cr;
 						if (i.dstw != -1) {
 							r.left = i.dstx; r.right = i.dstw;
 						}
@@ -2516,6 +2555,7 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 		}
 		return result;
 	}
+
 
 	// NO COMPOSITING - just return original results
 	else
