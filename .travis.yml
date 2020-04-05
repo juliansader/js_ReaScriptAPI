@@ -10,8 +10,8 @@ before_install:
 #script: clang -c -m32 -fPIC -xc ./WDL/libpng/*.c ; clang -c -m32 -fPIC -xc ./WDL/zlib/*.c ; clang++ -fPIC -dynamiclib -undefined dynamic_lookup -std=c++17 -DSWELL_PROVIDED_BY_APP  -I"./WDL/swell/" -I"./WDL/lice" -I"./WDL/libpng" -I"./WDL/zlib/" js_ReaScriptAPI.cpp js_ReaScriptAPI_ObjC.mm "./WDL/swell/swell-modstub.mm" "./WDL/lice/lice_png_write.cpp" "./WDL/lice/lice_colorspace.cpp" "./WDL/lice/lice.cpp" *.o -framework AppKit -framework Cocoa -lc++ -stdlib=libc++ -m32 -o "reaper_js_ReaScriptAPI32.dylib"
 #script: clang -c -fPIC -xc ./WDL/libpng/*.c ; clang -c -fPIC -xc ./WDL/zlib/*.c ; clang++ -fPIC -dynamiclib -undefined dynamic_lookup -std=c++17 -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" -I"./WDL/lice" -I"./WDL/libpng" -I"./WDL/zlib/" js_ReaScriptAPI.cpp js_ReaScriptAPI_ObjC.mm "./WDL/swell/swell-modstub.mm" "./WDL/lice/lice_png_write.cpp" "./WDL/lice/lice_colorspace.cpp" "./WDL/lice/lice.cpp" *.o -framework AppKit -framework Cocoa -lc++ -stdlib=libc++ -o "reaper_js_ReaScriptAPI64.dylib"
 #linux command:
-#script: gcc-5 -c -fPIC -xc ./WDL/libpng/*.c ; gcc-5 -c -fPIC -xc ./WDL/zlib/*.c ; g++-5 -fPIC -shared -std=c++14 -Wall -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" -I"./WDL/lice" -I"./WDL/libpng" -I"./WDL/zlib/" js_ReaScriptAPI.cpp "./WDL/swell/swell-modstub-generic.cpp" "./WDL/lice/lice_png_write.cpp" "./WDL/lice/lice_colorspace.cpp" "./WDL/lice/lice.cpp" *.o `pkg-config --cflags --libs gtk+-3.0` -o reaper_js_ReaScriptAPI64.so
-script: gcc-5 -c -m32 -fPIC -xc ./WDL/libpng/*.c ; gcc-5 -c -m32 -fPIC -xc ./WDL/zlib/*.c ; g++-5 -m32 -fPIC -shared -std=c++14 -Wall -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" -I"./WDL/lice" -I"./WDL/libpng" -I"./WDL/zlib/" js_ReaScriptAPI.cpp "./WDL/swell/swell-modstub-generic.cpp" "./WDL/lice/lice_png_write.cpp" "./WDL/lice/lice_colorspace.cpp" "./WDL/lice/lice.cpp" *.o `pkg-config --cflags --libs gtk+-3.0` -o reaper_js_ReaScriptAPI32.so
+script: gcc-5 -c -fPIC -xc ./WDL/libpng/*.c ; gcc-5 -c -fPIC -xc ./WDL/zlib/*.c ; g++-5 -fPIC -shared -std=c++14 -Wall -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" -I"./WDL/lice" -I"./WDL/libpng" -I"./WDL/zlib/" js_ReaScriptAPI.cpp "./WDL/swell/swell-modstub-generic.cpp" "./WDL/lice/lice_png_write.cpp" "./WDL/lice/lice_colorspace.cpp" "./WDL/lice/lice.cpp" *.o `pkg-config --cflags --libs gtk+-3.0` -o reaper_js_ReaScriptAPI64.so
+#Travis cannot build x32 Linux: script: gcc-5 -c -m32 -fPIC -xc ./WDL/libpng/*.c ; gcc-5 -c -m32 -fPIC -xc ./WDL/zlib/*.c ; g++-5 -m32 -fPIC -shared -std=c++14 -Wall -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" -I"./WDL/lice" -I"./WDL/libpng" -I"./WDL/zlib/" js_ReaScriptAPI.cpp "./WDL/swell/swell-modstub-generic.cpp" "./WDL/lice/lice_png_write.cpp" "./WDL/lice/lice_colorspace.cpp" "./WDL/lice/lice.cpp" *.o `pkg-config --cflags --libs gtk+-3.0` -o reaper_js_ReaScriptAPI32.so
 
 deploy:
   provider: releases
@@ -21,8 +21,7 @@ deploy:
   #file: 'reaper_js_ReaScriptAPI32.dylib'
   #file: 'reaper_js_ReaScriptAPI64.dylib'
   #linux:
-  #file: 'reaper_js_ReaScriptAPI64.so'
-  file: 'reaper_js_ReaScriptAPI32.so'
+  file: 'reaper_js_ReaScriptAPI64.so'
   skip_cleanup: true
   on:
     tag: true
