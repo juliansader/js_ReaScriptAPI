@@ -205,8 +205,8 @@ v0.999
  * LoadPNG, SavePNG, LoadCursorFromFile: On Windows, accept Unicode paths.
  * ReleaseDC: Can release screen HDCs.
 v1.000
- * JS_Composite: Less flickering on windows, but stricter requirements for InvalidateRect.
- * New function: JS_Window_IsMetalEnabled
+ * Composite, Composite_Unlink and DestroyBitmap automatically updates window.
+ * New function: JS_Window_EnableMetal.
 */
 
 
@@ -3362,7 +3362,7 @@ int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap
 		mapWindowData[hwnd] = sWindowData{ origProc };
 	}
 
-	// Is window and bitmap already composited?
+	// Is window and bitmap already composited?  Get previous dst rect.
 	else if (mapWindowData[hwnd].mapBitmaps.count(sysBitmap))
 	{
 		auto& b = mapWindowData[hwnd].mapBitmaps[sysBitmap];
@@ -3415,8 +3415,25 @@ return false;
 void JS_Composite_Unlink(HWND hwnd, LICE_IBitmap* bitmap)
 {
 	using namespace Julian;
-	if (mapWindowData.count(hwnd)) {
-		mapWindowData[hwnd].mapBitmaps.erase(bitmap);
+	if (mapWindowData.count(hwnd)) 
+	{
+		// Unlinking bitmap should also erase blitted image from hwnd.
+		// Must first store dst rect coordinates, then erase the link, the InvalidateRect the composited area to remove image.
+		if (mapWindowData[hwnd].mapBitmaps.count(bitmap))
+		{
+			auto b = mapWindowData[hwnd].mapBitmaps[bitmap];
+
+			mapWindowData[hwnd].mapBitmaps.erase(bitmap);
+
+			if (IsWindow(hwnd))
+			{
+				RECT r;
+				GetClientRect(hwnd, &r);
+				if (b.dstw != -1) { r.left = b.dstx; r.right = b.dstx + b.dstw; }
+				if (b.dsth != -1) { r.top = b.dsty; r.bottom = b.dsty + b.dsth; }
+				InvalidateRect(hwnd, &r, true);
+			}
+		}
 		if (mapWindowData[hwnd].mapBitmaps.empty() && mapWindowData[hwnd].mapMessages.empty()) {
 			JS_WindowMessage_RestoreOrigProc(hwnd);
 		}
@@ -3478,9 +3495,14 @@ void JS_LICE_DestroyBitmap(LICE_IBitmap* bitmap)
 {
 	using namespace Julian;
 	// Also delete any occurence of this bitmap from UI Compositing
-	if (LICEBitmaps.count(bitmap)) {
-		for (auto& m : mapWindowData) {
-			m.second.mapBitmaps.erase(bitmap);
+	if (LICEBitmaps.count(bitmap)) 
+	{
+		for (auto& m : mapWindowData) 
+		{
+			if (m.second.mapBitmaps.count(bitmap))
+			{
+				JS_Composite_Unlink(m.first, bitmap); // Will also InvalidateRect the dst window
+			}
 		}
 		LICEBitmaps.erase(bitmap);
 		LICE__Destroy(bitmap);
