@@ -209,7 +209,7 @@ v0.999
  * JS_Window functions: On Linux and macOS, don't crash if handle is invalid.
  * LoadPNG, SavePNG, LoadCursorFromFile: On Windows, accept Unicode paths.
  * ReleaseDC: Can release screen HDCs.
-v1.000e
+v1.000f
  * Composite, Composite_Unlink and DestroyBitmap automatically updates window.
  * Composite_Unlink can optionally unlink all bitmaps from window.
  * JS_LICE_List/ArrayAllBitmaps

@@ -227,7 +227,7 @@ APIdef aAPIdefs[] =
 
 	{ APIFUNC(JS_LICE_CreateBitmap), "void*", "bool,int,int", "isSysBitmap,width,height", "", },
 	{ APIFUNC(JS_LICE_ListAllBitmaps), "int", "char*,int", "listOutNeedBig,listOutNeedBig_sz", "", },
-	{ APIFUNC(JS_LICE_ArrayAllBitmaps), "int", "double*", "reaperarray", "", },
+	{ APIFUNC(JS_LICE_ArrayAllBitmaps), "int", "void*", "reaperarray", "", },
 
 	{ APIFUNC(JS_LICE_GetHeight), "int", "void*", "bitmap", "", },
 	{ APIFUNC(JS_LICE_GetWidth), "int", "void*", "bitmap", "", },
