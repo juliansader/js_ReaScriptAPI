@@ -96,23 +96,29 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 	// Does an extension need to do anything when unloading?  
 	// To prevent memory leaks, perhaps try to delete any stuff that may remain in memory?
 	// On Windows, LICE bitmaps are automatically destroyed when REAPER quits, but to make extra sure, this function will destroy them explicitly.
-	// Why store stuff in extra sets?  For some unexplained reason REAPER crashes if I try to destroy LICE bitmaps explicitly. And for another unexplained reason, this roundabout way works...
 	else 
 	{
-		std::set<HWND> windowsToRestore;
-		for (auto& i : Julian::mapWindowData)
-			windowsToRestore.insert(i.first);
-		for (HWND hwnd : windowsToRestore)
-			JS_WindowMessage_RestoreOrigProc(hwnd);
-
-		//for (auto& bm : Julian::LICEBitmaps)
-		//	LICE__Destroy(bm.first);
-		
-		std::set<LICE_IBitmap*> bitmapsToDelete;
+		// WARNING!!!  If using gcc compiler, iterator may crash if map entries is deleted while iterating,
+		// which JS_WindowMessage_RestoreOrigProcAndErase indeed does.
+		// So must store set of intercepted window in a new container.
+		//std::set<HWND> windowsToRestore;
+		for (auto& i : Julian::mapWindowData) {
+			i.second.mapBitmaps.clear();
+			i.second.mapMessages.clear();
+		}
+		JS_WindowMessage_RestoreOrigProcAndErase();
+		//	windowsToRestore.insert(i.first);
+		//for (HWND hwnd : windowsToRestore)
+		//	JS_WindowMessage_RestoreOrigProcAndErase(hwnd);
+			
+		// Similarly, JS_LICE_DestroyBitmap, deletes entries.
+		//std::set<LICE_IBitmap*> bitmapsToDelete;
 		for (auto& i : Julian::LICEBitmaps)
-			bitmapsToDelete.insert(i.first);
-		for (LICE_IBitmap* bm : bitmapsToDelete)
-			JS_LICE_DestroyBitmap(bm);
+			LICE__Destroy(i.first);
+		//	bitmapsToDelete.insert(i.first);
+		//for (LICE_IBitmap* bm : bitmapsToDelete)
+		//	JS_LICE_DestroyBitmap(bm);
+			
 		for (auto& i : Julian::mapClassNames)
 			free(i.second);
 		for (auto& i : Julian::mapMallocToSize)
@@ -121,7 +127,6 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 			free(i.defstring);
 		for (HGDIOBJ i : Julian::setGDIObjects)
 			DeleteObject(i);
-
 
 		plugin_register("-accelerator", &(Julian::sAccelerator));
 		return 0;
@@ -204,7 +209,7 @@ v0.999
  * JS_Window functions: On Linux and macOS, don't crash if handle is invalid.
  * LoadPNG, SavePNG, LoadCursorFromFile: On Windows, accept Unicode paths.
  * ReleaseDC: Can release screen HDCs.
-v1.000
+v1.000d
  * Composite, Composite_Unlink and DestroyBitmap automatically updates window.
  * New function: JS_Window_EnableMetal.
 */
@@ -962,7 +967,7 @@ void  JS_Window_Destroy(void* windowHWND)
 
 void  JS_Window_Show(void* windowHWND, const char* state)
 {
-	/*
+	/* from swell-types.h:
 	#define SW_HIDE 0
 	#define SW_SHOWNA 1        // 8 on win32
 	#define SW_SHOW 2          // 1 on win32
@@ -2325,9 +2330,9 @@ bool JS_WindowMessage_Post(void* windowHWND, const char* message, double wParam,
 		sWindowData& w = mapWindowData[hwnd];
 		if (w.mapMessages.count(uMsg)) {
 #ifdef _WIN32
-			CallWindowProc(w.origProc, hwnd, uMsg, fullWP, fullLP);
+			CallWindowProc((WNDPROC)(intptr_t)w.origProc, hwnd, uMsg, fullWP, fullLP);
 #else
-			w.origProc(hwnd, uMsg, fullWP, fullLP);
+			((WNDPROC)(intptr_t)w.origProc)(hwnd, uMsg, fullWP, fullLP);
 #endif
 			return true;
 		}
@@ -2375,9 +2380,9 @@ int JS_WindowMessage_Send(void* windowHWND, const char* message, double wParam, 
 		sWindowData& w = mapWindowData[hwnd];
 		if (w.mapMessages.count(uMsg)) {
 #ifdef _WIN32
-			return (int)CallWindowProc(w.origProc, hwnd, uMsg, fullWP, fullLP);
+			return (int)CallWindowProc((WNDPROC)(intptr_t)w.origProc, hwnd, uMsg, fullWP, fullLP);
 #else
-			return (int)w.origProc(hwnd, uMsg, fullWP, fullLP);
+			return (int)((WNDPROC)(intptr_t)w.origProc)(hwnd, uMsg, fullWP, fullLP);
 #endif
 		}
 	}
@@ -2443,6 +2448,7 @@ bool JS_WindowMessage_Peek(void* windowHWND, const char* message, bool* passedTh
 	return false;
 }
 
+
 LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	using namespace Julian;
@@ -2486,8 +2492,9 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 	if (uMsg == WM_PAINT && !windowData.mapBitmaps.empty())
 	{
 		// If the updateRect overlaps a composited bitmap, that bitmap must be re-blitted, otherwise it will be partly removed.
-		// The updateRect must also be enlarged to include the entire bitmap, so that existing bitmaps are wiped efore blitting and transparencies don't pile up.
-		std::map<LICE_IBitmap*, RECT> nonOverlappingBitmaps;
+		// On WindowsOS, the updateRect must also be enlarged to include the entire bitmap, so that existing bitmaps are wiped efore blitting and transparencies don't pile up.
+		// WDL/swell does not offer an GetUpdateRect function equivalent, so the entire window will be re-drawn.
+		std::map<LICE_IBitmap*, RECT> nonOverlappingRects;
 
 		RECT cr{ 0,0,0,0 };
 		GetClientRect(hwnd, &cr);
@@ -2497,45 +2504,61 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 		GetUpdateRect(hwnd, &ur, false);  // If entire window isn't redrawn, and if compositing destination falls outside invalidated area, bitmap may be composited multiple times over itself.
 		RECT newr = ur;
 		RECT prevr;
-		RECT tempr;
 
-		
+		// Convert rects from xywh to lrtb format
 		for (auto& b : windowData.mapBitmaps)
 		{
-			sBitmapData& i = b.second;
-			nonOverlappingBitmaps[b.first] = { i.dstw == -1 ? 0 : i.dstx,
-				i.dsth == -1 ? 0 : i.dsty,
-				i.dstw == -1 ? cr.right : (i.dstx + i.dstw),
-				i.dsth == -1 ? cr.bottom : (i.dsty + i.dsth) };
+			sBlitRects& i = b.second;
+			nonOverlappingRects[b.first] = { 	i.dstw == -1 ? 0 : i.dstx,
+												i.dsth == -1 ? 0 : i.dsty,
+												i.dstw == -1 ? cr.right : (i.dstx + i.dstw),
+												i.dsth == -1 ? cr.bottom : (i.dsty + i.dsth) };
 		}
-
-		do
+		
+		// Expanding the rect to cover one bitmap, may overlap another that wasn't previous overlapped; 
+		// so this loop must re-check each bitmap until no further expansion was required.
+		do 
 		{
-			prevr = newr;
-			for (auto& b : nonOverlappingBitmaps)
+			prevr = newr; // Store newr, to compare with at end of loop
+			for (auto& b : windowData.mapBitmaps) // Why not loop through nonOverlappingBitmaps? Because will erase entries while looping.
 			{
-				if (IntersectRect(&tempr, &b.second, &newr))
+				/*if (IntersectRect(&tempr, &b.second, &newr))
 				{
 					UnionRect(&tempr, &b.second, &newr);
 					CopyRect(&newr, &tempr);
-					nonOverlappingBitmaps.erase(b.first);
+					overlappingBitmaps.insert(b.first);
+				}*/
+				if (nonOverlappingRects.count(b.first)) // Was this rect still non-overlapping after previous loop?
+				{
+					RECT r = nonOverlappingRects[b.first];
+					if (r.left < newr.right && r.right > newr.left && r.top < newr.bottom && r.bottom > newr.top)
+					{
+						newr.left = (r.left < newr.left ? r.left : newr.left);
+						newr.top = (r.top < newr.top ? r.top : newr.top);
+						newr.right = (r.right > newr.right ? r.right : newr.right);
+						newr.bottom = (r.bottom > newr.bottom ? r.bottom : newr.bottom);
+;
+						nonOverlappingRects.erase(b.first);
+					}
 				}
 			}
 		} while (!EqualRect(&newr, &prevr));
 
 		if (!EqualRect(&newr, &ur)) InvalidateRect(hwnd, &newr, true);
 
-		LRESULT result = CallWindowProc(windowData.origProc, hwnd, uMsg, wParam, lParam);
+		LRESULT result = CallWindowProc((WNDPROC)(intptr_t)windowData.origProc, hwnd, uMsg, wParam, lParam);
 #else
-		LRESULT result = windowData.origProc(hwnd, uMsg, wParam, lParam);
+		// WDL/swell does not offer an GetUpdateRect function equivalent, so the entire window will be re-drawn.
+		InvalidateRect(hwnd, &cr, true);
+		LRESULT result = ((WNDPROC)(intptr_t)windowData.origProc)(hwnd, uMsg, wParam, lParam);
 #endif
 		HDC windowDC = GetDC(hwnd);
 		if (windowDC) {
 			for (auto& b : windowData.mapBitmaps) {
-				if (!nonOverlappingBitmaps.count(b.first) && LICEBitmaps.count(b.first)) {
+				if (!nonOverlappingRects.count(b.first) && LICEBitmaps.count(b.first)) { // Does this bitmap overlap the invalid area? Does it still exist?
 					HDC& bitmapDC = LICEBitmaps[b.first];
 					if (bitmapDC) {
-						sBitmapData& i = b.second;
+						sBlitRects& i = b.second;
 						RECT r = cr;
 						if (i.dstw != -1) {
 							r.left = i.dstx; r.right = i.dstw;
@@ -2556,79 +2579,14 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 		return result;
 	}
 
-
 	// NO COMPOSITING - just return original results
 	else
 #ifdef _WIN32
-		return CallWindowProc(windowData.origProc, hwnd, uMsg, wParam, lParam);
+		return CallWindowProc((WNDPROC)(intptr_t)windowData.origProc, hwnd, uMsg, wParam, lParam);
 #else
-		return windowData.origProc(hwnd, uMsg, wParam, lParam);
+		return ((WNDPROC)(intptr_t)windowData.origProc)(hwnd, uMsg, wParam, lParam);
 #endif
 }
-
-		//LRESULT result = windowData.origProc(hwnd, uMsg, wParam, lParam); // PRF_CLIENT | PRF_, );
-		/*
-		cW, cH = GetClientRect
-		RECT rr{ 10000, 10000, 0, 0 };
-		if (uMsg == WM_PAINT) {
-			if (!windowData.mapBitmaps.empty()) {
-				for (auto& b : windowData.mapBitmaps) {
-					sBitmapData& i = b.second;
-					if (i.dstx < rr.left) rr.left = i.dstx;
-					if (i.dsty < rr.top)  rr.top  = i.dsty;
-					if (i.dstx+i.dstw > rr.right) rr.right = i.dstx+i.dstw;
-					if (i.dsty+i.dsth > rr.bottom) rr.bottom = i.dsty+i.dsth;
-					InvalidateRect(hwnd, &rr, true);
-				}
-			}
-		}
-
-		// All events that are not blocked
-		LRESULT r = windowData.origProc(hwnd, uMsg, wParam, lParam);
-		*/
-
-		/*
-		if (uMsg == WM_PAINT) {
-			if (!windowData.mapBitmaps.empty()) {
-				HDC windowDC = GetDC(hwnd);
-				if (windowDC) {
-					for (auto& b : windowData.mapBitmaps) {
-						if (LICEBitmaps.count(b.first)) {
-							HDC& bitmapDC = LICEBitmaps[b.first];
-							if (bitmapDC) {
-								sBitmapData& i = b.second;
-								RECT r{ i.dstx, i.dsty, i.dstw, i.dsth };
-								if (i.dstw == -1 || i.dsth == -1) {
-									GetClientRect(hwnd, &r);
-									if (i.dstw != -1) {
-										r.left = i.dstx; r.right = i.dsty;
-									}
-									else if (i.dsth != -1) {
-										r.top = i.dsty; r.bottom = i.dsth;
-									}
-								}
-#ifdef _WIN32
-								AlphaBlend(memDC, r.left, r.top, r.right, r.bottom, bitmapDC, i.srcx, i.srcy, i.srcw, i.srch, BLENDFUNCTION{ AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
-#else
-								StretchBlt(windowDC, r.left, r.top, r.right, r.bottom, bitmapDC, i.srcx, i.srcy, i.srcw, i.srch, SRCCOPY_USEALPHACHAN);
-#endif
-							}
-						}
-					}
-					//ReleaseDC(hwnd, windowDC);
-				}
-			}
-		}
-		
-		//BitBlt(windowDC, 0, 0, r.right, r.bottom, memDC, 0, 0, SRCCOPY);
-
-		//SelectObject(memDC, oldbitmap);
-		DeleteObject(hbitmap);
-		DeleteDC(memDC);
-		
-		return result;
-	}
-}*/
 
 
 // Intercept a single message type
@@ -2663,16 +2621,16 @@ int JS_WindowMessage_Intercept(void* windowHWND, const char* message, bool passt
 			return ERR_WINDOW_HDC;
 
 		// Try to get the original process.
-		WNDPROC origProc = nullptr;
+		LONG_PTR origProc = 0;
 		#ifdef _WIN32
-		origProc = (WNDPROC)SetWindowLongPtrA(hwnd, GWLP_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
+		origProc = SetWindowLongPtrA(hwnd, GWLP_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
 		#else
-		origProc = (WNDPROC)SetWindowLong(hwnd, GWL_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
+		origProc = SetWindowLong(hwnd, GWL_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
 		#endif
 		if (!origProc) 
 			return ERR_ORIGPROC;
 
-		Julian::mapWindowData.emplace(hwnd, sWindowData{ origProc }); // , map<UINT, sMsgData>{}, map<LICE_IBitmap*, sBitmapData>{} }); // Insert empty map
+		Julian::mapWindowData.emplace(hwnd, sWindowData{ origProc }); // , map<UINT, sMsgData>{}, map<LICE_IBitmap*, sBlitRects>{} }); // Insert empty map
 	}
 
 	// Window already intercepted.  So try to add to existing maps.
@@ -2795,11 +2753,11 @@ int JS_WindowMessage_InterceptList(void* windowHWND, const char* messages)
 			return ERR_WINDOW_HDC;
 
 		// Try to get the original process.
-		WNDPROC origProc = nullptr;
+		LONG_PTR origProc = 0;
 #ifdef _WIN32
-		origProc = (WNDPROC)SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
+		origProc = SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
 #else
-		origProc = (WNDPROC)SetWindowLong(hwnd, GWL_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
+		origProc = SetWindowLong(hwnd, GWL_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
 #endif
 		if (!origProc) 
 			return ERR_ORIGPROC;
@@ -2876,8 +2834,8 @@ int JS_WindowMessage_Release(void* windowHWND, const char* messages)
 		existingMessages.erase(it);
 
 	// If no messages need to be intercepted any more, release this window
-	if (existingMessages.empty() && mapWindowData[hwnd].mapBitmaps.empty())
-		JS_WindowMessage_RestoreOrigProc(hwnd);
+	//if (existingMessages.empty() && mapWindowData[hwnd].mapBitmaps.empty())
+	JS_WindowMessage_RestoreOrigProcAndErase();
 
 	return TRUE;
 }
@@ -2885,37 +2843,67 @@ int JS_WindowMessage_Release(void* windowHWND, const char* messages)
 void JS_WindowMessage_ReleaseAll()
 {
 	using namespace Julian;
-	for (auto it = mapWindowData.begin(); it != mapWindowData.end(); ++it) {
-		JS_WindowMessage_ReleaseWindow(it->first);
-	}
+	for (auto& m : Julian::mapWindowData) 
+		m.second.mapMessages.clear(); // delete intercepts, but leave linked bitmaps alone
+	JS_WindowMessage_RestoreOrigProcAndErase();
 }
 
 void JS_WindowMessage_ReleaseWindow(void* windowHWND)
 {
 	using namespace Julian;
 	HWND hwnd = (HWND)windowHWND;
-	if (mapWindowData.count(hwnd)) {
-		if (mapWindowData[hwnd].mapBitmaps.empty()) JS_WindowMessage_RestoreOrigProc(hwnd); // no linked bitmaps either, so can restore original WNDPROC
-		else mapWindowData[hwnd].mapMessages.clear(); // delete intercepts, but leave linked bitmaps alone
-	}
+	if (mapWindowData.count(hwnd))
+		mapWindowData[hwnd].mapMessages.clear(); // delete intercepts, but leave linked bitmaps alone
+
+	JS_WindowMessage_RestoreOrigProcAndErase();
+	/*	if (mapWindowData[hwnd].mapBitmaps.empty()) 
+			JS_WindowMessage_RestoreOrigProcAndErase(hwnd); // no linked bitmaps either, so can restore original WNDPROC
+		else 
+			mapWindowData[hwnd].mapMessages.clear(); // delete intercepts, but leave linked bitmaps alone
+			*/
 }
 
-static void JS_WindowMessage_RestoreOrigProc(HWND hwnd)
+// Call this function to clean up intercepts, after clearing mapMessages or mapBitmaps.
+// WARNING: DO NOT call this function inside a loop over mapWindowData, since this function may delete entries in mapWindowData.
+void JS_WindowMessage_RestoreOrigProcAndErase() //HWND hwnd)
 {
 	using namespace Julian;
+	std::set<HWND> toDelete;
+	for (auto& m : Julian::mapWindowData) {
+		if (m.second.mapBitmaps.empty() && m.second.mapMessages.empty()) {
+			toDelete.insert(m.first);
+		}
+	}
 
-	if (mapWindowData.count(hwnd)) {
-		if (IsWindow(hwnd)) {
-			WNDPROC& origProc = mapWindowData[hwnd].origProc;
-#ifdef _WIN32
-			SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)origProc);
-#else
-			SetWindowLong(hwnd, GWL_WNDPROC, (LONG_PTR)origProc);
-#endif
+	for (HWND w : toDelete)
+	{
+		if (IsWindow(hwnd) && Julian::mapWindowData[hwnd].origProc) {
+				#ifdef _WIN32
+				SetWindowLongPtr(hwnd, GWLP_WNDPROC, Julian::mapWindowData[hwnd].origProc);
+				#else			
+				SetWindowLong(hwnd, GWL_WNDPROC, Julian::mapWindowData[hwnd].origProc);
+				#endif
 		}
 		mapWindowData.erase(hwnd);
 	}
 }
+	/*
+	if (mapWindowData.count(hwnd)) {
+		if (IsWindow(hwnd)) {
+			LONG_PTR& origProc = mapWindowData[hwnd].origProc;
+#ifdef _WIN32
+			SetWindowLongPtr(hwnd, GWLP_WNDPROC, origProc);
+#else			
+			SetWindowLong(hwnd, GWL_WNDPROC, origProc);
+#endif
+		}
+		//if (erase)
+			mapWindowData.erase(hwnd);
+		{
+			mapWindowData[hwnd].mapMessages.clear();
+			mapWindowData[hwnd].mapBitmaps.clear();
+		}
+	}*/
 
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -3349,17 +3337,17 @@ int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap
 
 
 	// If window not already intercepted, get original window proc and emplace new struct
-	if (mapWindowData.count(hwnd) == 0) {
+	if (Julian::mapWindowData.count(hwnd) == 0) {
 		
-		WNDPROC origProc = nullptr;
+		LONG_PTR origProc = 0;
 #ifdef _WIN32
-		origProc = (WNDPROC)SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
+		origProc = SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
 #else
-		origProc = (WNDPROC)SetWindowLong(hwnd, GWL_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
+		origProc = SetWindowLong(hwnd, GWL_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
 #endif
 		if (!origProc) return ERR_ORIGPROC;
 		
-		mapWindowData[hwnd] = sWindowData{ origProc };
+		Julian::mapWindowData[hwnd] = sWindowData{ origProc };
 	}
 
 	// Is window and bitmap already composited?  Get previous dst rect.
@@ -3374,43 +3362,11 @@ int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap
 	}
 
 	// OK, hwnd should now be in map. Don't use emplace, since may need to replace previous dst or src RECT of already-linked bitmap
-	mapWindowData[hwnd].mapBitmaps[sysBitmap] = sBitmapData{ dstx, dsty, dstw, dsth, srcx, srcy, srcw, srch };
+	mapWindowData[hwnd].mapBitmaps[sysBitmap] = sBlitRects{ dstx, dsty, dstw, dsth, srcx, srcy, srcw, srch };
 	InvalidateRect(hwnd, &dstr, true);
 	return 1;
 }
 
-/*
-if (LICEBitmaps.count(sysBitmap)) {
-HDC bitmapDC = LICEBitmaps[sysBitmap];
-if (bitmapDC) { // Is this a sysbitmap?
-if (mapWindowData.count(hwnd) == 0) { // If window not already intercepted, get original window proc and emplace new struct
-if (JS_Window_IsWindow(hwnd)) {
-WNDPROC origProc = nullptr;
-#ifdef _WIN32
-origProc = (WNDPROC)SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
-#else
-origProc = (WNDPROC)SetWindowLong(hwnd, GWL_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
-#endif
-if (origProc)
-mapWindowData.emplace(hwnd, sWindowData{ origProc });
-}
-}
-if (mapWindowData.count(hwnd)) { // OK, hwnd should now be in map
-HDC windowDC = nullptr;
-if (mapWindowData[hwnd].mapBitmaps.count(sysBitmap))
-windowDC = mapWindowData[hwnd].mapBitmaps[sysBitmap].windowDC;
-else
-windowDC = (HDC)JS_GDI_GetClientDC(hwnd);
-
-if (windowDC) {
-mapWindowData[hwnd].mapBitmaps.emplace(sysBitmap, sBitmapData{ windowDC, dstx, dsty, dstw, dsth, bitmapDC, srcx, srcy, srcw, srch });
-return 1;
-}
-}
-}
-}
-return false;
-}*/
 
 void JS_Composite_Unlink(HWND hwnd, LICE_IBitmap* bitmap)
 {
@@ -3421,11 +3377,11 @@ void JS_Composite_Unlink(HWND hwnd, LICE_IBitmap* bitmap)
 		// Must first store dst rect coordinates, then erase the link, the InvalidateRect the composited area to remove image.
 		if (mapWindowData[hwnd].mapBitmaps.count(bitmap))
 		{
-			auto b = mapWindowData[hwnd].mapBitmaps[bitmap];
+			sBlitRects b = mapWindowData[hwnd].mapBitmaps[bitmap]; // Store existing dst and src rects
 
-			mapWindowData[hwnd].mapBitmaps.erase(bitmap);
+			mapWindowData[hwnd].mapBitmaps.erase(bitmap); // Erase link
 
-			if (IsWindow(hwnd))
+			if (IsWindow(hwnd)) // Adjust for -1 w or h, which expands to entire client rect
 			{
 				RECT r;
 				GetClientRect(hwnd, &r);
@@ -3433,10 +3389,14 @@ void JS_Composite_Unlink(HWND hwnd, LICE_IBitmap* bitmap)
 				if (b.dsth != -1) { r.top = b.dsty; r.bottom = b.dsty + b.dsth; }
 				InvalidateRect(hwnd, &r, true);
 			}
+
+			JS_WindowMessage_RestoreOrigProcAndErase();
 		}
-		if (mapWindowData[hwnd].mapBitmaps.empty() && mapWindowData[hwnd].mapMessages.empty()) {
-			JS_WindowMessage_RestoreOrigProc(hwnd);
-		}
+		/*
+		if (mapWindowData[hwnd].mapBitmaps.empty() && mapWindowData[hwnd].mapMessages.empty()) 
+		{
+			JS_WindowMessage_RestoreOrigProcAndErase(hwnd);
+		}*/
 	}
 
 }
@@ -3494,16 +3454,21 @@ void* JS_LICE_GetDC(void* bitmap)
 void JS_LICE_DestroyBitmap(LICE_IBitmap* bitmap)
 {
 	using namespace Julian;
+	
 	// Also delete any occurence of this bitmap from UI Compositing
 	if (LICEBitmaps.count(bitmap)) 
 	{
-		for (auto& m : mapWindowData) 
-		{
-			if (m.second.mapBitmaps.count(bitmap))
-			{
-				JS_Composite_Unlink(m.first, bitmap); // Will also InvalidateRect the dst window
+		// DANGEROUS! Unlinking and/or destroying may delete entries in this map,
+		//		which can crash iterator!
+		// So must store matches temporarily in this set:
+		std::set<HWND> linkedWindows;
+		for (auto& m : mapWindowData) {
+			if (m.second.mapBitmaps.count(bitmap))	{
+				linkedWindows.insert(m.first);
 			}
 		}
+		for (auto& w : linkedWindows) 
+			JS_Composite_Unlink(w, bitmap); // Will also InvalidateRect the dst window, may delete mapWindowData is no intercepts.
 		LICEBitmaps.erase(bitmap);
 		LICE__Destroy(bitmap);
 	}

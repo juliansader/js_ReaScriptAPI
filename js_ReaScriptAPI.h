@@ -104,7 +104,7 @@ bool  JS_WindowMessage_Peek(void* windowHWND, const char* message, bool* passedT
 int   JS_WindowMessage_Release(void* windowHWND, const char* messages);
 void  JS_WindowMessage_ReleaseWindow(void* windowHWND);
 void  JS_WindowMessage_ReleaseAll();
-static void JS_WindowMessage_RestoreOrigProc(HWND hwnd);
+void  JS_WindowMessage_RestoreOrigProcAndErase();
 bool  JS_Window_OnCommand(void* windowHWND, int commandID);
 
 int   JS_Mouse_GetState(int flags);

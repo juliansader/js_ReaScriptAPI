@@ -131,7 +131,7 @@ namespace Julian
 	*/
 
 	// This struct is used to store the data of linked bitmaps for compositing.
-	struct sBitmapData 
+	struct sBlitRects 
 	{
 		int dstx;
 		int dsty;
@@ -147,9 +147,9 @@ namespace Julian
 	// (Each window can only be intercepted by one script at a time.)
 	struct sWindowData
 	{
-		WNDPROC origProc;
+		LONG_PTR origProc;
 		std::map<UINT, sMsgData> mapMessages; // Most recent msg values received
-		std::map<LICE_IBitmap*, sBitmapData> mapBitmaps; // bitmaps linked to this window for compositing
+		std::map<LICE_IBitmap*, sBlitRects> mapBitmaps; // bitmaps linked to this window for compositing
 	};
 	const bool BLOCK = false;
 
