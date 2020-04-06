@@ -113,7 +113,7 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 			
 		// Similarly, JS_LICE_DestroyBitmap, deletes entries.
 		//std::set<LICE_IBitmap*> bitmapsToDelete;
-		for (auto& i : Julian::LICEBitmaps)
+		for (auto& i : Julian::mLICEBitmaps)
 			LICE__Destroy(i.first);
 		//	bitmapsToDelete.insert(i.first);
 		//for (LICE_IBitmap* bm : bitmapsToDelete)
@@ -209,9 +209,11 @@ v0.999
  * JS_Window functions: On Linux and macOS, don't crash if handle is invalid.
  * LoadPNG, SavePNG, LoadCursorFromFile: On Windows, accept Unicode paths.
  * ReleaseDC: Can release screen HDCs.
-v1.000d
+v1.000e
  * Composite, Composite_Unlink and DestroyBitmap automatically updates window.
- * New function: JS_Window_EnableMetal.
+ * Composite_Unlink can optionally unlink all bitmaps from window.
+ * JS_LICE_List/ArrayAllBitmaps
+ * JS_Window_EnableMetal.
 */
 
 
@@ -2555,8 +2557,8 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 		HDC windowDC = GetDC(hwnd);
 		if (windowDC) {
 			for (auto& b : windowData.mapBitmaps) {
-				if (!nonOverlappingRects.count(b.first) && LICEBitmaps.count(b.first)) { // Does this bitmap overlap the invalid area? Does it still exist?
-					HDC& bitmapDC = LICEBitmaps[b.first];
+				if (!nonOverlappingRects.count(b.first) && mLICEBitmaps.count(b.first)) { // Does this bitmap overlap the invalid area? Does it still exist?
+					HDC& bitmapDC = mLICEBitmaps[b.first];
 					if (bitmapDC) {
 						sBlitRects& i = b.second;
 						RECT r = cr;
@@ -3322,8 +3324,8 @@ bool JS_Window_SetScrollPos(void* windowHWND, const char* scrollbar, int positio
 int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap* sysBitmap, int srcx, int srcy, int srcw, int srch)
 {
 	using namespace Julian;
-	if (!LICEBitmaps.count(sysBitmap)) return ERR_NOT_BITMAP;
-	HDC bitmapDC = LICEBitmaps[sysBitmap]; if (!bitmapDC) return ERR_NOT_SYSBITMAP; // Is this a sysbitmap?
+	if (!mLICEBitmaps.count(sysBitmap)) return ERR_NOT_BITMAP;
+	HDC bitmapDC = mLICEBitmaps[sysBitmap]; if (!bitmapDC) return ERR_NOT_SYSBITMAP; // Is this a sysbitmap?
 	if (!IsWindow(hwnd)) return ERR_NOT_WINDOW;
 
 	// The composite function will call InvalidateRect to start the blitting, so the destination rect must be calculated.
@@ -3368,14 +3370,39 @@ int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap
 }
 
 
-void JS_Composite_Unlink(HWND hwnd, LICE_IBitmap* bitmap)
+void JS_Composite_Unlink(HWND hwnd, LICE_IBitmap* bitmap = nullptr)
 {
+	/*using namespace Julian;
+	if (!hwnd && !bitmapOptional)
+	{
+		for (auto& m : mapWindowData) m.second.mapBitmaps.clear();
+	}
+	else if (!bitmapOptional)
+	{
+		if (mLICEBitmaps.count((LICE_IBitmap*)windowHWNDOptional))
+			for (auto& m : mapWindowData) 
+				m.second.mapBitmaps.erase((LICE_IBitmap*)windowHWNDOptional);
+				*/
+
+
 	using namespace Julian;
 	if (mapWindowData.count(hwnd)) 
 	{
+		if (!bitmap)
+		{
+			Julian::mapWindowData[hwnd].mapBitmaps.clear();
+
+			if (IsWindow(hwnd))
+			{
+				RECT r{ 0,0,0,0 };
+				GetClientRect(hwnd, &r);
+				InvalidateRect(hwnd, &r, true);
+			}
+		}
+
 		// Unlinking bitmap should also erase blitted image from hwnd.
 		// Must first store dst rect coordinates, then erase the link, the InvalidateRect the composited area to remove image.
-		if (mapWindowData[hwnd].mapBitmaps.count(bitmap))
+		else if (mapWindowData[hwnd].mapBitmaps.count(bitmap))
 		{
 			sBlitRects b = mapWindowData[hwnd].mapBitmaps[bitmap]; // Store existing dst and src rects
 
@@ -3389,14 +3416,9 @@ void JS_Composite_Unlink(HWND hwnd, LICE_IBitmap* bitmap)
 				if (b.dsth != -1) { r.top = b.dsty; r.bottom = b.dsty + b.dsth; }
 				InvalidateRect(hwnd, &r, true);
 			}
-
-			JS_WindowMessage_RestoreOrigProcAndErase();
 		}
-		/*
-		if (mapWindowData[hwnd].mapBitmaps.empty() && mapWindowData[hwnd].mapMessages.empty()) 
-		{
-			JS_WindowMessage_RestoreOrigProcAndErase(hwnd);
-		}*/
+
+		JS_WindowMessage_RestoreOrigProcAndErase();
 	}
 
 }
@@ -3418,15 +3440,30 @@ void* JS_LICE_CreateBitmap(bool isSysBitmap, int width, int height)
 	// Immediately get HDC and store, so that all scripts can use the same HDC.
 	if (bm) {
 		HDC dc = LICE__GetDC(bm);
-		Julian::LICEBitmaps[bm] = dc;
+		Julian::mLICEBitmaps[bm] = dc;
 	}
 	return bm;
+}
+
+int JS_LICE_ListAllBitmaps(char* listOutNeedBig, int listOutNeedBig_sz)
+{
+	std::set<HWND> bitmaps;
+	for (auto& i : Julian::mLICEBitmaps) bitmaps.insert((HWND)(void*)i.first);
+	return ConvertSetHWNDToString(bitmaps, listOutNeedBig, listOutNeedBig_sz);
+}
+
+int JS_LICE_ArrayAllBitmaps(double* reaperarray)
+{
+	// Enumerate through all top-level windows and store ther HWNDs in a set. (Sets are nice, since will automatically check for uniqueness.)
+	std::set<HWND> bitmaps;
+	for (auto& i : Julian::mLICEBitmaps) bitmaps.insert((HWND)(void*)i.first);
+	return ConvertSetHWNDToArray(bitmaps, reaperarray);
 }
 
 int JS_LICE_GetHeight(void* bitmap)
 {
 	using namespace Julian;
-	if (LICEBitmaps.count((LICE_IBitmap*)bitmap))
+	if (mLICEBitmaps.count((LICE_IBitmap*)bitmap))
 		return LICE__GetHeight((LICE_IBitmap*)bitmap);
 	else 
 		return 0;
@@ -3435,7 +3472,7 @@ int JS_LICE_GetHeight(void* bitmap)
 int JS_LICE_GetWidth(void* bitmap)
 {
 	using namespace Julian;
-	if (LICEBitmaps.count((LICE_IBitmap*)bitmap))
+	if (mLICEBitmaps.count((LICE_IBitmap*)bitmap))
 		return LICE__GetWidth((LICE_IBitmap*)bitmap);
 	else
 		return 0;
@@ -3444,8 +3481,8 @@ int JS_LICE_GetWidth(void* bitmap)
 void* JS_LICE_GetDC(void* bitmap)
 {
 	using namespace Julian;
-	if (LICEBitmaps.count((LICE_IBitmap*)bitmap))
-		return LICEBitmaps[(LICE_IBitmap*)bitmap];
+	if (mLICEBitmaps.count((LICE_IBitmap*)bitmap))
+		return mLICEBitmaps[(LICE_IBitmap*)bitmap];
 	else
 		return nullptr;
 }
@@ -3456,7 +3493,7 @@ void JS_LICE_DestroyBitmap(LICE_IBitmap* bitmap)
 	using namespace Julian;
 	
 	// Also delete any occurence of this bitmap from UI Compositing
-	if (LICEBitmaps.count(bitmap)) 
+	if (mLICEBitmaps.count(bitmap)) 
 	{
 		// DANGEROUS! Unlinking and/or destroying may delete entries in this map,
 		//		which can crash iterator!
@@ -3469,7 +3506,7 @@ void JS_LICE_DestroyBitmap(LICE_IBitmap* bitmap)
 		}
 		for (auto& w : linkedWindows) 
 			JS_Composite_Unlink(w, bitmap); // Will also InvalidateRect the dst window, may delete mapWindowData is no intercepts.
-		LICEBitmaps.erase(bitmap);
+		mLICEBitmaps.erase(bitmap);
 		LICE__Destroy(bitmap);
 	}
 }
@@ -3498,7 +3535,7 @@ void JS_LICE_DestroyBitmap(LICE_IBitmap* bitmap)
 
 void JS_LICE_Blit(void* destBitmap, int dstx, int dsty, void* sourceBitmap, int srcx, int srcy, int width, int height, double alpha, const char* mode)
 {	
-	if (Julian::LICEBitmaps.count((LICE_IBitmap*)destBitmap) && Julian::LICEBitmaps.count((LICE_IBitmap*)sourceBitmap))
+	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)destBitmap) && Julian::mLICEBitmaps.count((LICE_IBitmap*)sourceBitmap))
 	{
 		if (strstr(mode, "BLUR"))
 			LICE_Blur((LICE_IBitmap*)destBitmap, (LICE_IBitmap*)sourceBitmap, dstx, dsty, srcx, srcy, width, height);
@@ -3523,20 +3560,20 @@ void JS_LICE_Blit(void* destBitmap, int dstx, int dsty, void* sourceBitmap, int 
 void JS_LICE_RotatedBlit(void* destBitmap, int dstx, int dsty, int dstw, int dsth, void* sourceBitmap, double srcx, double srcy, double srcw, double srch, double angle, double rotxcent, double rotycent, bool cliptosourcerect, double alpha, const char* mode)
 {
 	GETINTMODE	
-	if (Julian::LICEBitmaps.count((LICE_IBitmap*)destBitmap) && Julian::LICEBitmaps.count((LICE_IBitmap*)sourceBitmap))
+	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)destBitmap) && Julian::mLICEBitmaps.count((LICE_IBitmap*)sourceBitmap))
 		LICE_RotatedBlit((LICE_IBitmap*)destBitmap, (LICE_IBitmap*)sourceBitmap, dstx, dsty, dstw, dsth, (float)srcx, (float)srcy, (float)srcw, (float)srch, (float)angle, cliptosourcerect, (float)alpha, intMode, (float)rotxcent, (float)rotycent);
 }
 
 void JS_LICE_ScaledBlit(void* destBitmap, int dstx, int dsty, int dstw, int dsth, void* sourceBitmap, double srcx, double srcy, double srcw, double srch, double alpha, const char* mode)
 {
 	GETINTMODE
-	if (Julian::LICEBitmaps.count((LICE_IBitmap*)destBitmap) && Julian::LICEBitmaps.count((LICE_IBitmap*)sourceBitmap))
+	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)destBitmap) && Julian::mLICEBitmaps.count((LICE_IBitmap*)sourceBitmap))
 		LICE_ScaledBlit((LICE_IBitmap*)destBitmap, (LICE_IBitmap*)sourceBitmap, dstx, dsty, dstw, dsth, (float)srcx, (float)srcy, (float)srcw, (float)srch, (float)alpha, intMode);
 }
 
 void JS_LICE_Blur(void* destBitmap, int dstx, int dsty, void* sourceBitmap, int srcx, int srcy, int width, int height)
 {
-	if (Julian::LICEBitmaps.count((LICE_IBitmap*)destBitmap) && Julian::LICEBitmaps.count((LICE_IBitmap*)sourceBitmap))
+	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)destBitmap) && Julian::mLICEBitmaps.count((LICE_IBitmap*)sourceBitmap))
 		LICE_Blur((LICE_IBitmap*)destBitmap, (LICE_IBitmap*)sourceBitmap, dstx, dsty, srcx, srcy, width, height);
 }
 
@@ -3550,7 +3587,7 @@ void* JS_LICE_LoadPNG(const char* filename)
 		if (png != sysbitmap) LICE__Destroy(sysbitmap);
 		if (png) {
 			HDC dc = LICE__GetDC(png);
-			Julian::LICEBitmaps.emplace(png, dc);
+			Julian::mLICEBitmaps.emplace(png, dc);
 		}
 	}
 	return png;
@@ -3564,13 +3601,13 @@ bool JS_LICE_WritePNG(const char* filename, LICE_IBitmap* bitmap, bool wantAlpha
 void JS_LICE_Circle(void* bitmap, double cx, double cy, double r, int color, double alpha, const char* mode, bool antialias)
 {
 	GETINTMODE
-	if (Julian::LICEBitmaps.count((LICE_IBitmap*)bitmap))
+	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
 		LICE_Circle((LICE_IBitmap*)bitmap, (float)cx, (float)cy, (float)r, (LICE_pixel)color, (float)alpha, intMode, antialias);
 }
 
 bool JS_LICE_IsFlipped(void* bitmap)
 {
-	if (Julian::LICEBitmaps.count((LICE_IBitmap*)bitmap))
+	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
 		return LICE__IsFlipped((LICE_IBitmap*)bitmap);
 	else
 		return false;
@@ -3578,7 +3615,7 @@ bool JS_LICE_IsFlipped(void* bitmap)
 
 bool JS_LICE_Resize(void* bitmap, int width, int height)
 {
-	if (Julian::LICEBitmaps.count((LICE_IBitmap*)bitmap))
+	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
 		return LICE__resize((LICE_IBitmap*)bitmap, width, height);
 	else
 		return false;
@@ -3587,19 +3624,19 @@ bool JS_LICE_Resize(void* bitmap, int width, int height)
 void JS_LICE_Arc(void* bitmap, double cx, double cy, double r, double minAngle, double maxAngle, int color, double alpha, const char* mode, bool antialias)
 {
 	GETINTMODE
-	if (Julian::LICEBitmaps.count((LICE_IBitmap*)bitmap))
+	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
 		LICE_Arc((LICE_IBitmap*)bitmap, (float)cx, (float)cy, (float)r, (float)minAngle, (float)maxAngle, (LICE_pixel)color, (float)alpha, intMode, antialias);
 }
 
 void JS_LICE_Clear(void* bitmap, int color)
 {
-	if (Julian::LICEBitmaps.count((LICE_IBitmap*)bitmap))
+	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
 		LICE_Clear((LICE_IBitmap*)bitmap, (LICE_pixel)color);
 }
 
 bool JS_LICE_Blit_AlphaMultiply(LICE_IBitmap* destBitmap, int dstx, int dsty, LICE_IBitmap* sourceBitmap, int srcx, int srcy, int width, int height, double alpha)
 {
-	//if (Julian::LICEBitmaps.count((LICE_IBitmap*)destBitmap) && Julian::LICEBitmaps.count((LICE_IBitmap*)sourceBitmap))
+	//if (Julian::mLICEBitmaps.count((LICE_IBitmap*)destBitmap) && Julian::mLICEBitmaps.count((LICE_IBitmap*)sourceBitmap))
 	int srcr = srcx + width;
 	int srcb = srcy + height;
 
@@ -3726,7 +3763,7 @@ void JS_LICE_SetFontColor(void* LICEFont, int color)
 int JS_LICE_DrawText(void* bitmap, void* LICEFont, const char* text, int textLen, int x1, int y1, int x2, int y2)
 {
 	RECT r{ x1, y1, x2, y2 };
-	if (Julian::LICEBitmaps.count((LICE_IBitmap*)bitmap))
+	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
 		return LICE__DrawText((LICE_IFont*)LICEFont, (LICE_IBitmap*)bitmap, text, textLen, &r, 0); // I don't know what UINT dtFlags does, so make 0.
 	else
 		return 0;
@@ -3735,7 +3772,7 @@ int JS_LICE_DrawText(void* bitmap, void* LICEFont, const char* text, int textLen
 void JS_LICE_DrawChar(void* bitmap, int x, int y, char c, int color, double alpha, const char* mode)
 {
 	GETINTMODE
-	if (Julian::LICEBitmaps.count((LICE_IBitmap*)bitmap))
+	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
 		LICE_DrawChar((LICE_IBitmap*)bitmap, x, y, c, (LICE_pixel)color, (float)alpha, intMode);
 }
 
@@ -3747,62 +3784,62 @@ void JS_LICE_MeasureText(const char* string, int* widthOut, int* heightOut)
 void JS_LICE_FillRect(void* bitmap, int x, int y, int w, int h, int color, double alpha, const char* mode)
 {
 	GETINTMODE
-	if (Julian::LICEBitmaps.count((LICE_IBitmap*)bitmap))
+	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
 		LICE_FillRect((LICE_IBitmap*)bitmap, x, y, w, h, (LICE_pixel)color, (float)alpha, intMode);
 }
 
 void JS_LICE_RoundRect(void* bitmap, double x, double y, double w, double h, int cornerradius, int color, double alpha, const char* mode, bool antialias)
 {
 	GETINTMODE
-	if (Julian::LICEBitmaps.count((LICE_IBitmap*)bitmap))
+	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
 		LICE_RoundRect((LICE_IBitmap*)bitmap, (float)x, (float)y, (float)w, (float)h, cornerradius, color, (float)alpha, intMode, antialias);
 }
 
 void JS_LICE_GradRect(void* bitmap, int dstx, int dsty, int dstw, int dsth, double ir, double ig, double ib, double ia, double drdx, double dgdx, double dbdx, double dadx, double drdy, double dgdy, double dbdy, double dady, const char* mode)
 {
 	GETINTMODE
-	if (Julian::LICEBitmaps.count((LICE_IBitmap*)bitmap))
+	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
 		LICE_GradRect((LICE_IBitmap*)bitmap, dstx, dsty, dstw, dsth, (float)ir, (float)ig, (float)ib, (float)ia, (float)drdx, (float)dgdx, (float)dbdx, (float)dadx, (float)drdy, (float)dgdy, (float)dbdy, (float)dady, intMode);
 }
 
 void JS_LICE_FillTriangle(void* bitmap, int x1, int y1, int x2, int y2, int x3, int y3, int color, double alpha, const char* mode)
 {
 	GETINTMODE
-	if (Julian::LICEBitmaps.count((LICE_IBitmap*)bitmap))
+	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
 		LICE_FillTriangle((LICE_IBitmap*)bitmap, x1, y1, x2, y2, x3, y3, color, (float)alpha, intMode);
 }
 
 void JS_LICE_FillPolygon(void* bitmap, const char* packedX, const char* packedY, int numPoints, int color, double alpha, const char* mode)
 {
 	GETINTMODE
-	if (Julian::LICEBitmaps.count((LICE_IBitmap*)bitmap))
+	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
 		LICE_FillConvexPolygon((LICE_IBitmap*)bitmap, (int32_t*)packedX, (int32_t*)packedY, numPoints, color, (float)alpha, intMode);
 }
 
 void JS_LICE_FillCircle(void* bitmap, double cx, double cy, double r, int color, double alpha, const char* mode, bool antialias)
 {
 	GETINTMODE
-	if (Julian::LICEBitmaps.count((LICE_IBitmap*)bitmap))
+	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
 		LICE_FillCircle((LICE_IBitmap*)bitmap, (float)cx, (float)cy, (float)r, color, (float)alpha, intMode, antialias);
 }
 
 void JS_LICE_Line(void* bitmap, double x1, double y1, double x2, double y2, int color, double alpha, const char* mode, bool antialias)
 {
 	GETINTMODE
-	if (Julian::LICEBitmaps.count((LICE_IBitmap*)bitmap))
+	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
 		LICE_Line((LICE_IBitmap*)bitmap, (float)x1, (float)y1, (float)x2, (float)y2, (LICE_pixel)color, (float)alpha, intMode, antialias);
 }
 
 void JS_LICE_Bezier(void* bitmap, double xstart, double ystart, double xctl1, double yctl1, double xctl2, double yctl2, double xend, double yend, double tol, int color, double alpha, const char* mode, bool antialias)
 {
 	GETINTMODE
-	if (Julian::LICEBitmaps.count((LICE_IBitmap*)bitmap))
+	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
 		LICE_DrawCBezier((LICE_IBitmap*)bitmap, xstart, ystart, xctl1, yctl1, xctl2, yctl2, xend, yend, (LICE_pixel)color, (float)alpha, intMode, antialias, tol);
 }
 
 void JS_LICE_GetPixel(void* bitmap, int x, int y, double* colorOut)
 {
-	if (Julian::LICEBitmaps.count((LICE_IBitmap*)bitmap))
+	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
 		*colorOut = (double)(LICE_GetPixel((LICE_IBitmap*)bitmap, x, y));
 	else
 		*colorOut = -1;
@@ -3811,7 +3848,7 @@ void JS_LICE_GetPixel(void* bitmap, int x, int y, double* colorOut)
 void JS_LICE_PutPixel(void* bitmap, int x, int y, double color, double alpha, const char* mode)
 {
 	GETINTMODE
-	if (Julian::LICEBitmaps.count((LICE_IBitmap*)bitmap))
+	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
 		LICE_PutPixel((LICE_IBitmap*)bitmap, x, y, (LICE_pixel)color, (float)alpha, intMode);
 }
 
@@ -3853,7 +3890,7 @@ bool JS_LICE_ProcessRect(LICE_IBitmap* bitmap, int x, int y, int w, int h, const
 {
 	// In order to avoid the overhead of a separate function call for each pixel, 
 	//		this code is copied from Cockos's lice.h.
-	if (!Julian::LICEBitmaps.count((LICE_IBitmap*)bitmap)) return false;
+	if (!Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap)) return false;
 
 	if (x<0) { w += x; x = 0; }
 	if (y<0) { h += y; y = 0; }

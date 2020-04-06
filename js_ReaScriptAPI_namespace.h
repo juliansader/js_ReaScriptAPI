@@ -26,7 +26,7 @@ namespace Julian
 
 	// Bitmaps can use up lots of RAM, so to ensure that all bitmaps are destroyed when REAPER exits,
 	//		all active bitmaps are stored here, and will be destroyed by the REAPER_PLUGIN_ENTRYPOINT function.
-	map<LICE_IBitmap*, HDC> LICEBitmaps;
+	map<LICE_IBitmap*, HDC> mLICEBitmaps;
 	set<pair<HWND,HDC>> GDIHDCs;
 
 	// To avoid having to re-load a cursor from file every time that a script is executed,

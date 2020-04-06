@@ -153,6 +153,8 @@ void  JS_Composite_Unlink(HWND hwnd, LICE_IBitmap* bitmap);
 int   JS_Composite_ListBitmaps(HWND hwnd, char* listOutNeedBig, int listOutNeedBig_sz);
 
 void* JS_LICE_CreateBitmap(bool isSysBitmap, int width, int height);
+int   JS_LICE_ListAllBitmaps(char* listOutNeedBig, int listOutNeedBig_sz);
+int   JS_LICE_ArrayAllBitmaps(double* reaperarray);
 int	  JS_LICE_GetHeight(void* bitmap);
 int   JS_LICE_GetWidth(void* bitmap);
 void* JS_LICE_GetDC(void* bitmap);

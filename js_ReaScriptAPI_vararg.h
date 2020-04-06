@@ -50,7 +50,7 @@ static void* __vararg_JS_Composite(void** arglist, int numparms)
 
 static void* __vararg_JS_Composite_Unlink(void** arglist, int numparms)
 {
-	JS_Composite_Unlink((HWND)arglist[0], (LICE_IBitmap*)arglist[1]);
+	JS_Composite_Unlink((HWND)arglist[0], (LICE_IBitmap*)(numparms > 1 ? arglist[1] : nullptr));
 	return nullptr;
 }
 
@@ -692,6 +692,15 @@ static void* __vararg_JS_GDI_StretchBlit(void** arglist, int numparms)
 static void* __vararg_JS_LICE_CreateBitmap(void** arglist, int numparms)
 {
 	return (void*)(intptr_t)JS_LICE_CreateBitmap((bool)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2]);
+}
+
+static void* __vararg_JS_LICE_ListAllBitmaps(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_LICE_ListAllBitmaps((char*)arglist[0], (int)(intptr_t)arglist[1]);
+}
+static void* __vararg_JS_LICE_ArrayAllBitmaps(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_LICE_ArrayAllBitmaps((double*)arglist[0]);
 }
 
 static void* __vararg_JS_LICE_GetHeight(void** arglist, int numparms)
