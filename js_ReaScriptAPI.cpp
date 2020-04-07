@@ -98,27 +98,25 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 	// On Windows, LICE bitmaps are automatically destroyed when REAPER quits, but to make extra sure, this function will destroy them explicitly.
 	else 
 	{
-		// WARNING!!!  If using gcc compiler, iterator may crash if map entries is deleted while iterating,
+		// WARNING!!!  Iterator may crash if map entries is deleted while iterating,
 		// which JS_WindowMessage_RestoreOrigProcAndErase indeed does.
-		// So must store set of intercepted window in a new container.
-		//std::set<HWND> windowsToRestore;
+		// So leave JS_WindowMessage_RestoreOrigProcAndErase out of loop.
 		for (auto& i : Julian::mapWindowData) {
 			i.second.mapBitmaps.clear();
 			i.second.mapMessages.clear();
 		}
 		JS_WindowMessage_RestoreOrigProcAndErase();
-		//	windowsToRestore.insert(i.first);
-		//for (HWND hwnd : windowsToRestore)
-		//	JS_WindowMessage_RestoreOrigProcAndErase(hwnd);
 			
-		// Similarly, JS_LICE_DestroyBitmap, deletes entries.
-		//std::set<LICE_IBitmap*> bitmapsToDelete;
+		// Strangely, REAPER seems to execute script atexits AFTER running this REAPER_PLUGIN_ENTRYPOINT with rec = 0.
+		// So if the extension destroys all bitmaps but doesn't clear mLICEBitmaps, and a script also tries to destroy
+		//		a bitmap, the JS_LICE_DestroyBitmap may think that the bitmap still exists, and then crash when
+		//		attempting to destroy a non-existing bitmap.  
+		// So mLICEBitmaps and all other resource containers must be cleared if scripts depend on them to be accurate.
+		//std::set<LICE_I
 		for (auto& i : Julian::mLICEBitmaps)
 			LICE__Destroy(i.first);
-		//	bitmapsToDelete.insert(i.first);
-		//for (LICE_IBitmap* bm : bitmapsToDelete)
-		//	JS_LICE_DestroyBitmap(bm);
-			
+		Julian::mLICEBitmaps.clear();
+
 		for (auto& i : Julian::mapClassNames)
 			free(i.second);
 		for (auto& i : Julian::mapMallocToSize)
@@ -127,6 +125,7 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 			free(i.defstring);
 		for (HGDIOBJ i : Julian::setGDIObjects)
 			DeleteObject(i);
+		Julian::setGDIObjects.clear();
 
 		plugin_register("-accelerator", &(Julian::sAccelerator));
 		return 0;
@@ -214,6 +213,8 @@ v1.000f
  * Composite_Unlink can optionally unlink all bitmaps from window.
  * JS_LICE_List/ArrayAllBitmaps
  * JS_Window_EnableMetal.
+v1.001
+ * Safely delete resources if REAPER quits while script is running.
 */
 
 
@@ -223,7 +224,7 @@ v1.000f
 
 void JS_ReaScriptAPI_Version(double* versionOut)
 {
-	*versionOut = 1.000;
+	*versionOut = 1.001;
 }
 
 void JS_Localize(const char* USEnglish, const char* LangPackSection, char* translationOut, int translationOut_sz)
@@ -2504,49 +2505,54 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 #ifdef _WIN32
 		RECT ur{ 0,0,0,0 };
 		GetUpdateRect(hwnd, &ur, false);  // If entire window isn't redrawn, and if compositing destination falls outside invalidated area, bitmap may be composited multiple times over itself.
-		RECT newr = ur;
-		RECT prevr;
-
-		// Convert rects from xywh to lrtb format
-		for (auto& b : windowData.mapBitmaps)
+		
+		// Only need to bother calculating minimum update rect if update rect doesn't already cover entire client rect.
+		if (cr.left < ur.left || cr.top < ur.top || cr.right > ur.right || cr.bottom > ur.bottom)
 		{
-			sBlitRects& i = b.second;
-			nonOverlappingRects[b.first] = { 	i.dstw == -1 ? 0 : i.dstx,
+			RECT newr = ur;
+			RECT prevr;
+
+			// Convert rects from xywh to lrtb format
+			for (auto& b : windowData.mapBitmaps)
+			{
+				sBlitRects& i = b.second;
+				nonOverlappingRects[b.first] = { i.dstw == -1 ? 0 : i.dstx,
 												i.dsth == -1 ? 0 : i.dsty,
 												i.dstw == -1 ? cr.right : (i.dstx + i.dstw),
 												i.dsth == -1 ? cr.bottom : (i.dsty + i.dsth) };
-		}
-		
-		// Expanding the rect to cover one bitmap, may overlap another that wasn't previous overlapped; 
-		// so this loop must re-check each bitmap until no further expansion was required.
-		do 
-		{
-			prevr = newr; // Store newr, to compare with at end of loop
-			for (auto& b : windowData.mapBitmaps) // Why not loop through nonOverlappingBitmaps? Because will erase entries while looping.
+			}
+
+			// Expanding the rect to cover one bitmap, may overlap another that wasn't previous overlapped; 
+			// so this loop must re-check each bitmap until no further expansion was required.
+			do
 			{
-				/*if (IntersectRect(&tempr, &b.second, &newr))
+				prevr = newr; // Store newr, to compare with at end of loop
+				for (auto& b : windowData.mapBitmaps) // Why not loop through nonOverlappingBitmaps? Because will erase entries while looping.
 				{
-					UnionRect(&tempr, &b.second, &newr);
-					CopyRect(&newr, &tempr);
-					overlappingBitmaps.insert(b.first);
-				}*/
-				if (nonOverlappingRects.count(b.first)) // Was this rect still non-overlapping after previous loop?
-				{
-					RECT r = nonOverlappingRects[b.first];
-					if (r.left < newr.right && r.right > newr.left && r.top < newr.bottom && r.bottom > newr.top)
+					/*if (IntersectRect(&tempr, &b.second, &newr))
 					{
-						newr.left = (r.left < newr.left ? r.left : newr.left);
-						newr.top = (r.top < newr.top ? r.top : newr.top);
-						newr.right = (r.right > newr.right ? r.right : newr.right);
-						newr.bottom = (r.bottom > newr.bottom ? r.bottom : newr.bottom);
-;
-						nonOverlappingRects.erase(b.first);
+						UnionRect(&tempr, &b.second, &newr);
+						CopyRect(&newr, &tempr);
+						overlappingBitmaps.insert(b.first);
+					}*/
+					if (nonOverlappingRects.count(b.first)) // Was this rect still non-overlapping after previous loop?
+					{
+						RECT r = nonOverlappingRects[b.first];
+						if (r.left < newr.right && r.right > newr.left && r.top < newr.bottom && r.bottom > newr.top)
+						{
+							newr.left = (r.left < newr.left ? r.left : newr.left);
+							newr.top = (r.top < newr.top ? r.top : newr.top);
+							newr.right = (r.right > newr.right ? r.right : newr.right);
+							newr.bottom = (r.bottom > newr.bottom ? r.bottom : newr.bottom);
+							
+							nonOverlappingRects.erase(b.first);
+						}
 					}
 				}
-			}
-		} while (!EqualRect(&newr, &prevr));
+			} while (!EqualRect(&newr, &prevr));
 
-		if (!EqualRect(&newr, &ur)) InvalidateRect(hwnd, &newr, true);
+			if (!EqualRect(&newr, &ur)) InvalidateRect(hwnd, &newr, true);
+		}
 
 		LRESULT result = CallWindowProc((WNDPROC)(intptr_t)windowData.origProc, hwnd, uMsg, wParam, lParam);
 #else
