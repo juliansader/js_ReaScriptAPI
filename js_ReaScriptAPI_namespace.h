@@ -150,6 +150,7 @@ namespace Julian
 		LONG_PTR origProc;
 		std::map<UINT, sMsgData> mapMessages; // Most recent msg values received
 		std::map<LICE_IBitmap*, sBlitRects> mapBitmaps; // bitmaps linked to this window for compositing
+		RECT movedRect;
 	};
 	const bool BLOCK = false;
 

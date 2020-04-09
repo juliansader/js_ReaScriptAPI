@@ -215,6 +215,9 @@ v1.000f
  * JS_Window_EnableMetal.
 v1.001
  * Safely delete resources if REAPER quits while script is running.
+v1.002
+ * JS_Composite: Auto-update now optional.
+ * JS_Composite: Fixed incorrect InvalidateRect calculation. 
 */
 
 
@@ -224,7 +227,7 @@ v1.001
 
 void JS_ReaScriptAPI_Version(double* versionOut)
 {
-	*versionOut = 1.001;
+	*versionOut = 1.002;
 }
 
 void JS_Localize(const char* USEnglish, const char* LangPackSection, char* translationOut, int translationOut_sz)
@@ -2494,79 +2497,86 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 	// COMPOSITE LICE BITMAPS - if any
 	if (uMsg == WM_PAINT && !windowData.mapBitmaps.empty())
 	{
-		// If the updateRect overlaps a composited bitmap, that bitmap must be re-blitted, otherwise it will be partly removed.
-		// On WindowsOS, the updateRect must also be enlarged to include the entire bitmap, so that existing bitmaps are wiped efore blitting and transparencies don't pile up.
-		// WDL/swell does not offer an GetUpdateRect function equivalent, so the entire window will be re-drawn.
-		std::map<LICE_IBitmap*, RECT> nonOverlappingRects;
+		//char temp[5000];
+		//int c = 0;
+		// If the invalidated parts of the window overlap a composited bitmap, that bitmap must be re-blitted, otherwise it will be partly removed.
+		// Existing bitmaps must be wiped before re-blitting so that transparencies don't pile up.
+		// On Linux and macOS, WDL/swell does not offer an GetUpdateRect function equivalent, so the extension does not know which parts will be re-drawn, 
+		//		so the entire window will be invalidated, and all bitmaps will be re-blitted.
+		// On WindowsOS, movedRect must also be enlarged to include overlapping bitmaps.  
+		//		WARNING: The entire rect returned by GetUpdateRect has *not* necessarily been completely invalidated.  There may be parts of movedRect that have *not* been invalidated.
+		//		The extension must therefore include movedRect in its final rect to be invalidated.
+		// On WindowsOS, the extension will try to find the smallest rect that contains movedRect as well as all overlapping bitmaps.
+		//		Expanding the updateRect to cover one bitmap, may overlap another that wasn't previous overlapped; so the code must loop and re-check each bitmap until no further expansion was required.
+		// I am not sure that 
+		std::map<LICE_IBitmap*, RECT> nonOverlappingRects; // After looping through all bitmaps, those that don't need to be blitted will be remain in here.
 
 		RECT cr{ 0,0,0,0 };
 		GetClientRect(hwnd, &cr);
 
 #ifdef _WIN32
 		RECT ur{ 0,0,0,0 };
-		GetUpdateRect(hwnd, &ur, false);  // If entire window isn't redrawn, and if compositing destination falls outside invalidated area, bitmap may be composited multiple times over itself.
-		
+		GetUpdateRect(hwnd, &ur, true);
+		//c = c + sprintf(temp + c, "\n------------------\nUpdateRect: %i, %i, %i, %i", ur.left, ur.top, ur.right, ur.bottom);
+		RECT& movedr = mapWindowData[hwnd].movedRect;
+		if (movedr.left < movedr.right && movedr.top < movedr.bottom) UNIONRECT(ur, movedr);
+		//c = c + sprintf(temp + c, "\nmovedr: %i, %i, %i, %i", movedr.left, movedr.top, movedr.right, movedr.bottom);
+		movedr = { 0, 0, 0, 0 };
 		// Only need to bother calculating minimum update rect if update rect doesn't already cover entire client rect.
-		if (cr.left < ur.left || cr.top < ur.top || cr.right > ur.right || cr.bottom > ur.bottom)
+		if (ur.left <= cr.left && ur.top <= cr.top && ur.right >= cr.right && ur.bottom >= cr.bottom)
 		{
-			RECT newr = ur;
-			RECT prevr;
-
-			// Convert rects from xywh to lrtb format
+			InvalidateRect(hwnd, &cr, true);
+		}
+		else
+		{
+			// Convert rects from xywh to lrtb format, using current client rect size
 			for (auto& b : windowData.mapBitmaps)
 			{
-				sBlitRects& i = b.second;
-				nonOverlappingRects[b.first] = { i.dstw == -1 ? 0 : i.dstx,
-												i.dsth == -1 ? 0 : i.dsty,
-												i.dstw == -1 ? cr.right : (i.dstx + i.dstw),
-												i.dsth == -1 ? cr.bottom : (i.dsty + i.dsth) };
+				sBlitRects& r = b.second;
+				if (r.dstw != 0 && r.dsth != 0) // Skip zero-sized, invisible images
+					nonOverlappingRects[b.first] = { r.dstw == -1 ? 0 : r.dstx,
+													r.dsth == -1 ? 0 : r.dsty,
+													r.dstw == -1 ? cr.right : (r.dstx + r.dstw),
+													r.dsth == -1 ? cr.bottom : (r.dsty + r.dsth) };
 			}
-
+			//c = c + sprintf(temp + c, "\n# bitmaps: %i", nonOverlappingRects.size());
 			// Expanding the rect to cover one bitmap, may overlap another that wasn't previous overlapped; 
 			// so this loop must re-check each bitmap until no further expansion was required.
+			RECT prevr;
 			do
 			{
-				prevr = newr; // Store newr, to compare with at end of loop
-				for (auto& b : windowData.mapBitmaps) // Why not loop through nonOverlappingBitmaps? Because will erase entries while looping.
+				//c = c + sprintf(temp + c, "\nExpand: %i, %i, %i, %i", ur.left, ur.top, ur.right, ur.bottom);
+				prevr = ur;
+				for (auto it = nonOverlappingRects.begin(), nextit = it; it != nonOverlappingRects.end(); it = nextit) // auto& b : windowData.mapBitmaps) // Why not loop through nonOverlappingBitmaps? Because will erase entries while looping.
 				{
-					/*if (IntersectRect(&tempr, &b.second, &newr))
+					++nextit;
+					RECT r = it->second;
+					if (RECTSOVERLAP(ur, r))
 					{
-						UnionRect(&tempr, &b.second, &newr);
-						CopyRect(&newr, &tempr);
-						overlappingBitmaps.insert(b.first);
-					}*/
-					if (nonOverlappingRects.count(b.first)) // Was this rect still non-overlapping after previous loop?
-					{
-						RECT r = nonOverlappingRects[b.first];
-						if (r.left < newr.right && r.right > newr.left && r.top < newr.bottom && r.bottom > newr.top)
-						{
-							newr.left = (r.left < newr.left ? r.left : newr.left);
-							newr.top = (r.top < newr.top ? r.top : newr.top);
-							newr.right = (r.right > newr.right ? r.right : newr.right);
-							newr.bottom = (r.bottom > newr.bottom ? r.bottom : newr.bottom);
-							
-							nonOverlappingRects.erase(b.first);
-						}
+						UNIONRECT(ur, r) // Place union in ur
+						nonOverlappingRects.erase(it);
 					}
 				}
-			} while (!EqualRect(&newr, &prevr));
+			} while (!EqualRect(&ur, &prevr));
 
-			if (!EqualRect(&newr, &ur)) InvalidateRect(hwnd, &newr, true);
+			InvalidateRect(hwnd, &ur, true);
 		}
 
 		LRESULT result = CallWindowProc((WNDPROC)(intptr_t)windowData.origProc, hwnd, uMsg, wParam, lParam);
+		
 #else
 		// WDL/swell does not offer an GetUpdateRect function equivalent, so the entire window will be re-drawn.
 		InvalidateRect(hwnd, &cr, true);
+		mapWindowData[hwnd].movedRect = { 0,0,0,0 };
 		LRESULT result = ((WNDPROC)(intptr_t)windowData.origProc)(hwnd, uMsg, wParam, lParam);
 #endif
 		HDC windowDC = GetDC(hwnd);
 		if (windowDC) {
 			for (auto& b : windowData.mapBitmaps) {
-				if (!nonOverlappingRects.count(b.first) && mLICEBitmaps.count(b.first)) { // Does this bitmap overlap the invalid area? Does it still exist?
+				sBlitRects& i = b.second;
+				if (i.dstw != 0 && i.dstw != 0 && !nonOverlappingRects.count(b.first) && mLICEBitmaps.count(b.first)) { // Does this bitmap overlap the invalid area? Does it still exist?
 					HDC& bitmapDC = mLICEBitmaps[b.first];
 					if (bitmapDC) {
-						sBlitRects& i = b.second;
 						RECT r = cr;
 						if (i.dstw != -1) {
 							r.left = i.dstx; r.right = i.dstw;
@@ -2584,6 +2594,7 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 			}
 			ReleaseDC(hwnd, windowDC);
 		}
+		//ShowConsoleMsg(temp);
 		return result;
 	}
 
@@ -3327,7 +3338,7 @@ bool JS_Window_SetScrollPos(void* windowHWND, const char* scrollbar, int positio
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // Functions for compositing into REAPER's UI
 
-int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap* sysBitmap, int srcx, int srcy, int srcw, int srch)
+int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap* sysBitmap, int srcx, int srcy, int srcw, int srch, bool autoUpdate = false)
 {
 	using namespace Julian;
 	if (!mLICEBitmaps.count(sysBitmap)) return ERR_NOT_BITMAP;
@@ -3358,51 +3369,44 @@ int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap
 		Julian::mapWindowData[hwnd] = sWindowData{ origProc };
 	}
 
-	// Is window and bitmap already composited?  Get previous dst rect.
+	// Is window and bitmap already composited?  Must expand dstr to include previous dst rect, so that old position will also be invalidated, and old image removed.
 	else if (mapWindowData[hwnd].mapBitmaps.count(sysBitmap))
 	{
 		auto& b = mapWindowData[hwnd].mapBitmaps[sysBitmap];
 		RECT prevr{ b.dstx, b.dsty, b.dstx + b.dstw, b.dsty + b.dsth };
 		if (b.dstw == -1) { prevr.left = 0; prevr.right = cr.right; }
 		if (b.dsth == -1) { prevr.top = 0;  prevr.bottom = cr.bottom; }
-		cr = dstr; // Using cr just as temporary storage so that next step doesn't need to use dstr as source as well as destination.
-		UnionRect(&dstr, &cr, &prevr);
+		UNIONRECT(dstr, prevr);
 	}
 
 	// OK, hwnd should now be in map. Don't use emplace, since may need to replace previous dst or src RECT of already-linked bitmap
 	mapWindowData[hwnd].mapBitmaps[sysBitmap] = sBlitRects{ dstx, dsty, dstw, dsth, srcx, srcy, srcw, srch };
-	InvalidateRect(hwnd, &dstr, true);
+
+	// And calculate UpdateRect for dest window
+	RECT& ur = mapWindowData[hwnd].movedRect;
+	if (ur.left >= ur.right || ur.top >= ur.bottom) // blank rect?
+		ur = dstr;
+	else
+		UNIONRECT(ur, dstr);
+	if (autoUpdate) InvalidateRect(hwnd, &dstr, true);
+
 	return 1;
 }
 
 
-void JS_Composite_Unlink(HWND hwnd, LICE_IBitmap* bitmap = nullptr)
+void JS_Composite_Unlink(HWND hwnd, LICE_IBitmap* bitmap = nullptr, bool autoUpdate = false)
 {
-	/*using namespace Julian;
-	if (!hwnd && !bitmapOptional)
-	{
-		for (auto& m : mapWindowData) m.second.mapBitmaps.clear();
-	}
-	else if (!bitmapOptional)
-	{
-		if (mLICEBitmaps.count((LICE_IBitmap*)windowHWNDOptional))
-			for (auto& m : mapWindowData) 
-				m.second.mapBitmaps.erase((LICE_IBitmap*)windowHWNDOptional);
-				*/
-
-
 	using namespace Julian;
 	if (mapWindowData.count(hwnd)) 
 	{
-		if (!bitmap)
+		if (!bitmap) // Unlink ALL bitmaps from window
 		{
-			Julian::mapWindowData[hwnd].mapBitmaps.clear();
+			mapWindowData[hwnd].mapBitmaps.clear();
 
 			if (IsWindow(hwnd))
 			{
-				RECT r{ 0,0,0,0 };
-				GetClientRect(hwnd, &r);
-				InvalidateRect(hwnd, &r, true);
+				GetClientRect(hwnd, &mapWindowData[hwnd].movedRect);
+				InvalidateRect(hwnd, &mapWindowData[hwnd].movedRect, true);
 			}
 		}
 
@@ -3414,13 +3418,21 @@ void JS_Composite_Unlink(HWND hwnd, LICE_IBitmap* bitmap = nullptr)
 
 			mapWindowData[hwnd].mapBitmaps.erase(bitmap); // Erase link
 
-			if (IsWindow(hwnd)) // Adjust for -1 w or h, which expands to entire client rect
+			if (IsWindow(hwnd)) 
 			{
-				RECT r;
-				GetClientRect(hwnd, &r);
-				if (b.dstw != -1) { r.left = b.dstx; r.right = b.dstx + b.dstw; }
-				if (b.dsth != -1) { r.top = b.dsty; r.bottom = b.dsty + b.dsth; }
-				InvalidateRect(hwnd, &r, true);
+				RECT dstr;
+				GetClientRect(hwnd, &dstr);
+				// Adjust for -1 w or h, which expands to entire client rect
+				if (b.dstw != -1) { dstr.left = b.dstx; dstr.right = b.dstx + b.dstw; } 
+				if (b.dsth != -1) { dstr.top = b.dsty; dstr.bottom = b.dsty + b.dsth; }
+				// And calculate UpdateRect for dest window
+				RECT& ur = mapWindowData[hwnd].movedRect;
+				if (ur.left >= ur.right || ur.top >= ur.bottom) // blank rect?
+					ur = dstr;
+				else
+					UNIONRECT(ur, dstr);
+
+				if (autoUpdate) InvalidateRect(hwnd, &dstr, true);
 			}
 		}
 
@@ -3511,7 +3523,7 @@ void JS_LICE_DestroyBitmap(LICE_IBitmap* bitmap)
 			}
 		}
 		for (auto& w : linkedWindows) 
-			JS_Composite_Unlink(w, bitmap); // Will also InvalidateRect the dst window, may delete mapWindowData is no intercepts.
+			JS_Composite_Unlink(w, bitmap, true); // Will also InvalidateRect the dst window, may delete mapWindowData is no intercepts.
 		mLICEBitmaps.erase(bitmap);
 		LICE__Destroy(bitmap);
 	}

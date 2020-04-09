@@ -45,12 +45,12 @@ static void* __vararg_JS_VKeys_Intercept(void** arglist, int numparms)
 
 static void* __vararg_JS_Composite(void** arglist, int numparms)
 {
-	return (void*)(intptr_t)JS_Composite((HWND)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (int)(intptr_t)arglist[3], (int)(intptr_t)arglist[4], (LICE_IBitmap*)arglist[5], (int)(intptr_t)arglist[6], (int)(intptr_t)arglist[7], (int)(intptr_t)arglist[8], (int)(intptr_t)arglist[9]);
+	return (void*)(intptr_t)JS_Composite((HWND)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (int)(intptr_t)arglist[3], (int)(intptr_t)arglist[4], (LICE_IBitmap*)arglist[5], (int)(intptr_t)arglist[6], (int)(intptr_t)arglist[7], (int)(intptr_t)arglist[8], (int)(intptr_t)arglist[9], numparms > 10 ? ((bool)arglist[10] && *(bool*)arglist[10]) : false);
 }
 
 static void* __vararg_JS_Composite_Unlink(void** arglist, int numparms)
 {
-	JS_Composite_Unlink((HWND)arglist[0], (LICE_IBitmap*)(numparms > 1 ? arglist[1] : nullptr));
+	JS_Composite_Unlink((HWND)arglist[0], numparms > 1 ? (LICE_IBitmap*)arglist[1] : nullptr, numparms > 2 ? ((bool)arglist[2] && *(bool*)arglist[2]) : false);
 	return nullptr;
 }
 

@@ -148,8 +148,8 @@ void  JS_GDI_Polyline(void* deviceHDC, const char* packedX, const char* packedY,
 void  JS_GDI_Blit(void* destHDC, int dstx, int dsty, void* sourceHDC, int srcx, int srcy, int width, int height, const char* modeOptional);
 void  JS_GDI_StretchBlit(void* destHDC, int dstx, int dsty, int dstw, int dsth, void* sourceHDC, int srcx, int srcy, int srcw, int srch, const char* modeOptional);
 
-int   JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap* sysBitmap, int srcx, int srcy, int srcw, int srch);
-void  JS_Composite_Unlink(HWND hwnd, LICE_IBitmap* bitmap);
+int   JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap* sysBitmap, int srcx, int srcy, int srcw, int srch, bool autoUpdate);
+void  JS_Composite_Unlink(HWND hwnd, LICE_IBitmap* bitmap, bool autoUpdate);
 int   JS_Composite_ListBitmaps(HWND hwnd, char* listOutNeedBig, int listOutNeedBig_sz);
 
 void* JS_LICE_CreateBitmap(bool isSysBitmap, int width, int height);
@@ -230,3 +230,10 @@ int Xen_GetMediaSourceSamples(PCM_source* src, double* destbuf, int destbufoffse
 int Xen_StartSourcePreview(PCM_source* src, double gain, bool loop, int startOutputChannel);
 int Xen_StopSourcePreview(int id);
 void Xen_DestroyPreviewSystem();
+
+#define UNIONRECT(X, Y) X = {	X.left	 < Y.left	? X.left	: Y.left, \
+								X.top	 < Y.top	? X.top		: Y.top, \
+								X.right  > Y.right	? X.right	: Y.right, \
+								X.bottom > Y.bottom	? X.bottom	: Y.bottom };
+
+#define RECTSOVERLAP(X, Y) (X.left < Y.right && X.right > Y.left && X.top < Y.bottom && X.bottom > Y.top)
