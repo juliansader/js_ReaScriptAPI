@@ -2677,6 +2677,9 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 		}
 		
 		LRESULT result = ((WNDPROC)(intptr_t)w.origProc)(hwnd, uMsg, wParam, lParam);
+		if (c) ShowConsoleMsg(temp);
+		
+		{
 #endif
 			HDC windowDC = GetDC(hwnd);
 			if (windowDC) {
