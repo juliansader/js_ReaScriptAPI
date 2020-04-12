@@ -2646,26 +2646,33 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 				cr.bottom = (int)mapDelayData[hwnd].delayMaxTime;
 				InvalidateRect(hwnd, &cr, true);
 				mapWindowData[hwnd].invalidRect = { 0,0,0,0 };
-				c = c + sprintf(temp + c, "\n2: Invalidated delay, cr = %i %i %i %i", cr.left, cr.top, cr.right, cr.bottom);
+				c = c + sprintf(temp + c, "\n3: I'd delay coor, cr = %i %i %i %i", cr.left, cr.top, cr.right, cr.bottom);
 				break;
 			case 4:
-				cr.right = (int)mapDelayData[hwnd].delayMinTime;
-				cr.bottom = (int)mapDelayData[hwnd].delayMaxTime;
-				InvalidateRect(hwnd, &cr, true);
+				InvalidateRect(hwnd, &mapWindowData[hwnd].invalidRect, true);
 				mapWindowData[hwnd].invalidRect = { 0,0,0,0 };
-				c = c + sprintf(temp + c, "\n2: Invalidated movedr = %i %i %i %i", mapWindowData[hwnd].invalidRect.left, mapWindowData[hwnd].invalidRect.top, mapWindowData[hwnd].invalidRect.right, mapWindowData[hwnd].invalidRect.bottom);
+				c = c + sprintf(temp + c, "\n4: I'd movedr = %i %i %i %i", mapWindowData[hwnd].invalidRect.left, mapWindowData[hwnd].invalidRect.top, mapWindowData[hwnd].invalidRect.right, mapWindowData[hwnd].invalidRect.bottom);
 				break;
 			case 5:
 				InvalidateRect(hwnd, &cr, true);
 				InvalidateRect(hwnd, &cr, true);
 				mapWindowData[hwnd].invalidRect = { 0,0,0,0 };
-				c = c + sprintf(temp + c, "\n1: Invalidated twice, cr = %i %i %i %i", cr.left, cr.top, cr.right, cr.bottom);
+				c = c + sprintf(temp + c, "\n5: I'd twice, cr = %i %i %i %i", cr.left, cr.top, cr.right, cr.bottom);
 				break;
 			case 6:
 				InvalidateRect(hwnd, &cr, true);
 				mapWindowData[hwnd].invalidRect = { 0,0,0,0 };
-				c = c + sprintf(temp + c, "\n1: Invalidated, no WINPROC, cr = %i %i %i %i", cr.left, cr.top, cr.right, cr.bottom);		
+				c = c + sprintf(temp + c, "\n1: I'd, no WINPROC, cr = %i %i %i %i", cr.left, cr.top, cr.right, cr.bottom);		
+				ShowConsoleMsg(temp);
 				return 0;
+			case 7:
+			{
+				InvalidateRect(hwnd, &cr, true);
+				mapWindowData[hwnd].invalidRect = { 0,0,0,0 };
+				double t1 = time_precise();
+				while (time_precise() < t1+mapDelayData[hwnd].delayMaxTime) {};
+				c = c + sprintf(temp + c, "\n7: Delayed, cr = %i %i %i %i", cr.left, cr.top, cr.right, cr.bottom);		
+			}
 			default:
 				return 0;
 			}
