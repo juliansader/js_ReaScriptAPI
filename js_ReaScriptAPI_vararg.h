@@ -59,6 +59,11 @@ static void* __vararg_JS_Composite_ListBitmaps(void** arglist, int numparms)
 	return (void*)(intptr_t)JS_Composite_ListBitmaps((HWND)arglist[0], (char*)arglist[1], (int)(intptr_t)arglist[2]);
 }
 
+static void* __vararg_JS_Composite_Delay(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_Composite_Delay((HWND)arglist[0], arglist[1] ? *(double*)arglist[1] : 0, arglist[2] ? *(double*)arglist[2] : 0, (int)(intptr_t)arglist[3]);
+}
+
 ////////////////////////////////////////////////////////////////////////////
 
 static void* __vararg_JS_Mem_Alloc(void** arglist, int numparms)

@@ -150,13 +150,23 @@ namespace Julian
 		LONG_PTR origProc;
 		std::map<UINT, sMsgData> mapMessages; // Most recent msg values received
 		std::map<LICE_IBitmap*, sBlitRects> mapBitmaps; // bitmaps linked to this window for compositing
-		RECT movedRect;
+		RECT	invalidRect;
+		double	lastTime;
+		UINT_PTR timerID;
 	};
 	const bool BLOCK = false;
 
 	// THE MAIN MAP FOR ALL INTERCEPTS
 	// Each window that is being intercepted, will be mapped to its data struct.
 	std::map <HWND, sWindowData> mapWindowData;
+
+	struct sDelayData
+	{
+		double	delayMinTime;
+		double	delayMaxTime;
+		int		delayMaxBitmaps;
+	};
+	std::map<HWND, sDelayData> mapDelayData;
 
 	// This map contains all the WM_ messages in swell-types.h. These can be assumed to be valid cross-platform.
 	std::map<std::string, UINT> mapWM_toMsg

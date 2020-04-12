@@ -151,6 +151,7 @@ void  JS_GDI_StretchBlit(void* destHDC, int dstx, int dsty, int dstw, int dsth, 
 int   JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap* sysBitmap, int srcx, int srcy, int srcw, int srch, bool autoUpdate);
 void  JS_Composite_Unlink(HWND hwnd, LICE_IBitmap* bitmap, bool autoUpdate);
 int   JS_Composite_ListBitmaps(HWND hwnd, char* listOutNeedBig, int listOutNeedBig_sz);
+int   JS_Composite_Delay(HWND hwnd, double minTime, double maxTime, int maxBitmaps);
 
 void* JS_LICE_CreateBitmap(bool isSysBitmap, int width, int height);
 int   JS_LICE_ListAllBitmaps(char* listOutNeedBig, int listOutNeedBig_sz);
