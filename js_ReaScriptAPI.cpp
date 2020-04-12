@@ -2630,7 +2630,8 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 #else
 		// WDL/swell does not offer an GetUpdateRect function equivalent, so the entire window will be re-drawn.
 		if (mapDelayData.count(hwnd))
-			switch (mapDelayData[hwnd].delayMaxBitmaps == 1)
+		{
+			switch (mapDelayData[hwnd].delayMaxBitmaps)
 			{
 			case 1:
 				InvalidateRect(hwnd, &cr, true);
@@ -2638,7 +2639,7 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 				c = c + sprintf(temp + c, "\n1: Invalidated, cr = %i %i %i %i", cr.left, cr.top, cr.right, cr.bottom);
 				break;
 			case 2:
-				c = c + sprintf(temp + c, "\n2: NOT invalidated, cr = %i %i %i %i", cr.left, cr.top, cr.right, cr.bottom);
+				c = c + sprintf(temp + c, "\n2: NOT invalidated, just WINPROC, cr = %i %i %i %i", cr.left, cr.top, cr.right, cr.bottom);
 				break;
 			case 3:
 				cr.right = (int)mapDelayData[hwnd].delayMinTime;
@@ -2654,10 +2655,26 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 				mapWindowData[hwnd].invalidRect = { 0,0,0,0 };
 				c = c + sprintf(temp + c, "\n2: Invalidated movedr = %i %i %i %i", mapWindowData[hwnd].invalidRect.left, mapWindowData[hwnd].invalidRect.top, mapWindowData[hwnd].invalidRect.right, mapWindowData[hwnd].invalidRect.bottom);
 				break;
+			case 5:
+				InvalidateRect(hwnd, &cr, true);
+				InvalidateRect(hwnd, &cr, true);
+				mapWindowData[hwnd].invalidRect = { 0,0,0,0 };
+				c = c + sprintf(temp + c, "\n1: Invalidated twice, cr = %i %i %i %i", cr.left, cr.top, cr.right, cr.bottom);
+				break;
+			case 6:
+				InvalidateRect(hwnd, &cr, true);
+				mapWindowData[hwnd].invalidRect = { 0,0,0,0 };
+				c = c + sprintf(temp + c, "\n1: Invalidated, no WINPROC, cr = %i %i %i %i", cr.left, cr.top, cr.right, cr.bottom);		
+				return 0;
 			default:
 				return 0;
 			}
-			
+		}
+		else
+		{
+			InvalidateRect(hwnd, &cr, true);
+			mapWindowData[hwnd].invalidRect = { 0,0,0,0 };
+		}
 		
 		LRESULT result = ((WNDPROC)(intptr_t)w.origProc)(hwnd, uMsg, wParam, lParam);
 #endif
