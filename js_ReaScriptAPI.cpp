@@ -3562,7 +3562,7 @@ void JS_Composite_Unlink(HWND hwnd, LICE_IBitmap* bitmap = nullptr, bool autoUpd
 				if (autoUpdate && (ir.left > dstr.left || ir.top > dstr.top || ir.right < dstr.right || ir.bottom < dstr.bottom))
 				{
 					InvalidateRect(hwnd, &dstr, true);
-					ir = destr;
+					ir = dstr;
 				}
 #endif
 			}
