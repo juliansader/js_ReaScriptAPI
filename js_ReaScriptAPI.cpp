@@ -2487,20 +2487,11 @@ void JS_InvalidateTimer(HWND hwnd, UINT msg, UINT_PTR timerID, DWORD millisecs)
 	using namespace Julian;
 	if (IsWindow(hwnd) && mapWindowData.count(hwnd))
 	{
-		//char temp[100];
-		//sprintf(temp, "\nTimerID: %i", timerID);
-		//ShowConsoleMsg(temp);
 		RECT& ir = mapWindowData[hwnd].invalidRect;
 		if (ir.left < ir.right && ir.top < ir.bottom) // non-empty?
 		{
 			InvalidateRect(hwnd, &ir, true);
 		}
-		/*else
-		{
-			RECT cr;
-			GetClientRect(hwnd, &cr);
-			InvalidateRect(hwnd, &cr, true);
-		}*/
 	}
 }
 
@@ -2546,18 +2537,17 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 	// COMPOSITE LICE BITMAPS - if any
 	if (uMsg == WM_PAINT && !w.mapBitmaps.empty())
 	{
-		char temp[5000];
-		int c = 0;
 		// If the invalidated parts of the window overlap a composited bitmap, that bitmap must be re-blitted, otherwise it will be partly removed.
 		// Existing bitmaps must be wiped before re-blitting so that transparencies don't pile up.
 		// On Linux and macOS, WDL/swell does not offer an GetUpdateRect function equivalent, so the extension does not know which parts will be re-drawn, 
-		//		so the entire window will be invalidated, and all bitmaps will be re-blitted.
-		// On WindowsOS, invalidRect must also be enlarged to include overlapping bitmaps.  
-		//		WARNING: The entire rect returned by GetUpdateRect has *not* necessarily been completely invalidated.  There may be parts of invalidRect that have *not* been invalidated.
-		//		The extension must therefore include invalidRect in its final rect to be invalidated.
-		// On WindowsOS, the extension will try to find the smallest rect that contains invalidRect as well as all overlapping bitmaps.
-		//		Expanding the updateRect to cover one bitmap, may overlap another that wasn't previous overlapped; so the code must loop and re-check each bitmap until no further expansion was required.
-		// I am not sure that 
+		//	so the entire window will be invalidated, and all bitmaps will be re-blitted.
+		// In contrast, on WindowsOS, the extension tries to minimize the re-drawing by 
+		//	1) minimizing the invalidRect, which must also be enlarged to include updateRect and all -- but only -- overlapping bitmaps.  
+		//		Expanding the invalidRect to cover one bitmap, may overlap another that wasn't previous overlapped; 
+		//		so the code must loop and re-check each bitmap until no further expansion was required.
+		//	2) timing and slowing down the re-drawing to the times set in mapWindowDelay.
+		//	WARNING: The entire rect returned by GetUpdateRect has *not* necessarily been completely invalidated.  There may be parts of invalidRect that have *not* been invalidated.
+		//	The extension must therefore include invalidRect in its final rect to be invalidated.
 		std::map<LICE_IBitmap*, RECT> nonOverlappingRects; // After looping through all bitmaps, those that don't need to be blitted will be remain in here.
 
 		RECT cr{ 0,0,0,0 };
@@ -2566,7 +2556,7 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 
 #ifdef _WIN32
 
-		// Calculate delay time
+		// Can window be re-drawn yet?  Calculate delay time.
 		double timeNow	= time_precise();
 		size_t s		= w.mapBitmaps.size();
 		double delay	= 0;
@@ -2660,11 +2650,11 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 		// Fortunately, InvalidateRect does seem to work fine if called by a script earlier in the defer cycle.
 		// So this extension lets JS_Composite, JS_Window_InvalidateRect etc invalidate the *entire* window.
 		// If the window has been invalidated already, don't need to do it in this callback.
-		if (ir.left < cr.left || ir.top > cr.top || ir.right < cr.right || ir.bottom < cr.bottom)
+		if (ir.right < cr.right || ir.bottom < cr.bottom || ir.left > cr.left || ir.top > cr.top)
 		{
 			InvalidateRect(hwnd, &cr, true);
 		}
-		// At each paint cycle, w.invalidRect gets reset.
+		// On macOS and Linux invalidRect contains the retc has has *already* been InvalidateRect'd.  Must therefore be reset at each paint cycle w.invalidRect.
 		ir = { 0, 0, 0, 0 };
 		
 		{
@@ -2694,7 +2684,6 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 				}
 				ReleaseDC(hwnd, windowDC);
 			}
-			//ShowConsoleMsg(temp);
 			return result;
 		}
 	}
@@ -2990,8 +2979,12 @@ void JS_WindowMessage_RestoreOrigProcAndErase() //HWND hwnd)
 	using namespace Julian;
 	std::set<HWND> toDelete;
 	for (auto& m : Julian::mapWindowData) {
-		if (m.second.mapBitmaps.empty() && m.second.mapMessages.empty()) {
-			toDelete.insert(m.first);
+		if (m.second.mapBitmaps.empty())
+		{
+			if (m.second.mapMessages.empty())
+				toDelete.insert(m.first);
+			else
+				m.second.invalidRect = { 0, 0, 0, 0 };
 		}
 	}
 
@@ -3491,8 +3484,6 @@ int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap
 	if (autoUpdate) InvalidateRect(hwnd, &dstr, true);
 
 #else
-	char temp[200];
-	int c = 0;
 	// If window not already intercepted, get original window proc and emplace new struct
 	if (Julian::mapWindowData.count(hwnd) == 0) 
 	{
@@ -3507,16 +3498,11 @@ int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap
 	mapWindowData[hwnd].mapBitmaps[sysBitmap] = sBlitRects{ dstx, dsty, dstw, dsth, srcx, srcy, srcw, srch };
 	// Has entire client area been invalidated yet in this paint cycle?
 	RECT& ir = mapWindowData[hwnd].invalidRect;
-	c = c + sprintf(temp+c, "\ncr: %i %i %i %i", cr.left, cr.top, cr.right, cr.bottom);
-	c = c + sprintf(temp+c, "\nir: %i %i %i %i", ir.left, ir.top, ir.right, ir.bottom);
-	if (autoUpdate) c = c + sprintf(temp+c, "\nautoUpdate");
-	if (autoUpdate && (ir.left > cr.left || ir.top > cr.top || ir.right < cr.right || ir.bottom < cr.bottom))
+	if (autoUpdate && (ir.right < cr.right || ir.bottom < cr.bottom || ir.left > cr.left || ir.top > cr.top))
 	{
-		c = c + sprintf(temp+c, "\nInvalidate");
 		InvalidateRect(hwnd, &cr, true);
 		ir = cr;
 	}
-	ShowConsoleMsg(temp);
 #endif
 	return 1;
 }
@@ -3548,28 +3534,28 @@ void JS_Composite_Unlink(HWND hwnd, LICE_IBitmap* bitmap = nullptr, bool autoUpd
 
 			if (IsWindow(hwnd)) 
 			{
-				RECT dstr; // Start as client rect, contract to destination image
+				RECT r; // Start as client rect, contract to destination image
 				GetClientRect(hwnd, &dstr);
 				RECT& ir = mapWindowData[hwnd].invalidRect;
 #ifdef _WIN32
 				// Adjust for -1 w or h, which expands to entire client rect
-				if (b.dstw != -1) { dstr.left = b.dstx; dstr.right = b.dstx + b.dstw; } 
-				if (b.dsth != -1) { dstr.top = b.dsty; dstr.bottom = b.dsty + b.dsth; }
+				if (b.dstw != -1) { r.left = b.dstx; r.right = b.dstx + b.dstw; } 
+				if (b.dsth != -1) { r.top = b.dsty; r.bottom = b.dsty + b.dsth; }
 				// And calculate invalidRect for dest window
 				if (ir.left >= ir.right || ir.top >= ir.bottom) // blank rect?
-					ir = dstr;
+					ir = r;
 				else
-					UNIONRECT(ir, dstr);
+					UNIONRECT(ir, r);
 
 				if (autoUpdate) InvalidateRect(hwnd, &ir, true);
 #else
 				// In contrast to WIN32, which try to make the invalidated area as small as possible,
 				//		Linux and macOS invalidate the entire client area.
 				// Has entire client area been invalidated yet in this paint cycle?
-				if (autoUpdate && (ir.left > dstr.left || ir.top > dstr.top || ir.right < dstr.right || ir.bottom < dstr.bottom))
+				if (autoUpdate && (ir.right < r.right || ir.bottom < r.bottom || ir.left > r.left || ir.top > r.top))
 				{
-					InvalidateRect(hwnd, &dstr, true);
-					ir = dstr;
+					InvalidateRect(hwnd, &r, true);
+					ir = r;
 				}
 #endif
 			}
