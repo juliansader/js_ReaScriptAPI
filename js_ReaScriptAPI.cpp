@@ -3491,6 +3491,8 @@ int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap
 	if (autoUpdate) InvalidateRect(hwnd, &dstr, true);
 
 #else
+	char temp[200];
+	int c = 0;
 	// If window not already intercepted, get original window proc and emplace new struct
 	if (Julian::mapWindowData.count(hwnd) == 0) 
 	{
@@ -3505,11 +3507,16 @@ int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap
 	mapWindowData[hwnd].mapBitmaps[sysBitmap] = sBlitRects{ dstx, dsty, dstw, dsth, srcx, srcy, srcw, srch };
 	// Has entire client area been invalidated yet in this paint cycle?
 	RECT& ir = mapWindowData[hwnd].invalidRect;
+	c = c + sprintf(temp+c, "\ncr: %i %i %i %i", cr.left, cr.top, cr.right, cr.bottom);
+	c = c + sprintf(temp+c, "\nir: %i %i %i %i", ir.left, ir.top, ir.right, ir.bottom);
+	if (autoUpdate) c = c + sprintf(temp+c, "\nautoUpdate");
 	if (autoUpdate && (ir.left > cr.left || ir.top > cr.top || ir.right < cr.right || ir.bottom < cr.bottom))
 	{
+		c = c + sprintf(temp+c, "\nInvalidate");
 		InvalidateRect(hwnd, &cr, true);
 		ir = cr;
 	}
+	ShowConsoleMsg(temp);
 #endif
 	return 1;
 }
