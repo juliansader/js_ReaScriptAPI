@@ -2080,11 +2080,37 @@ void* JS_Window_GetRoot(void* windowHWND)
 
 bool JS_Window_InvalidateRect(HWND windowHWND, int left, int top, int right, int bottom, bool eraseBackground)
 {
+	using namespace Julian;
 #ifndef _WIN32
-	if (!ValidatePtr(windowHWND, "HWND")) return false;
+	// WDL/swell InvalidateRect crashes if hwnd doesn't exist
+	if (!ValidatePtr(windowHWND, "HWND")) 
+		return false;
+	// If window is composited, Invalidate entire window, because somehow InvalidateRect doesn't work in WM_PAINT callback
+	//		in Classic macOS graphics mode.
+	if (mapWindowData.count(windowHWND))
+	{
+		RECT cr; GetClientRect(windowHWND, &cr);
+		RECT& ir = mapWindowData[windowHWND].invalidRect;
+		// Is entire client window already invalidated in this paint cycle?
+		if (ir.left > cr.left || ir.top > cr.top || ir.right < cr.right || ir.bottom < cr.bottom)
+		{
+			if (InvalidateRect(windowHWND, &cr, true))
+			{
+				ir = cr;
+				return true;
+			}
+			else
+				return false;
+		}
+		else
+			return true; // Already invalidated
+	}
+	else
 #endif
-	RECT rect{ left, top, right, bottom };
-	return InvalidateRect(windowHWND, &rect, (BOOL)eraseBackground);
+	{
+		RECT rect{ left, top, right, bottom };
+		return InvalidateRect(windowHWND, &rect, (BOOL)eraseBackground);
+	}
 }
 
 bool JS_Window_SetOpacity(HWND windowHWND, const char* mode, double value)
@@ -2536,6 +2562,7 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 
 		RECT cr{ 0,0,0,0 };
 		GetClientRect(hwnd, &cr);
+		RECT& ir = w.invalidRect;
 
 #ifdef _WIN32
 
@@ -2557,7 +2584,6 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 			//		(For example, script defer cycle will slow down to the same rate as the composite delay.)
 			// But the updateRect must be repainted as some point, so store the rect in w.invalidRect, to be manually invalidated when delay is over.
 			RECT ur; GetUpdateRect(hwnd, &ur, false);
-			RECT& ir = w.invalidRect;
 			if (ir.left >= ir.right || ir.top >= ir.bottom) // empty rect?
 				ir = ur;
 			else
@@ -2568,7 +2594,7 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 			return 0; // What is best?  1 or 0 return value?  0 = message processed.
 		}
 
-		// OK, refresh
+		// OK, refresh and composite
 		else
 		{
 			if (w.timerID) {
@@ -2576,12 +2602,12 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 				w.timerID = 0;
 			}
 			w.lastTime = timeNow;
-			
+
 			RECT ur{ 0, 0, 0, 0 };
 			GetUpdateRect(hwnd, &ur, true);
 			//c = c + sprintf(temp + c, "\n------------------\nUpdateRect: %i, %i, %i, %i", ur.left, ur.top, ur.right, ur.bottom);
 			RECT& ir = w.invalidRect;
-			if (ir.left < ir.right && ir.top < ir.bottom) 
+			if (ir.left < ir.right && ir.top < ir.bottom)
 				UNIONRECT(ur, ir);
 			//c = c + sprintf(temp + c, "\nmovedr: %i, %i, %i, %i", movedr.left, movedr.top, movedr.right, movedr.bottom);
 			ir = { 0, 0, 0, 0 };
@@ -2628,66 +2654,21 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 			LRESULT result = CallWindowProc((WNDPROC)(intptr_t)w.origProc, hwnd, uMsg, wParam, lParam);
 
 #else
-		// WDL/swell does not offer an GetUpdateRect function equivalent, so the entire window will be re-drawn.
-		if (mapDelayData.count(hwnd))
-		{
-			switch (mapDelayData[hwnd].delayMaxBitmaps)
-			{
-			case 1:
-				InvalidateRect(hwnd, &cr, true);
-				mapWindowData[hwnd].invalidRect = { 0,0,0,0 };
-				c = c + sprintf(temp + c, "\n1: Invalidated, cr = %i %i %i %i", cr.left, cr.top, cr.right, cr.bottom);
-				break;
-			case 2:
-				c = c + sprintf(temp + c, "\n2: NOT invalidated, just WINPROC, cr = %i %i %i %i", cr.left, cr.top, cr.right, cr.bottom);
-				break;
-			case 3:
-				cr.right = (int)mapDelayData[hwnd].delayMinTime;
-				cr.bottom = (int)mapDelayData[hwnd].delayMaxTime;
-				InvalidateRect(hwnd, &cr, true);
-				mapWindowData[hwnd].invalidRect = { 0,0,0,0 };
-				c = c + sprintf(temp + c, "\n3: I'd delay coor, cr = %i %i %i %i", cr.left, cr.top, cr.right, cr.bottom);
-				break;
-			case 4:
-				InvalidateRect(hwnd, &mapWindowData[hwnd].invalidRect, true);
-				mapWindowData[hwnd].invalidRect = { 0,0,0,0 };
-				c = c + sprintf(temp + c, "\n4: I'd movedr = %i %i %i %i", mapWindowData[hwnd].invalidRect.left, mapWindowData[hwnd].invalidRect.top, mapWindowData[hwnd].invalidRect.right, mapWindowData[hwnd].invalidRect.bottom);
-				break;
-			case 5:
-				InvalidateRect(hwnd, &cr, true);
-				InvalidateRect(hwnd, &cr, true);
-				mapWindowData[hwnd].invalidRect = { 0,0,0,0 };
-				c = c + sprintf(temp + c, "\n5: I'd twice, cr = %i %i %i %i", cr.left, cr.top, cr.right, cr.bottom);
-				break;
-			case 6:
-				InvalidateRect(hwnd, &cr, true);
-				mapWindowData[hwnd].invalidRect = { 0,0,0,0 };
-				c = c + sprintf(temp + c, "\n1: I'd, no WINPROC, cr = %i %i %i %i", cr.left, cr.top, cr.right, cr.bottom);		
-				ShowConsoleMsg(temp);
-				return 0;
-			case 7:
-			{
-				InvalidateRect(hwnd, &cr, true);
-				mapWindowData[hwnd].invalidRect = { 0,0,0,0 };
-				double t1 = time_precise();
-				while (time_precise() < t1+mapDelayData[hwnd].delayMaxTime) {};
-				c = c + sprintf(temp + c, "\n7: Delayed, cr = %i %i %i %i", cr.left, cr.top, cr.right, cr.bottom);		
-				break;
-			}
-			default:
-				return 0;
-			}
-		}
-		else
+		// WDL/swell does not offer an GetUpdateRect function equivalent, so the entire window must be re-drawn whenever WM_PAINT is received.
+		// WARNING! For some reason, on REAPER macOS, Advanced UI tweaks -> Classic mode, InvalidateRect does NOT work properly
+		//		if called in this callback function.  The window does not properly update.  Probably some double-buffering in GPU memory.
+		// Fortunately, InvalidateRect does seem to work fine if called by a script earlier in the defer cycle.
+		// So this extension lets JS_Composite, JS_Window_InvalidateRect etc invalidate the *entire* window.
+		// If the window has been invalidated already, don't need to do it in this callback.
+		if (ir.left < cr.left || ir.top > cr.top || ir.right < cr.right || ir.bottom < cr.bottom)
 		{
 			InvalidateRect(hwnd, &cr, true);
-			mapWindowData[hwnd].invalidRect = { 0,0,0,0 };
 		}
-		
-		LRESULT result = ((WNDPROC)(intptr_t)w.origProc)(hwnd, uMsg, wParam, lParam);
-		if (c) ShowConsoleMsg(temp);
+		// At each paint cycle, w.invalidRect gets reset.
+		ir = { 0, 0, 0, 0 };
 		
 		{
+			LRESULT result = ((WNDPROC)(intptr_t)w.origProc)(hwnd, uMsg, wParam, lParam);
 #endif
 			HDC windowDC = GetDC(hwnd);
 			if (windowDC) {
@@ -3470,20 +3451,17 @@ int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap
 	RECT cr;
 	GetClientRect(hwnd, &cr);
 
+#ifdef _WIN32
 	RECT dstr{ dstx, dsty, dstx + dstw, dsty + dsth };
 	if (dstw == -1) { dstr.left = 0; dstr.right = cr.right; }
 	if (dsth == -1) { dstr.top = 0; dstr.bottom = cr.bottom; }
 
 
 	// If window not already intercepted, get original window proc and emplace new struct
-	if (Julian::mapWindowData.count(hwnd) == 0) {
-		
+	if (Julian::mapWindowData.count(hwnd) == 0) 
+	{
 		LONG_PTR origProc = 0;
-#ifdef _WIN32
 		origProc = SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
-#else
-		origProc = SetWindowLong(hwnd, GWL_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
-#endif
 		if (!origProc) return ERR_ORIGPROC;
 		
 		Julian::mapWindowData[hwnd] = sWindowData{ origProc };
@@ -3512,6 +3490,27 @@ int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap
 		UNIONRECT(ur, dstr);
 	if (autoUpdate) InvalidateRect(hwnd, &dstr, true);
 
+#else
+	// If window not already intercepted, get original window proc and emplace new struct
+	if (Julian::mapWindowData.count(hwnd) == 0) 
+	{
+		LONG_PTR origProc = 0;
+		origProc = SetWindowLong(hwnd, GWL_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
+		if (!origProc) return ERR_ORIGPROC;
+
+		Julian::mapWindowData[hwnd] = sWindowData{ origProc };
+		Julian::mapWindowData[hwnd].invalidRect = { 0, 0, 0, 0 };
+	}
+	// OK, hwnd should now be in map. Don't use emplace, since may need to replace previous dst or src RECT of already-linked bitmap
+	mapWindowData[hwnd].mapBitmaps[sysBitmap] = sBlitRects{ dstx, dsty, dstw, dsth, srcx, srcy, srcw, srch };
+	// Has entire client area been invalidated yet in this paint cycle?
+	RECT& ir = mapWindowData[hwnd].invalidRect;
+	if (autoUpdate && (ir.left > cr.left || ir.top > cr.top || ir.right < cr.right || ir.bottom < cr.bottom))
+	{
+		InvalidateRect(hwnd, &cr, true);
+		ir = cr;
+	}
+#endif
 	return 1;
 }
 
@@ -3542,19 +3541,30 @@ void JS_Composite_Unlink(HWND hwnd, LICE_IBitmap* bitmap = nullptr, bool autoUpd
 
 			if (IsWindow(hwnd)) 
 			{
-				RECT dstr;
+				RECT dstr; // Start as client rect, contract to destination image
 				GetClientRect(hwnd, &dstr);
+				RECT& ir = mapWindowData[hwnd].invalidRect;
+#ifdef _WIN32
 				// Adjust for -1 w or h, which expands to entire client rect
 				if (b.dstw != -1) { dstr.left = b.dstx; dstr.right = b.dstx + b.dstw; } 
 				if (b.dsth != -1) { dstr.top = b.dsty; dstr.bottom = b.dsty + b.dsth; }
-				// And calculate UpdateRect for dest window
-				RECT& ur = mapWindowData[hwnd].invalidRect;
-				if (ur.left >= ur.right || ur.top >= ur.bottom) // blank rect?
-					ur = dstr;
+				// And calculate invalidRect for dest window
+				if (ir.left >= ir.right || ir.top >= ir.bottom) // blank rect?
+					ir = dstr;
 				else
-					UNIONRECT(ur, dstr);
+					UNIONRECT(ir, dstr);
 
-				if (autoUpdate) InvalidateRect(hwnd, &dstr, true);
+				if (autoUpdate) InvalidateRect(hwnd, &ir, true);
+#else
+				// In contrast to WIN32, which try to make the invalidated area as small as possible,
+				//		Linux and macOS invalidate the entire client area.
+				// Has entire client area been invalidated yet in this paint cycle?
+				if (autoUpdate && (ir.left > dstr.left || ir.top > dstr.top || ir.right < dstr.right || ir.bottom < dstr.bottom))
+				{
+					InvalidateRect(hwnd, &dstr, true);
+					ir = destr;
+				}
+#endif
 			}
 		}
 
