@@ -3534,8 +3534,7 @@ void JS_Composite_Unlink(HWND hwnd, LICE_IBitmap* bitmap = nullptr, bool autoUpd
 
 			if (IsWindow(hwnd)) 
 			{
-				RECT r; // Start as client rect, contract to destination image
-				GetClientRect(hwnd, &dstr);
+				RECT r; GetClientRect(hwnd, &r); // Start as client rect, contract to destination image
 				RECT& ir = mapWindowData[hwnd].invalidRect;
 #ifdef _WIN32
 				// Adjust for -1 w or h, which expands to entire client rect
