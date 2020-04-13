@@ -2672,6 +2672,7 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 				double t1 = time_precise();
 				while (time_precise() < t1+mapDelayData[hwnd].delayMaxTime) {};
 				c = c + sprintf(temp + c, "\n7: Delayed, cr = %i %i %i %i", cr.left, cr.top, cr.right, cr.bottom);		
+				break;
 			}
 			default:
 				return 0;
