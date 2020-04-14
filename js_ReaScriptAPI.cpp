@@ -3482,7 +3482,7 @@ int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap
 	// Has entire client area been invalidated yet in this paint cycle?
 	RECT& ir = mapWindowData[hwnd].invalidRect;
 	char temp[100];
-	sprintf(temp, "\n%i %i %i %i", ir,left, ir.top, ir.right, ir.bottom);
+	sprintf(temp, "\n%i %i %i %i", ir.left, ir.top, ir.right, ir.bottom);
 	ShowConsoleMsg(temp);
 	if (autoUpdate && (ir.right < cr.right || ir.bottom < cr.bottom || ir.left > cr.left || ir.top > cr.top))
 	{
