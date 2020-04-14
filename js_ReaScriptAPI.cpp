@@ -2981,10 +2981,10 @@ void JS_WindowMessage_RestoreOrigProcAndErase() //HWND hwnd)
 	for (auto& m : Julian::mapWindowData) {
 		if (m.second.mapBitmaps.empty())
 		{
+			ShowConsoleMsg("0,0,0,0");
+			m.second.invalidRect = { 0, 0, 0, 0 };
 			if (m.second.mapMessages.empty())
 				toDelete.insert(m.first);
-			else
-				m.second.invalidRect = { 0, 0, 0, 0 };
 		}
 	}
 
@@ -3000,23 +3000,6 @@ void JS_WindowMessage_RestoreOrigProcAndErase() //HWND hwnd)
 		mapWindowData.erase(hwnd);
 	}
 }
-	/*
-	if (mapWindowData.count(hwnd)) {
-		if (IsWindow(hwnd)) {
-			LONG_PTR& origProc = mapWindowData[hwnd].origProc;
-#ifdef _WIN32
-			SetWindowLongPtr(hwnd, GWLP_WNDPROC, origProc);
-#else			
-			SetWindowLong(hwnd, GWL_WNDPROC, origProc);
-#endif
-		}
-		//if (erase)
-			mapWindowData.erase(hwnd);
-		{
-			mapWindowData[hwnd].mapMessages.clear();
-			mapWindowData[hwnd].mapBitmaps.clear();
-		}
-	}*/
 
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -3498,6 +3481,9 @@ int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap
 	mapWindowData[hwnd].mapBitmaps[sysBitmap] = sBlitRects{ dstx, dsty, dstw, dsth, srcx, srcy, srcw, srch };
 	// Has entire client area been invalidated yet in this paint cycle?
 	RECT& ir = mapWindowData[hwnd].invalidRect;
+	char temp[100];
+	sprintf(temp, "\n%i %i %i %i", ir,left, ir.top, ir.right, ir.bottom);
+	ShowConsoleMsg(temp);
 	if (autoUpdate && (ir.right < cr.right || ir.bottom < cr.bottom || ir.left > cr.left || ir.top > cr.top))
 	{
 		InvalidateRect(hwnd, &cr, true);
