@@ -2535,158 +2535,164 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 	// All messages that aren't blocked, end up here
 
 	// COMPOSITE LICE BITMAPS - if any
-	if (uMsg == WM_PAINT && !w.mapBitmaps.empty())
+	if (uMsg == WM_PAINT)
 	{
-		// If the invalidated parts of the window overlap a composited bitmap, that bitmap must be re-blitted, otherwise it will be partly removed.
-		// Existing bitmaps must be wiped before re-blitting so that transparencies don't pile up.
-		// On Linux and macOS, WDL/swell does not offer an GetUpdateRect function equivalent, so the extension does not know which parts will be re-drawn, 
-		//	so the entire window will be invalidated, and all bitmaps will be re-blitted.
-		// In contrast, on WindowsOS, the extension tries to minimize the re-drawing by 
-		//	1) minimizing the invalidRect, which must also be enlarged to include updateRect and all -- but only -- overlapping bitmaps.  
-		//		Expanding the invalidRect to cover one bitmap, may overlap another that wasn't previous overlapped; 
-		//		so the code must loop and re-check each bitmap until no further expansion was required.
-		//	2) timing and slowing down the re-drawing to the times set in mapWindowDelay.
-		//	WARNING: The entire rect returned by GetUpdateRect has *not* necessarily been completely invalidated.  There may be parts of invalidRect that have *not* been invalidated.
-		//	The extension must therefore include invalidRect in its final rect to be invalidated.
-		std::map<LICE_IBitmap*, RECT> nonOverlappingRects; // After looping through all bitmaps, those that don't need to be blitted will be remain in here.
-
-		RECT cr{ 0,0,0,0 };
-		GetClientRect(hwnd, &cr);
-		RECT& ir = w.invalidRect;
-
-#ifdef _WIN32
-
-		// Can window be re-drawn yet?  Calculate delay time.
-		double timeNow	= time_precise();
-		size_t s		= w.mapBitmaps.size();
-		double delay	= 0;
-		if (mapDelayData.count(hwnd))
-		{
-			auto d = mapDelayData[hwnd];
-			delay = d.delayMinTime + (d.delayMaxTime - d.delayMinTime) * (w.mapBitmaps.size() / d.delayMaxBitmaps);
-			if (delay > d.delayMaxTime) delay = d.delayMaxTime;
-		}
-
-		// Too soon
-		if (timeNow < w.lastTime + delay)
-		{
-			// If the updateRect is not validated before returning, the system will continue to try to send WM_PAINT, and this will slow down REAPER.
-			//		(For example, script defer cycle will slow down to the same rate as the composite delay.)
-			// But the updateRect must be repainted as some point, so store the rect in w.invalidRect, to be manually invalidated when delay is over.
-			RECT ur; GetUpdateRect(hwnd, &ur, false);
-			if (ir.left >= ir.right || ir.top >= ir.bottom) // empty rect?
-				ir = ur;
-			else
-				UNIONRECT(ir, ur);
-			ValidateRect(hwnd, &cr); // Don't want REAPER to desperately re-send WM_PAINT
-			if (!w.timerID) 
-				w.timerID = SetTimer(hwnd, 0, static_cast<UINT>(1001*(w.lastTime + delay - timeNow)), (TIMERPROC)JS_InvalidateTimer); // Instead, set my own timer to invalidate
-			return 0; // What is best?  1 or 0 return value?  0 = message processed.
-		}
-
-		// OK, refresh and composite
+		if(w.mapBitmaps.empty())
+			w.invalidRect = { 0, 0, 0, 0 };
+			// Fall through to on to origproc below
 		else
 		{
-			if (w.timerID) {
-				KillTimer(hwnd, w.timerID);
-				w.timerID = 0;
-			}
-			w.lastTime = timeNow;
+			// If the invalidated parts of the window overlap a composited bitmap, that bitmap must be re-blitted, otherwise it will be partly removed.
+			// Existing bitmaps must be wiped before re-blitting so that transparencies don't pile up.
+			// On Linux and macOS, WDL/swell does not offer an GetUpdateRect function equivalent, so the extension does not know which parts will be re-drawn, 
+			//	so the entire window will be invalidated, and all bitmaps will be re-blitted.
+			// In contrast, on WindowsOS, the extension tries to minimize the re-drawing by 
+			//	1) minimizing the invalidRect, which must also be enlarged to include updateRect and all -- but only -- overlapping bitmaps.  
+			//		Expanding the invalidRect to cover one bitmap, may overlap another that wasn't previous overlapped; 
+			//		so the code must loop and re-check each bitmap until no further expansion was required.
+			//	2) timing and slowing down the re-drawing to the times set in mapWindowDelay.
+			//	WARNING: The entire rect returned by GetUpdateRect has *not* necessarily been completely invalidated.  There may be parts of invalidRect that have *not* been invalidated.
+			//	The extension must therefore include invalidRect in its final rect to be invalidated.
+			std::map<LICE_IBitmap*, RECT> nonOverlappingRects; // After looping through all bitmaps, those that don't need to be blitted will be remain in here.
 
-			RECT ur{ 0, 0, 0, 0 };
-			GetUpdateRect(hwnd, &ur, true);
-			//c = c + sprintf(temp + c, "\n------------------\nUpdateRect: %i, %i, %i, %i", ur.left, ur.top, ur.right, ur.bottom);
+			RECT cr{ 0,0,0,0 };
+			GetClientRect(hwnd, &cr);
 			RECT& ir = w.invalidRect;
-			if (ir.left < ir.right && ir.top < ir.bottom)
-				UNIONRECT(ur, ir);
-			//c = c + sprintf(temp + c, "\nmovedr: %i, %i, %i, %i", movedr.left, movedr.top, movedr.right, movedr.bottom);
-			ir = { 0, 0, 0, 0 };
-			// Only need to bother calculating minimum update rect if update rect doesn't already cover entire client rect.
-			if (ur.left <= cr.left && ur.top <= cr.top && ur.right >= cr.right && ur.bottom >= cr.bottom)
+
+	#ifdef _WIN32
+
+			// Can window be re-drawn yet?  Calculate delay time.
+			double timeNow	= time_precise();
+			size_t s		= w.mapBitmaps.size();
+			double delay	= 0;
+			if (mapDelayData.count(hwnd))
+			{
+				auto d = mapDelayData[hwnd];
+				delay = d.delayMinTime + (d.delayMaxTime - d.delayMinTime) * (w.mapBitmaps.size() / d.delayMaxBitmaps);
+				if (delay > d.delayMaxTime) delay = d.delayMaxTime;
+			}
+
+			// Too soon
+			if (timeNow < w.lastTime + delay)
+			{
+				// If the updateRect is not validated before returning, the system will continue to try to send WM_PAINT, and this will slow down REAPER.
+				//		(For example, script defer cycle will slow down to the same rate as the composite delay.)
+				// But the updateRect must be repainted as some point, so store the rect in w.invalidRect, to be manually invalidated when delay is over.
+				RECT ur; GetUpdateRect(hwnd, &ur, false);
+				if (ir.left >= ir.right || ir.top >= ir.bottom) // empty rect?
+					ir = ur;
+				else
+					UNIONRECT(ir, ur);
+				ValidateRect(hwnd, &cr); // Don't want REAPER to desperately re-send WM_PAINT
+				if (!w.timerID) 
+					w.timerID = SetTimer(hwnd, 0, static_cast<UINT>(1001*(w.lastTime + delay - timeNow)), (TIMERPROC)JS_InvalidateTimer); // Instead, set my own timer to invalidate
+				return 0; // What is best?  1 or 0 return value?  0 = message processed.
+			}
+
+			// OK, refresh and composite
+			else
+			{
+				if (w.timerID) {
+					KillTimer(hwnd, w.timerID);
+					w.timerID = 0;
+				}
+				w.lastTime = timeNow;
+
+				RECT ur{ 0, 0, 0, 0 };
+				GetUpdateRect(hwnd, &ur, true);
+				//c = c + sprintf(temp + c, "\n------------------\nUpdateRect: %i, %i, %i, %i", ur.left, ur.top, ur.right, ur.bottom);
+				RECT& ir = w.invalidRect;
+				if (ir.left < ir.right && ir.top < ir.bottom)
+					UNIONRECT(ur, ir);
+				//c = c + sprintf(temp + c, "\nmovedr: %i, %i, %i, %i", movedr.left, movedr.top, movedr.right, movedr.bottom);
+				ir = { 0, 0, 0, 0 };
+				// Only need to bother calculating minimum update rect if update rect doesn't already cover entire client rect.
+				if (ur.left <= cr.left && ur.top <= cr.top && ur.right >= cr.right && ur.bottom >= cr.bottom)
+				{
+					InvalidateRect(hwnd, &cr, true);
+				}
+				else
+				{
+					// Convert rects from xywh to lrtb format, using current client rect size
+					for (auto& b : w.mapBitmaps)
+					{
+						sBlitRects& r = b.second;
+						if (r.dstw != 0 && r.dsth != 0) // Skip zero-sized, invisible images
+							nonOverlappingRects[b.first] = { r.dstw == -1 ? 0 : r.dstx,
+															r.dsth == -1 ? 0 : r.dsty,
+															r.dstw == -1 ? cr.right : (r.dstx + r.dstw),
+															r.dsth == -1 ? cr.bottom : (r.dsty + r.dsth) };
+					}
+					//c = c + sprintf(temp + c, "\n# non-0 bitmaps: %i", nonOverlappingRects.size());
+					// Expanding the rect to cover one bitmap, may overlap another that wasn't previous overlapped; 
+					// so this loop must re-check each bitmap until no further expansion was required.
+					RECT prevr;
+					do
+					{
+						//c = c + sprintf(temp + c, "\nExpand: %i, %i, %i, %i", ur.left, ur.top, ur.right, ur.bottom);
+						prevr = ur;
+						for (auto it = nonOverlappingRects.begin(), nextit = it; it != nonOverlappingRects.end(); it = nextit) // auto& b : windowData.mapBitmaps) // Why not loop through nonOverlappingBitmaps? Because will erase entries while looping.
+						{
+							++nextit;
+							RECT r = it->second;
+							if (RECTSOVERLAP(ur, r))
+							{
+								UNIONRECT(ur, r) // Place union in ur
+									nonOverlappingRects.erase(it);
+							}
+						}
+					} while (!EqualRect(&ur, &prevr));
+					//c = c + sprintf(temp + c, "\n# non-overlapping bitmaps: %i", nonOverlappingRects.size());
+					InvalidateRect(hwnd, &ur, true);
+				}
+
+				LRESULT result = CallWindowProc((WNDPROC)(intptr_t)w.origProc, hwnd, uMsg, wParam, lParam);
+
+	#else
+			// WDL/swell does not offer an GetUpdateRect function equivalent, so the entire window must be re-drawn whenever WM_PAINT is received.
+			// WARNING! For some reason, on REAPER macOS, Advanced UI tweaks -> Classic mode, InvalidateRect does NOT work properly
+			//		if called in this callback function.  The window does not properly update.  Probably some double-buffering in GPU memory.
+			// Fortunately, InvalidateRect does seem to work fine if called by a script earlier in the defer cycle.
+			// So this extension lets JS_Composite, JS_Window_InvalidateRect etc invalidate the *entire* window.
+			// If the window has been invalidated already, don't need to do it in this callback.
+			if (ir.right < cr.right || ir.bottom < cr.bottom || ir.left > cr.left || ir.top > cr.top)
 			{
 				InvalidateRect(hwnd, &cr, true);
 			}
-			else
+			// On macOS and Linux invalidRect contains the retc has has *already* been InvalidateRect'd.  Must therefore be reset at each paint cycle w.invalidRect.
+			ir = { 0, 0, 0, 0 };
+
 			{
-				// Convert rects from xywh to lrtb format, using current client rect size
-				for (auto& b : w.mapBitmaps)
-				{
-					sBlitRects& r = b.second;
-					if (r.dstw != 0 && r.dsth != 0) // Skip zero-sized, invisible images
-						nonOverlappingRects[b.first] = { r.dstw == -1 ? 0 : r.dstx,
-														r.dsth == -1 ? 0 : r.dsty,
-														r.dstw == -1 ? cr.right : (r.dstx + r.dstw),
-														r.dsth == -1 ? cr.bottom : (r.dsty + r.dsth) };
-				}
-				//c = c + sprintf(temp + c, "\n# non-0 bitmaps: %i", nonOverlappingRects.size());
-				// Expanding the rect to cover one bitmap, may overlap another that wasn't previous overlapped; 
-				// so this loop must re-check each bitmap until no further expansion was required.
-				RECT prevr;
-				do
-				{
-					//c = c + sprintf(temp + c, "\nExpand: %i, %i, %i, %i", ur.left, ur.top, ur.right, ur.bottom);
-					prevr = ur;
-					for (auto it = nonOverlappingRects.begin(), nextit = it; it != nonOverlappingRects.end(); it = nextit) // auto& b : windowData.mapBitmaps) // Why not loop through nonOverlappingBitmaps? Because will erase entries while looping.
-					{
-						++nextit;
-						RECT r = it->second;
-						if (RECTSOVERLAP(ur, r))
-						{
-							UNIONRECT(ur, r) // Place union in ur
-								nonOverlappingRects.erase(it);
-						}
-					}
-				} while (!EqualRect(&ur, &prevr));
-				//c = c + sprintf(temp + c, "\n# non-overlapping bitmaps: %i", nonOverlappingRects.size());
-				InvalidateRect(hwnd, &ur, true);
-			}
-
-			LRESULT result = CallWindowProc((WNDPROC)(intptr_t)w.origProc, hwnd, uMsg, wParam, lParam);
-
-#else
-		// WDL/swell does not offer an GetUpdateRect function equivalent, so the entire window must be re-drawn whenever WM_PAINT is received.
-		// WARNING! For some reason, on REAPER macOS, Advanced UI tweaks -> Classic mode, InvalidateRect does NOT work properly
-		//		if called in this callback function.  The window does not properly update.  Probably some double-buffering in GPU memory.
-		// Fortunately, InvalidateRect does seem to work fine if called by a script earlier in the defer cycle.
-		// So this extension lets JS_Composite, JS_Window_InvalidateRect etc invalidate the *entire* window.
-		// If the window has been invalidated already, don't need to do it in this callback.
-		if (ir.right < cr.right || ir.bottom < cr.bottom || ir.left > cr.left || ir.top > cr.top)
-		{
-			InvalidateRect(hwnd, &cr, true);
-		}
-		// On macOS and Linux invalidRect contains the retc has has *already* been InvalidateRect'd.  Must therefore be reset at each paint cycle w.invalidRect.
-		ir = { 0, 0, 0, 0 };
-		
-		{
-			LRESULT result = ((WNDPROC)(intptr_t)w.origProc)(hwnd, uMsg, wParam, lParam);
-#endif
-			HDC windowDC = GetDC(hwnd);
-			if (windowDC) {
-				for (auto& b : w.mapBitmaps) {
-					sBlitRects& i = b.second;
-					if (i.dstw != 0 && i.dstw != 0 && !nonOverlappingRects.count(b.first) && mLICEBitmaps.count(b.first)) { // Does this bitmap overlap the invalid area? Does it still exist?
-						HDC& bitmapDC = mLICEBitmaps[b.first];
-						if (bitmapDC) {
-							RECT r = cr;
-							if (i.dstw != -1) {
-								r.left = i.dstx; r.right = i.dstw;
-							}
-							if (i.dsth != -1) {
-								r.top = i.dsty; r.bottom = i.dsth;
-							}
-	#ifdef _WIN32
-							AlphaBlend(windowDC, r.left, r.top, r.right, r.bottom, bitmapDC, i.srcx, i.srcy, i.srcw, i.srch, BLENDFUNCTION{ AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
-	#else
-							StretchBlt(windowDC, r.left, r.top, r.right, r.bottom, bitmapDC, i.srcx, i.srcy, i.srcw, i.srch, SRCCOPY_USEALPHACHAN);
+				LRESULT result = ((WNDPROC)(intptr_t)w.origProc)(hwnd, uMsg, wParam, lParam);
 	#endif
+				HDC windowDC = GetDC(hwnd);
+				if (windowDC) {
+					for (auto& b : w.mapBitmaps) {
+						sBlitRects& i = b.second;
+						if (i.dstw != 0 && i.dstw != 0 && !nonOverlappingRects.count(b.first) && mLICEBitmaps.count(b.first)) { // Does this bitmap overlap the invalid area? Does it still exist?
+							HDC& bitmapDC = mLICEBitmaps[b.first];
+							if (bitmapDC) {
+								RECT r = cr;
+								if (i.dstw != -1) {
+									r.left = i.dstx; r.right = i.dstw;
+								}
+								if (i.dsth != -1) {
+									r.top = i.dsty; r.bottom = i.dsth;
+								}
+		#ifdef _WIN32
+								AlphaBlend(windowDC, r.left, r.top, r.right, r.bottom, bitmapDC, i.srcx, i.srcy, i.srcw, i.srch, BLENDFUNCTION{ AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
+		#else
+								StretchBlt(windowDC, r.left, r.top, r.right, r.bottom, bitmapDC, i.srcx, i.srcy, i.srcw, i.srch, SRCCOPY_USEALPHACHAN);
+		#endif
+							}
 						}
 					}
+					ReleaseDC(hwnd, windowDC);
 				}
-				ReleaseDC(hwnd, windowDC);
+				return result;
 			}
-			return result;
-		}
-	}
+		} // if(w.mapBitmaps.empty()) .. else
+	} // if (uMsg == WM_PAINT)
 
 	// NO COMPOSITING - just return original results
 	else
