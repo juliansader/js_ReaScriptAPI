@@ -22,7 +22,8 @@ deploy:
   #file: 'reaper_js_ReaScriptAPI32.dylib'
   #file: 'reaper_js_ReaScriptAPI64.dylib'
   #linux:
-  file: 'reaper_js_ReaScriptAPI64.so'
+  file: 'reaper_js_ReaScriptAPI32.so'
+  #file: 'reaper_js_ReaScriptAPI64.so'
   skip_cleanup: true
   on:
     tag: true
