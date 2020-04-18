@@ -1,6 +1,11 @@
 #import <Cocoa/Cocoa.h>
 #import <objc/objc-runtime.h>
 
+void* JS_GetContentViewFromSwellHWND(void* hwnd)
+{
+	return [[(NSView*)hwnd window] contentview];	
+}
+
 // The NSWindow is the container of the NSView child windows.
 void* JS_GetNSWindowFromSwellHWND(void* hwnd)
 {
