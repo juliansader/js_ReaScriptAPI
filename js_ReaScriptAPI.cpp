@@ -216,6 +216,8 @@ v1.000f
 v1.001
  * Safely delete resources if REAPER quits while script is running.
 v1.002
+ * Linux and macOS: JS_Window_GetForeground returns top-level window.
+ * WindowsOS: New JS_Composite_Delay function to reduce flickering.
  * JS_Composite: Auto-update now optional.
  * JS_Composite: Fixed incorrect InvalidateRect calculation. 
 */
@@ -939,9 +941,19 @@ void* JS_Window_GetFocus()
 	return GetFocus();
 }
 
+// WDL/swell often simply returns the focused window, instead of the toplevel foreground window.
+// Some this extension adapted the WDL/swell function.
 void* JS_Window_GetForeground()
 {
+#ifdef _WIN32
 	return GetForegroundWindow();
+#else
+	// Definitions of swell's HWND, HWND__ struct, m_oswindow etc can be found in swell-internal.h
+	HWND w = GetForegroundWindow();
+	while (w && (w->m_parent))
+		w = w->m_parent;
+	return w;
+#endif
 }
 
 	
@@ -1656,6 +1668,7 @@ callbacktype CALLBACK JS_Window_Create_WinProc(HWND hwnd, UINT msg, WPARAM wPara
 #define WS_OVERLAPPED WS_CAPTION
 #define WS_MAXIMIZEBOX (WS_CAPTION|WS_SIZEBOX)
 #define WS_MINIMIZEBOX WS_CAPTION
+#undef WS_BORDER
 #define WS_BORDER WS_CAPTION
 #define WS_DLGFRAME WS_CAPTION
 #define WS_CLIPCHILDREN 0
@@ -2563,8 +2576,8 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 		if (mapDelayData.count(hwnd))
 		{
 			auto d = mapDelayData[hwnd];
-			delay = d.delayMinTime + (d.delayMaxTime - d.delayMinTime) * (w.mapBitmaps.size() / d.delayMaxBitmaps);
-			if (delay > d.delayMaxTime) delay = d.delayMaxTime;
+			delay = d.minTime + (d.maxTime - d.minTime) * (w.mapBitmaps.size() / d.maxBitmaps);
+			if (delay > d.maxTime) delay = d.maxTime;
 		}
 
 		// Too soon
@@ -3551,14 +3564,32 @@ int JS_Composite_ListBitmaps(HWND hwnd, char* listOutNeedBig, int listOutNeedBig
 	return ConvertSetHWNDToString(bitmaps, listOutNeedBig, listOutNeedBig_sz);
 }
 
-int  JS_Composite_Delay(HWND hwnd, double minTime, double maxTime, int maxBitmaps)
+// Only applicable to WindowsOS.
+int  JS_Composite_Delay(HWND hwnd, double minTime, double maxTime, int maxBitmaps, double* prevMinTimeOut, double* prevMaxTimeOut, int* prevBitmapsOut)
 {
 	using namespace Julian;
-	if (minTime < 0) minTime = 0;
-	if (maxTime < minTime) maxTime = minTime;
-	if (maxBitmaps <= 0) maxBitmaps = 100;
-	mapDelayData[hwnd] = sDelayData{ minTime, maxTime, maxBitmaps };
-	return 1;
+	if (mapDelayData.count(hwnd))
+	{
+		*prevMinTimeOut = mapDelayData[hwnd].minTime;
+		*prevMaxTimeOut = mapDelayData[hwnd].maxTime;
+		*prevBitmapsOut = mapDelayData[hwnd].maxBitmaps;
+	}
+	else
+	{
+		*prevMinTimeOut = -1;
+		*prevMaxTimeOut = -1;
+		*prevBitmapsOut = -1;
+	}
+	if (minTime >= 0 && maxTime >= minTime && maxBitmaps > 1)
+	{
+		//if (minTime < 0) minTime = 0;
+		//if (maxTime < minTime) maxTime = minTime;
+		//if (maxBitmaps <= 0) maxBitmaps = 100;
+		mapDelayData[hwnd] = sDelayData{ minTime, maxTime, maxBitmaps };
+		return 1;
+	}
+	else
+		return 0;
 }
 
 /////////////////////////////////////////////

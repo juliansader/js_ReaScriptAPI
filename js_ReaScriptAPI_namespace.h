@@ -162,9 +162,9 @@ namespace Julian
 
 	struct sDelayData
 	{
-		double	delayMinTime;
-		double	delayMaxTime;
-		int		delayMaxBitmaps;
+		double	minTime;
+		double	maxTime;
+		int		maxBitmaps;
 	};
 	std::map<HWND, sDelayData> mapDelayData;
 
