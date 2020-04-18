@@ -947,12 +947,14 @@ void* JS_Window_GetForeground()
 {
 #ifdef _WIN32
 	return GetForegroundWindow();
-#else
+#elif __linux__
 	// Definitions of swell's HWND, HWND__ struct, m_oswindow etc can be found in swell-internal.h
 	HWND w = GetForegroundWindow();
 	while (w && (w->m_parent))
 		w = w->m_parent;
 	return w;
+#else
+	return JS_GetContentViewFromSwellHWND(GetForegroundWindow());
 #endif
 }
 
