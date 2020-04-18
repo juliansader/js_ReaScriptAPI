@@ -63,9 +63,9 @@
 	#include "./WDL/swell/swell-internal.h" // For definition of HWND__
 	#define WINAPI
 #else
-	#define SWELL_TARGET_OSX
-	#define __OBJC__
-	#include "./WDL/swell/swell-internal.h"
+	//#define SWELL_TARGET_OSX
+	//#define __OBJC__
+	//#include "./WDL/swell/swell-internal.h" // swell for OSX does NOT define HWND__ struct -- it seems that HWND is simply NSView*.
 	#define WINAPI
 #endif
 
