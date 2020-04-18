@@ -63,8 +63,8 @@
 	#include "./WDL/swell/swell-internal.h" // For definition of HWND__
 	#define WINAPI
 #else
-	//#define SWELL_TARGET_OSX
-	//#define __OBJC__
+	#define SWELL_TARGET_OSX
+	#define __OBJC__
 	#include "./WDL/swell/swell-internal.h"
 	#define WINAPI
 #endif
