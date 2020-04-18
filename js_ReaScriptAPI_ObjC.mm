@@ -3,7 +3,12 @@
 
 void* JS_GetContentViewFromSwellHWND(void* hwnd)
 {
-	return ( hwnd ? [[(NSView*)hwnd window] contentview] : NULL );
+	if (hwnd && [(id)hwnd isKindOfClass:[NSView class]])
+		return [[(NSView*)hwnd window] contentview];
+	else if (hwnd && [(id)hwnd isKindOfClass:[NSWindow class]])
+		return [[(NSWindow*)hwnd window] contentview];	
+	else
+		return NULL;
 }
 
 // The NSWindow is the container of the NSView child windows.
