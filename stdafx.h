@@ -65,7 +65,7 @@
 #else
 	//#define SWELL_TARGET_OSX
 	//#define __OBJC__
-	//#include "./WDL/swell/swell-internal.h"
+	#include "./WDL/swell/swell-internal.h"
 	#define WINAPI
 #endif
 
