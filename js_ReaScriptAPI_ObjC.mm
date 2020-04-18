@@ -4,9 +4,9 @@
 void* JS_GetContentViewFromSwellHWND(void* hwnd)
 {
 	if (hwnd && [(id)hwnd isKindOfClass:[NSView class]])
-		return [[(NSView*)hwnd window] contentview];
+		return [[(NSView*)hwnd window] contentView];
 	else if (hwnd && [(id)hwnd isKindOfClass:[NSWindow class]])
-		return [[(NSWindow*)hwnd window] contentview];	
+		return [[(NSWindow*)hwnd window] contentView];	
 	else
 		return NULL;
 }
