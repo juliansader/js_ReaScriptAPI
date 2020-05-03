@@ -96,10 +96,11 @@ namespace Julian
 	constexpr int ERR_ALREADY_INTERCEPTED = 0;
 	constexpr int ERR_NOT_WINDOW = -1;
 	constexpr int ERR_PARSING = -2;
-	constexpr int ERR_ORIGPROC = -3;
+	constexpr int ERR_ORIG_WNDPROC = -3;
 	constexpr int ERR_NOT_BITMAP = -4;
 	constexpr int ERR_NOT_SYSBITMAP = -5;
 	constexpr int ERR_WINDOW_HDC = -6;
+	constexpr int ERR_NEW_WNDPROC = -7;
 
 	// This struct is used to store the data of intercepted messages.
 	//		In addition to the standard wParam and lParam, a unique timestamp is added.
