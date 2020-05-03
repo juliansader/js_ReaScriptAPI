@@ -6,6 +6,8 @@ void  JS_ReaScriptAPI_Version(double* versionOut);
 
 void  JS_Localize(const char* USEnglish, const char* LangPackSection, char* translationOut, int translationOut_sz);
 
+int   JS_Zip_Add(char* zipFile, char* inputFiles);
+
 void* JS_Mem_Alloc(int sizeBytes);
 bool  JS_Mem_Free(void* mallocPointer);
 bool  JS_Mem_FromString(void* mallocPointer, int offset, const char* packedString, int stringLength);

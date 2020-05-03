@@ -19,7 +19,10 @@
 #include <utility>
 #include <cstdint>
 #include <memory>
+#include <fstream>
 
+//#include "./zipper/unzipper.h"
+//#include "./zipper/zipper.h"
 
 // WARNING: THIS EXTENSION USES A CUSTOMIZED lice.h, SINCE STANDARD lice.h HIDES SOME FUNCTIONS WHEN LICE_PROVIDED_BY_APP, 
 // EVEN THOUGH THOSE FUNCTIONS ARE NOT ACTUALLY PROVIDED BY REAPER.

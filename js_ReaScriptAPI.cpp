@@ -227,9 +227,39 @@ v1.002
 #define IsWindow(X) ValidatePtr(X, "HWND")
 #endif
 
+int JS_Zip_Add(char* zipFile, char* inputFiles, int inputFiles_sz)
+{/*
+	using namespace zipper;
+	
+	Zipper zipper(zipFile);
+	if (!zipper) return 0;
+	
+	while (inputFiles && *inputFiles)
+	{
+		#ifdef _WIN32 // convert to WideChar for Unicode support
+		int wideCharLength = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, inputFiles, -1, NULL, 0);
+		if (!wideCharLength) return -2
+		WCHAR* widePath = (WCHAR*) alloca(wideCharLength * sizeof(WCHAR) * 2);
+		if (!widePath) return -2
+		MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, inputFiles, -1, widePath, wideCharLength * 2);
+		std::ifstream file{widePath};
+		#else
+		std::ifstream file{inputFiles};
+		#endif
+		if (!file) return -1;
+		zipper.add(input1, inputFiles);
+		inputFiles = strchr(inputFiles, 0)
+		if (inputFiles) inputFiles += 1;
+	}
+
+	zipper.close();
+	*/
+	return 1;
+}
+
 void JS_ReaScriptAPI_Version(double* versionOut)
 {
-	*versionOut = 1.002;
+	*versionOut = 1.0033;
 }
 
 void JS_Localize(const char* USEnglish, const char* LangPackSection, char* translationOut, int translationOut_sz)
@@ -2100,6 +2130,7 @@ bool JS_Window_InvalidateRect(HWND windowHWND, int left, int top, int right, int
 	// WDL/swell InvalidateRect crashes if hwnd doesn't exist
 	if (!ValidatePtr(windowHWND, "HWND")) 
 		return false;
+		/*
 	// If window is composited, Invalidate entire window, because somehow InvalidateRect doesn't work in WM_PAINT callback
 	//		in Classic macOS graphics mode.
 	if (mapWindowData.count(windowHWND))
@@ -2120,7 +2151,7 @@ bool JS_Window_InvalidateRect(HWND windowHWND, int left, int top, int right, int
 		else
 			return true; // Already invalidated
 	}
-	else
+	else*/
 #endif
 	{
 		RECT rect{ left, top, right, bottom };
@@ -2510,11 +2541,132 @@ void JS_InvalidateTimer(HWND hwnd, UINT msg, UINT_PTR timerID, DWORD millisecs)
 	}
 }
 
+
 LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	using namespace Julian;
 
-	// If not in map, we don't know how to call original process.
+	// If hwnd not in map, something went awry. Don't know how to call original window process.
+	if (mapWindowData.count(hwnd) == 0)
+		return 1;
+
+	// Get reference/alias because want to write updates into existing struct.
+	sWindowData& w = mapWindowData[hwnd]; 
+
+	// INTERCEPT / BLOCK WINDOW MESSAGES
+	
+	// Event that should be intercepted? 
+	if (w.mapMessages.count(uMsg)) // ".contains" has only been implemented in more recent C++ versions
+	{
+		w.mapMessages[uMsg].time = time_precise();
+		w.mapMessages[uMsg].wParam = wParam;
+		w.mapMessages[uMsg].lParam = lParam;
+
+		// If event will not be passed through, can quit here.
+		if (w.mapMessages[uMsg].passthrough == false)
+		{
+			// Most WM_ messages return 0 if processed, with only a few exceptions:
+			switch (uMsg)
+			{
+			case WM_SETCURSOR:
+			case WM_DRAWITEM:
+			case WM_COPYDATA:
+			case WM_ERASEBKGND:
+				return 1;
+			case WM_MOUSEACTIVATE:
+				return 3;
+			default:
+				return 0;
+			}
+		}
+	}
+
+	// PASSTHROUGH MESSAGE: All messages that aren't blocked, end up here
+	
+	if (uMsg == WM_PAINT && !w.mapBitmaps.empty())
+	// COMPOSITE LICE BITMAPS - if any
+	{
+		// If the invalidated parts of the window overlap a composited bitmap, that bitmap must be re-blitted, otherwise it will be partly removed.
+		// Existing bitmaps must be wiped before re-blitting so that transparencies don't pile up.
+		
+		// On Linux and macOS, WDL/swell does not offer an GetUpdateRect function equivalent, so the extension does not know which parts will be re-drawn, 
+		//		so the entire window will be invalidated, and all bitmaps will be re-blitted.
+		// In contrast, on WindowsOS, the extension tries to minimize the re-drawing by 
+		//		1) 	minimizing the to-be-invalidated Rect, which must however be enlarged to include the updateRect (returned by GetUpdateRect) 
+		//			and all -- but only -- overlapping bitmaps.  
+		//			When expanding invalidRect to cover one bitmap, the expanded invalidRect may overlap another bitmap that wasn't previous overlapped; 
+		//			so the code must loop and re-check each bitmap until no further expansion was required.
+		//		2) 	timing and slowing down the re-drawing to the times set in mapWindowDelay.
+		//	WARNING: The entire rect returned by GetUpdateRect has *not* necessarily been completely invalidated.  There may be parts within invalidRect 
+		//		that have *not* been invalidated.  The extension must therefore include the entire invalidRect in its final rect to be invalidated.
+		RECT cr{ 0,0,0,0 };
+		GetClientRect(hwnd, &cr);
+
+		// WDL/swell does not offer an GetUpdateRect function equivalent, so the entire window must be re-drawn whenever WM_PAINT is received.
+		// WARNING! For some reason, on REAPER macOS, Advanced UI tweaks -> Classic mode, InvalidateRect does NOT work properly
+		//		if called in this callback function.  The window does not properly update.  Probably some double-buffering in GPU memory.
+		// Fortunately, InvalidateRect does seem to work fine if called by a script earlier in the defer cycle.
+		// So this extension lets JS_Composite, JS_Window_InvalidateRect etc invalidate the *entire* window.
+		// If the window has been invalidated already, don't need to do it in this callback.
+		InvalidateRect(hwnd, &cr, true);
+		
+		LRESULT result = ((WNDPROC)(intptr_t)w.origProc)(hwnd, uMsg, wParam, lParam);
+		
+		HDC windowDC = GetDC(hwnd);
+		if (windowDC) {
+			for (auto& b : w.mapBitmaps) { // Iterate through all the linked bitmaps: b.first is a LICE_IBitmap*
+				sBlitRects& i = b.second; // b.second is a struct with src and dst coordinates that specify where the bitmaps should be blitted
+				if (i.dstw != 0 && i.dstw != 0 && mLICEBitmaps.count(b.first)) { // Double-check that the bitmap actually still exist? And is it visible on-screen?
+					HDC bitmapDC = b.first->getDC();
+					if (bitmapDC) {
+						RECT r = cr; // If dstw or dsth is -1, bitmap is stretched over entire width or height of clientRect. If not, use dst coordinates.
+						if (i.dstw != -1) { 
+							r.left = i.dstx; r.right = i.dstw;
+						}
+						if (i.dsth != -1) {
+							r.top = i.dsty; r.bottom = i.dsth;
+						}
+#ifdef _WIN32
+						AlphaBlend(windowDC, r.left, r.top, r.right, r.bottom, bitmapDC, i.srcx, i.srcy, i.srcw, i.srch, BLENDFUNCTION{ AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
+#else
+						StretchBlt(windowDC, r.left, r.top, r.right, r.bottom, bitmapDC, i.srcx, i.srcy, i.srcw, i.srch, SRCCOPY_USEALPHACHAN);
+#endif
+					}
+				}
+			}
+			ReleaseDC(hwnd, windowDC);
+		}
+		return result;
+	} // if (uMsg == WM_PAINT && ...)
+	
+	else
+	// NO COMPOSITING - simply call original WndProc and return results
+	{
+#ifdef _WIN32
+		LRESULT result = CallWindowProc((WNDPROC)(intptr_t)w.origProc, hwnd, uMsg, wParam, lParam);
+#else
+		LRESULT result = ((WNDPROC)(intptr_t)w.origProc)(hwnd, uMsg, wParam, lParam);
+#endif
+		
+		// If DESTROYING window, must remove from mapWindowData before going ahead.
+		if (uMsg == WM_DESTROY && !IsWindow(hwnd))
+			mapWindowData.erase(hwnd);
+			
+		return result;
+	}
+}
+
+#ifdef nodebig
+/*
+LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	using namespace Julian;
+	char temp[1000];
+	int c = 0;
+	//c = c + sprintf(temp+c, "\n\nHWND: %p, Msg: %i", hwnd, uMsg);
+	//ShowConsoleMsg(temp);
+
+	// If not in map, something went awry. Don't know how to call original window process.
 	if (mapWindowData.count(hwnd) == 0)
 		return 1;
 
@@ -2548,7 +2700,8 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 	}
 
 	// All messages that aren't blocked, end up here
-
+	
+	
 	// COMPOSITE LICE BITMAPS - if any (also clean up remaining invalid rect)
 	if (uMsg == WM_PAINT && (!w.mapBitmaps.empty() || w.invalidRect.left != w.invalidRect.right || w.invalidRect.top != w.invalidRect.bottom))
 	{
@@ -2665,8 +2818,13 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 		// Fortunately, InvalidateRect does seem to work fine if called by a script earlier in the defer cycle.
 		// So this extension lets JS_Composite, JS_Window_InvalidateRect etc invalidate the *entire* window.
 		// If the window has been invalidated already, don't need to do it in this callback.
-		if (ir.right < cr.right || ir.bottom < cr.bottom || ir.left > cr.left || ir.top > cr.top)
+
+		c = c + sprintf(temp+c, "\n\ncr: %i, %i, %i, %i\nir: %i, %i, %i, %i", cr.left, cr.top, cr.right, cr.bottom, ir.left, ir.top, ir.right, ir.bottom);
+		c = c + sprintf(temp+c, "\nNum bm: %i, Num nonoverl: %i", w.mapBitmaps.size(), nonOverlappingRects.size());
+		if (TRUE) //ir.right < cr.right || ir.bottom < cr.bottom || ir.left > cr.left || ir.top > cr.top)
 		{
+					//c = c + sprintf(temp+c, "\nInvalidated");
+
 			InvalidateRect(hwnd, &cr, true);
 		}
 		// On macOS and Linux invalidRect contains the retc has has *already* been InvalidateRect'd.  Must therefore be reset at each paint cycle w.invalidRect.
@@ -2680,8 +2838,9 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 				for (auto& b : w.mapBitmaps) {
 					sBlitRects& i = b.second;
 					if (i.dstw != 0 && i.dstw != 0 && !nonOverlappingRects.count(b.first) && mLICEBitmaps.count(b.first)) { // Does this bitmap overlap the invalid area? Does it still exist?
-						HDC& bitmapDC = mLICEBitmaps[b.first];
+						HDC bitmapDC = b.first->getDC();
 						if (bitmapDC) {
+							c = c + sprintf(temp+c, "\nOrigDC: %p, NewDC: %p", mLICEBitmaps[b.first], bitmapDC);
 							RECT r = cr;
 							if (i.dstw != -1) {
 								r.left = i.dstx; r.right = i.dstw;
@@ -2695,23 +2854,35 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 							StretchBlt(windowDC, r.left, r.top, r.right, r.bottom, bitmapDC, i.srcx, i.srcy, i.srcw, i.srch, SRCCOPY_USEALPHACHAN);
 	#endif
 						}
+						else
+							c = c + sprintf(temp+c, "\nDC error");
 					}
 				}
 				ReleaseDC(hwnd, windowDC);
 			}
+			ShowConsoleMsg(temp);
 			return result;
 		}
 	} // if (uMsg == WM_PAINT && ...)
 
 	// NO COMPOSITING - just return original results
 	else
+	{
 #ifdef _WIN32
-		return CallWindowProc((WNDPROC)(intptr_t)w.origProc, hwnd, uMsg, wParam, lParam);
+		LRESULT result = CallWindowProc((WNDPROC)(intptr_t)w.origProc, hwnd, uMsg, wParam, lParam);
 #else
-		return ((WNDPROC)(intptr_t)w.origProc)(hwnd, uMsg, wParam, lParam);
+		LRESULT result = ((WNDPROC)(intptr_t)w.origProc)(hwnd, uMsg, wParam, lParam);
 #endif
+		
+		// If DESTROYING window, must remove from mapWindowData before going ahead.
+		if (uMsg == WM_DESTROY && !IsWindow(hwnd))
+			mapWindowData.erase(hwnd);
+			
+		return result;
+	}
 }
-
+*/
+#endif
 
 // Intercept a single message type
 int JS_WindowMessage_Intercept(void* windowHWND, const char* message, bool passthrough)
@@ -2752,7 +2923,7 @@ int JS_WindowMessage_Intercept(void* windowHWND, const char* message, bool passt
 		origProc = SetWindowLong(hwnd, GWL_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
 		#endif
 		if (!origProc) 
-			return ERR_ORIGPROC;
+			return ERR_ORIG_WNDPROC;
 
 		Julian::mapWindowData.emplace(hwnd, sWindowData{ origProc }); // , map<UINT, sMsgData>{}, map<LICE_IBitmap*, sBlitRects>{} }); // Insert empty map
 	}
@@ -2884,7 +3055,7 @@ int JS_WindowMessage_InterceptList(void* windowHWND, const char* messages)
 		origProc = SetWindowLong(hwnd, GWL_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
 #endif
 		if (!origProc) 
-			return ERR_ORIGPROC;
+			return ERR_ORIG_WNDPROC;
 
 		// Got everything OK.  Finally, store struct.
 		Julian::mapWindowData.emplace(hwnd, sWindowData{ origProc, newMessages }); // Insert into static map of namespace
@@ -3426,12 +3597,13 @@ bool JS_Window_SetScrollPos(void* windowHWND, const char* scrollbar, int positio
 
 int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap* sysBitmap, int srcx, int srcy, int srcw, int srch, bool autoUpdate = false)
 {
+	autoUpdate = false;
 	using namespace Julian;
 	if (!mLICEBitmaps.count(sysBitmap)) return ERR_NOT_BITMAP;
-	HDC bitmapDC = mLICEBitmaps[sysBitmap]; if (!bitmapDC) return ERR_NOT_SYSBITMAP; // Is this a sysbitmap?
+	if (!mLICEBitmaps[sysBitmap]) return ERR_NOT_SYSBITMAP; // Does this have a linked HDC = Is this a sysbitmap?
 	if (!IsWindow(hwnd)) return ERR_NOT_WINDOW;
-
-	// The composite function will call InvalidateRect to start the blitting, so the destination rect must be calculated.
+		
+	// If autoUpdate, the composite function will call InvalidateRect to start the blitting, so the destination rect must be calculated.
 	// ALSO: If the window and bitmap were already composited, its destination coordinates may be moving, so the invalidated rect must cover the new as well as the previous dst rect.
 	RECT cr;
 	GetClientRect(hwnd, &cr);
@@ -3445,16 +3617,18 @@ int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap
 	// If window not already intercepted, get original window proc and emplace new struct
 	if (Julian::mapWindowData.count(hwnd) == 0) 
 	{
-		LONG_PTR origProc = 0;
-		origProc = SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
-		if (!origProc) return ERR_ORIGPROC;
+		LONG_PTR origProc = SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
+		if (!origProc || (origProc == (LONG_PTR)JS_WindowMessage_Intercept_Callback)) // Oops, does this window already have the extension callback as wndproc?  Something went awry.
+			return ERR_ORIG_WNDPROC;
+		if (GetWindowLongPtr(hwnd, GWLP_WNDPROC) != (LONG_PTR)JS_WindowMessage_Intercept_Callback)
+			return ERR_NEW_WNDPROC;
 		
 		Julian::mapWindowData[hwnd] = sWindowData{ origProc };
 		Julian::mapWindowData[hwnd].invalidRect = { 0, 0, 0, 0 };
 		Julian::mapWindowData[hwnd].lastTime = 0;
 	}
 
-	// Is window and bitmap already composited?  Must expand dstr to include previous dst rect, so that old position will also be invalidated, and old image removed.
+	// OK, already intercepted.  Are window and bitmap already composited?  Must expand dstr to include previous dst rect, so that old position will also be invalidated, and old image removed.
 	else if (mapWindowData[hwnd].mapBitmaps.count(sysBitmap))
 	{
 		auto& b = mapWindowData[hwnd].mapBitmaps[sysBitmap];
@@ -3479,13 +3653,19 @@ int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap
 	// If window not already intercepted, get original window proc and emplace new struct
 	if (Julian::mapWindowData.count(hwnd) == 0) 
 	{
-		LONG_PTR origProc = 0;
-		origProc = SetWindowLong(hwnd, GWL_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
-		if (!origProc) return ERR_ORIGPROC;
+		LONG_PTR origProc = SetWindowLong(hwnd, GWL_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
+		if (!origProc || (origProc == (LONG_PTR)JS_WindowMessage_Intercept_Callback)) return ERR_ORIG_WNDPROC;
+		LONG_PTR newProc = GetWindowLong(hwnd, GWL_WNDPROC);
+		if (newProc != (LONG_PTR)JS_WindowMessage_Intercept_Callback) return ERR_NEW_WNDPROC;
+		//char temp[200];
+		//sprintf(temp, "\nOld: %p\nNew: %p", origProc, newProc);
+		//ShowConsoleMsg(temp);
 
 		Julian::mapWindowData[hwnd] = sWindowData{ origProc };
 		Julian::mapWindowData[hwnd].invalidRect = { 0, 0, 0, 0 };
 	}
+	else
+		//ShowConsoleMsg("Already subclassed");
 	// OK, hwnd should now be in map. Don't use emplace, since may need to replace previous dst or src RECT of already-linked bitmap
 	mapWindowData[hwnd].mapBitmaps[sysBitmap] = sBlitRects{ dstx, dsty, dstw, dsth, srcx, srcy, srcw, srch };
 	// Has entire client area been invalidated yet in this paint cycle?
