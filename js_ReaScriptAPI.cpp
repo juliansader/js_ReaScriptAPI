@@ -2587,9 +2587,29 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 	// COMPOSITE LICE BITMAPS - if any
 	if (uMsg == WM_PAINT)
 	{
-		//char temp[1000];
-		//int c = 0;
-
+		char temp[1000];
+		int c = 0;
+		RECT cr{ 0,0,0,0 };
+		GetClientRect(hwnd, &cr);
+		PAINTSTRUCT p;
+		BeginPaint(hwnd, &p);
+		c = c + sprintf(temp + c, "\norigr: %i, %i, %i, %i", p.rcPaint.left, p.rcPaint.top, p.rcPaint.right, p.rcPaint.bottom);
+		ShowConsoleMsg(temp);
+		bool mustBlitBitmaps = (p.rcPaint.left <= cr.left && p.rcPaint.top <= cr.top && p.rcPaint.right >= cr.right && p.rcPaint.bottom >= cr.bottom);
+		if (mustBlitBitmaps)
+		{
+			LRESULT result = ((WNDPROC)(intptr_t)w.origProc)(hwnd, uMsg, wParam, lParam);
+			return result;
+		}
+		else
+		{
+			InvalidateRect(hwnd, &cr, false);
+			if (w.mapMessages.count(WM_MBUTTONDOWN))
+				return 0;
+			else
+				return 1;
+		}
+#if 0
 		if (!w.mapBitmaps.empty())
 		{
 			RECT cr{ 0,0,0,0 };
@@ -2668,6 +2688,7 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 				return result;
 			} // if (mustBlitBitmaps)
 		} // if (!w.mapBitmaps.empty())
+#endif
 	} // if (uMsg == WM_PAINT && ...)
 	
 	
@@ -3191,7 +3212,7 @@ void JS_WindowMessage_ReleaseWindow(void* windowHWND)
 
 // Call this function to clean up intercepts, after clearing mapMessages or mapBitmaps.
 // WARNING: DO NOT call this function inside a loop over mapWindowData, since this function may delete entries in mapWindowData.
-void JS_WindowMessage_RestoreOrigProcAndErase() //HWND hwnd)
+void JS_WindowMessage_RestoreOrigProcAndErase()
 {
 	using namespace Julian;
 	std::set<HWND> toDelete;
@@ -3201,14 +3222,15 @@ void JS_WindowMessage_RestoreOrigProcAndErase() //HWND hwnd)
 
 	for (HWND w : toDelete)
 	{
-		if (IsWindow(hwnd) && Julian::mapWindowData[hwnd].origProc) {
-				#ifdef _WIN32
-				SetWindowLongPtr(hwnd, GWLP_WNDPROC, Julian::mapWindowData[hwnd].origProc);
-				#else			
-				SetWindowLong(hwnd, GWL_WNDPROC, Julian::mapWindowData[hwnd].origProc);
-				#endif
+		if (IsWindow(w) && Julian::mapWindowData[w].origProc) 
+		{
+			#ifdef _WIN32
+			SetWindowLongPtr(w, GWLP_WNDPROC, Julian::mapWindowData[w].origProc);
+			#else			
+			SetWindowLong(w, GWL_WNDPROC, Julian::mapWindowData[w].origProc);
+			#endif
 		}
-		mapWindowData.erase(hwnd);
+		mapWindowData.erase(w);
 	}
 }
 
