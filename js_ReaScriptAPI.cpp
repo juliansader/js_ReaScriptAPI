@@ -2584,73 +2584,94 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 
 	// PASSTHROUGH MESSAGE: All messages that aren't blocked, end up here
 	
+	// COMPOSITE LICE BITMAPS - if any
 	if (uMsg == WM_PAINT)
 	{
-		PAINTSTRUCT p;
-		BeginPaint(hwnd, &p);
-		sprintf(temp+c, "\npr: %i, %i, %i, %i", p.rcPaint.left, p.rcPaint.top, p.rcPaint.right, p.rcPaint.bottom);
-		ShowConsoleMsg(temp);
-		EndPaint(hwnd, &p);
-		
-		if (!w.mapBitmaps.empty())
-		// COMPOSITE LICE BITMAPS - if any
-		{
-			// If the invalidated parts of the window overlap a composited bitmap, that bitmap must be re-blitted, otherwise it will be partly removed.
-			// Existing bitmaps must be wiped before re-blitting so that transparencies don't pile up.
+		//char temp[1000];
+		//int c = 0;
 
-			// On Linux and macOS, WDL/swell does not offer an GetUpdateRect function equivalent, so the extension does not know which parts will be re-drawn, 
-			//		so the entire window will be invalidated, and all bitmaps will be re-blitted.
-			// In contrast, on WindowsOS, the extension tries to minimize the re-drawing by 
-			//		1) 	minimizing the to-be-invalidated Rect, which must however be enlarged to include the updateRect (returned by GetUpdateRect) 
-			//			and all -- but only -- overlapping bitmaps.  
-			//			When expanding invalidRect to cover one bitmap, the expanded invalidRect may overlap another bitmap that wasn't previous overlapped; 
-			//			so the code must loop and re-check each bitmap until no further expansion was required.
-			//		2) 	timing and slowing down the re-drawing to the times set in mapWindowDelay.
-			//	WARNING: The entire rect returned by GetUpdateRect has *not* necessarily been completely invalidated.  There may be parts within invalidRect 
-			//		that have *not* been invalidated.  The extension must therefore include the entire invalidRect in its final rect to be invalidated.
+		if (!w.mapBitmaps.empty())
+		{
 			RECT cr{ 0,0,0,0 };
 			GetClientRect(hwnd, &cr);
+			PAINTSTRUCT p;
+			BeginPaint(hwnd, &p);
+			bool mustBlitBitmaps = (p.rcPaint.left <= cr.left && p.rcPaint.top <= cr.top && p.rcPaint.right >= cr.right && p.rcPaint.bottom >= cr.bottom);
+			EndPaint(hwnd, &p);
+			
+			if (mustBlitBitmaps)
+			{
+				// If the invalidated parts of the window overlap a composited bitmap, that bitmap must be re-blitted, otherwise it will be partly removed.
+				// Existing bitmaps must be wiped before re-blitting so that transparencies don't pile up.
+				
+				// On Linux and macOS, WDL/swell does not offer an GetUpdateRect function equivalent, so the extension does not know which parts will be re-drawn, 
+				//		so the entire window will be invalidated, and all bitmaps will be re-blitted.
+				// In contrast, on WindowsOS, the extension tries to minimize the re-drawing by 
+				//		1) 	minimizing the to-be-invalidated Rect, which must however be enlarged to include the updateRect (returned by GetUpdateRect) 
+				//			and all -- but only -- overlapping bitmaps.  
+				//			When expanding invalidRect to cover one bitmap, the expanded invalidRect may overlap another bitmap that wasn't previous overlapped; 
+				//			so the code must loop and re-check each bitmap until no further expansion was required.
+				//		2) 	timing and slowing down the re-drawing to the times set in mapWindowDelay.
+				//	WARNING: The entire rect returned by GetUpdateRect has *not* necessarily been completely invalidated.  There may be parts within invalidRect 
+				//		that have *not* been invalidated.  The extension must therefore include the entire invalidRect in its final rect to be invalidated.
+				
 
+				/*
 
-			// WDL/swell does not offer an GetUpdateRect function equivalent, so the entire window must be re-drawn whenever WM_PAINT is received.
-			// WARNING! For some reason, on REAPER macOS, Advanced UI tweaks -> Classic mode, InvalidateRect does NOT work properly
-			//		if called in this callback function.  The window does not properly update.  Probably some double-buffering in GPU memory.
-			// Fortunately, InvalidateRect does seem to work fine if called by a script earlier in the defer cycle.
-			// So this extension lets JS_Composite, JS_Window_InvalidateRect etc invalidate the *entire* window.
-			// If the window has been invalidated already, don't need to do it in this callback.
-			//InvalidateRect(hwnd, &cr, true);
-
-			LRESULT result = ((WNDPROC)(intptr_t)w.origProc)(hwnd, uMsg, wParam, lParam);
-
-			HDC windowDC = GetDC(hwnd);
-			if (windowDC) {
-				for (auto& b : w.mapBitmaps) { // Iterate through all the linked bitmaps: b.first is a LICE_IBitmap*
-					sBlitRects& i = b.second; // b.second is a struct with src and dst coordinates that specify where the bitmaps should be blitted
-					if (i.dstw != 0 && i.dstw != 0 && mLICEBitmaps.count(b.first)) { // Double-check that the bitmap actually still exist? And is it visible on-screen?
-						HDC bitmapDC = b.first->getDC();
-						if (bitmapDC) {
-							RECT r = cr; // If dstw or dsth is -1, bitmap is stretched over entire width or height of clientRect. If not, use dst coordinates.
-							if (i.dstw != -1) { 
-								r.left = i.dstx; r.right = i.dstw;
+				if (!windowDC)
+				{ 
+					EndPaint(hwnd, &p);
+					return ((WNDPROC)(intptr_t)w.origProc)(hwnd, uMsg, wParam, lParam);
+				}
+				else if (p.rcPaint.left > 0 || p.rcPaint.top > 0 || p.rcPaint.right < cr.right || p.rcPaint.bottom < cr.bottom)
+				{
+					EndPaint(hwnd, &p);
+					InvalidateRect(hwnd, &cr, true);
+					return 1; // 1 = did not process this message
+				}
+				EndPaint(hwnd, &p);
+				*/
+				// WDL/swell does not offer an GetUpdateRect function equivalent, so the entire window must be re-drawn whenever WM_PAINT is received.
+				// WARNING! For some reason, on REAPER macOS, Advanced UI tweaks -> Classic mode, InvalidateRect does NOT work properly
+				//		if called in this callback function.  The window does not properly update.  Probably some double-buffering in GPU memory.
+				// Fortunately, InvalidateRect does seem to work fine if called by a script earlier in the defer cycle.
+				// So this extension lets JS_Composite, JS_Window_InvalidateRect etc invalidate the *entire* window.
+				// If the window has been invalidated already, don't need to do it in this callback.
+				//InvalidateRect(hwnd, &cr, true);
+				
+				LRESULT result = ((WNDPROC)(intptr_t)w.origProc)(hwnd, uMsg, wParam, lParam);
+				
+				HDC windowDC = GetDC(hwnd);
+				if (windowDC) {
+					for (auto& b : w.mapBitmaps) { // Iterate through all the linked bitmaps: b.first is a LICE_IBitmap*
+						sBlitRects& i = b.second; // b.second is a struct with src and dst coordinates that specify where the bitmaps should be blitted
+						if (i.dstw != 0 && i.dstw != 0 && mLICEBitmaps.count(b.first)) { // Double-check that the bitmap actually still exist? And is it visible on-screen?
+							HDC bitmapDC = b.first->getDC();
+							if (bitmapDC) {
+								RECT r = cr; // If dstw or dsth is -1, bitmap is stretched over entire width or height of clientRect. If not, use dst coordinates.
+								if (i.dstw != -1) { 
+									r.left = i.dstx; r.right = i.dstw;
+								}
+								if (i.dsth != -1) {
+									r.top = i.dsty; r.bottom = i.dsth;
+								}
+		#ifdef _WIN32
+								AlphaBlend(windowDC, r.left, r.top, r.right, r.bottom, bitmapDC, i.srcx, i.srcy, i.srcw, i.srch, BLENDFUNCTION{ AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
+		#else
+								StretchBlt(windowDC, r.left, r.top, r.right, r.bottom, bitmapDC, i.srcx, i.srcy, i.srcw, i.srch, SRCCOPY_USEALPHACHAN);
+		#endif
 							}
-							if (i.dsth != -1) {
-								r.top = i.dsty; r.bottom = i.dsth;
-							}
-	#ifdef _WIN32
-							AlphaBlend(windowDC, r.left, r.top, r.right, r.bottom, bitmapDC, i.srcx, i.srcy, i.srcw, i.srch, BLENDFUNCTION{ AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
-	#else
-							StretchBlt(windowDC, r.left, r.top, r.right, r.bottom, bitmapDC, i.srcx, i.srcy, i.srcw, i.srch, SRCCOPY_USEALPHACHAN);
-	#endif
 						}
 					}
+					ReleaseDC(hwnd, windowDC);
 				}
-				ReleaseDC(hwnd, windowDC);
-			}
-			return result;
+				return result;
+			} // if (mustBlitBitmaps)
 		} // if (!w.mapBitmaps.empty())
-	} // if (uMsg == WM_PAINT
+	} // if (uMsg == WM_PAINT && ...)
 	
-	// NO COMPOSITING - simply call original WndProc and return results
+	
+	// NO COMPOSITING -- call original WndProc and return results
 	{
 #ifdef _WIN32
 		LRESULT result = CallWindowProc((WNDPROC)(intptr_t)w.origProc, hwnd, uMsg, wParam, lParam);
