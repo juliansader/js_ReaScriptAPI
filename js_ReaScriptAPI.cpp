@@ -2590,6 +2590,7 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 		BeginPaint(hwnd, &p);
 		sprintf(temp+c, "\npr: %i, %i, %i, %i", p.rcPaint.left, p.rcPaint.top, p.rcPaint.right, p.rcPaint.bottom);
 		ShowConsoleMsg(temp);
+		EndPaint(hwnd, &p);
 		
 		if (!w.mapBitmaps.empty())
 		// COMPOSITE LICE BITMAPS - if any
