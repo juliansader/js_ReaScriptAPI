@@ -3968,45 +3968,6 @@ int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap
 	}
 	
 	return TRUE;
-		
-	/*
-	// And calculate UpdateRect for dest window
-	RECT& uR = mapWindowData[hwnd].invalidRect;
-	if (uR.left >= uR.right || uR.top >= uR.bottom) // blank rect?
-		uR = dstR;
-	else
-		UNIONRECT(uR, dstR);
-	if (autoUpdate) InvalidateRect(hwnd, &uR, true);
-
-#else
-	// If window not already intercepted, get original window proc and emplace new struct
-	if (Julian::mapWindowData.count(hwnd) == 0) 
-	{
-		LONG_PTR origProc = SetWindowLong(hwnd, GWL_WNDPROC, (LONG_PTR)JS_WindowMessage_Intercept_Callback);
-		if (!origProc || (origProc == (LONG_PTR)JS_WindowMessage_Intercept_Callback)) return ERR_ORIG_WNDPROC;
-		LONG_PTR newProc = GetWindowLong(hwnd, GWL_WNDPROC);
-		if (newProc != (LONG_PTR)JS_WindowMessage_Intercept_Callback) return ERR_NEW_WNDPROC;
-
-		Julian::mapWindowData[hwnd] = sWindowData{ origProc };
-		Julian::mapWindowData[hwnd].invalidRect = { 0, 0, 0, 0 };
-	}
-
-	// OK, hwnd should now be in map. Don't use emplace, since may need to replace previous dst or src RECT of already-linked bitmap
-	mapWindowData[hwnd].mapBitmaps[sysBitmap] = sBlitRects{ dstx, dsty, dstw, dsth, srcx, srcy, srcw, srch };
-	
-	// Has entire client area been invalidated yet in this paint cycle?
-	if (autoUpdate)
-	{
-		RECT cR; GetClientRect(hwnd, &cR);
-		RECT& iR = mapWindowData[hwnd].invalidRect;
-		if (iR.right < cR.right || iR.bottom < cR.bottom || iR.left > 0 || iR.top > 0)
-		{
-			InvalidateRect(hwnd, &cR, true);
-			iR = cR;
-		}
-	}
-#endif
-* */
 }
 
 
@@ -4034,37 +3995,39 @@ void JS_Composite_Unlink(HWND hwnd, LICE_IBitmap* bitmap = nullptr, bool autoUpd
 
 			mapWindowData[hwnd].mapBitmaps.erase(bitmap); // Erase link
 
-			if (IsWindow(hwnd)) 
+			if (autoUpdate && IsWindow(hwnd)) 
 			{
-				RECT r; GetClientRect(hwnd, &r); // Start as client rect, contract to destination image
-				RECT& ir = mapWindowData[hwnd].invalidRect;
-#ifdef _WIN32
-				// Adjust for -1 w or h, which expands to entire client rect
-				if (b.dstw != -1) { r.left = b.dstx; r.right = b.dstx + b.dstw; } 
-				if (b.dsth != -1) { r.top = b.dsty; r.bottom = b.dsty + b.dsth; }
-				// And calculate invalidRect for dest window
-				if (ir.left >= ir.right || ir.top >= ir.bottom) // blank rect?
-					ir = r;
-				else
-					UNIONRECT(ir, r);
+				RECT dstR; GetClientRect(hwnd, &dstR); // Start as client rect, contract to destination image
+				RECT& iR = mapWindowData[hwnd].invalidRect;
 
-				if (autoUpdate) InvalidateRect(hwnd, &ir, true);
-#else
-				// In contrast to WIN32, which try to make the invalidated area as small as possible,
-				//		Linux and macOS invalidate the entire client area.
-				// Has entire client area been invalidated yet in this paint cycle?
-				if (autoUpdate && (ir.right < r.right || ir.bottom < r.bottom || ir.left > r.left || ir.top > r.top))
+				// Adjust for -1 w or h, which expands to entire client rect
+				if (b.dstw != -1) { dstR.left = b.dstx; dstR.right  = b.dstx + b.dstw; } 
+				if (b.dsth != -1) { dstR.top  = b.dsty; dstR.bottom = b.dsty + b.dsth; }
+				
+				// No invalidates yet in this paint cycle, so must send InvalidateRect
+				if (iR.left >= iR.right || iR.top >= iR.bottom)
 				{
-					InvalidateRect(hwnd, &r, true);
-					ir = r;
+					iR = dstR;
+					InvalidateRect(hwnd, &dstR, true);
 				}
-#endif
+				#ifdef _WIN32
+				// Already invalidated, but rect expands *to-be-invalidated* iR -- final updateRect will be invalidated inside WM_PAINT callback
+				else
+				{
+					UNIONRECT(iR, dstR);
+				}
+				#else
+				// Already invalidated, but rect expands existing iR, and on WDL/swell, iR should give *already* invalidated rect
+				else if (dstR.left < iR.left || dstR.top < iR.top || dstR.right > iR.right || dstR.bottom > iR.bottom)
+				{
+					UNIONRECT(iR, dstR);
+					InvalidateRect(hwnd, &iR, true);
+				}
+				#endif				
 			}
 		}
-
 		JS_WindowMessage_RestoreOrigProcAndErase();
 	}
-
 }
 
 int JS_Composite_ListBitmaps(HWND hwnd, char* listOutNeedBig, int listOutNeedBig_sz)
