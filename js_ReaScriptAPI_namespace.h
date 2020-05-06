@@ -26,8 +26,9 @@ namespace Julian
 
 	// Bitmaps can use up lots of RAM, so to ensure that all bitmaps are destroyed when REAPER exits,
 	//		all active bitmaps are stored here, and will be destroyed by the REAPER_PLUGIN_ENTRYPOINT function.
+	LICE_IBitmap* 			compositeCanvas;
 	map<LICE_IBitmap*, HDC> mLICEBitmaps;
-	set<pair<HWND,HDC>> GDIHDCs;
+	set<pair<HWND,HDC>> 	GDIHDCs;
 
 	// To avoid having to re-load a cursor from file every time that a script is executed,
 	//		the HCURSURS will be stored in this map.
@@ -65,16 +66,19 @@ namespace Julian
 	//////////////////////////////////////////////////////////////////////////////////////
 	// Find functions: Some global variables that will be used when searching for windows.
 	// Since these variables are global, all functions and their callbacks can access the variables without having to pass them via lParams.
-	set<HWND>	foundHWNDs;
-	char		findTitle[1024]; // Title text that must be matched
-	bool		findExact;  // Match exactly, or substring?
-	char		tempTitle[1024];   // Temprarily store window titles returned by GetWindowText
+	/*namespace find
+	{
+		set<HWND>	foundHWNDs;
+		char		findTitle[1024]; // Title text that must be matched
+		bool		findExact;  // Match exactly, or substring?
+		char		tempFindTitle[1024];   // Temprarily store window titles returned by GetWindowText
 
-	HWND		hwnd;  // HWND that was found (for single-window versions of functions)
+		HWND		foundHwnd;  // HWND that was found (for single-window versions of functions)
 
-	char*		hwndString; // List of all matching HWNDs (for List version of functions)
-	unsigned int	hwndLen;
-	double*		reaperarray; // Array of all matching HWNDs (for Array version of functions), in reaper.array format (i.e. with alloc size and used size in first entry)
+		char*		hwndString; // List of all matching HWNDs (for List version of functions)
+		unsigned int	hwndLen;
+		double*		reaperarray; // Array of all matching HWNDs (for Array version of functions), in reaper.array format (i.e. with alloc size and used size in first entry)
+	}*/
 
 	// While windows are being enumerated, this struct stores the information
 	//		such as the title text that must be matched, as well as the list of all matching window HWNDs.
@@ -101,6 +105,7 @@ namespace Julian
 	constexpr int ERR_NOT_SYSBITMAP = -5;
 	constexpr int ERR_WINDOW_HDC = -6;
 	constexpr int ERR_NEW_WNDPROC = -7;
+	constexpr int ERR_INVALIDATE = -8;
 
 	// This struct is used to store the data of intercepted messages.
 	//		In addition to the standard wParam and lParam, a unique timestamp is added.
