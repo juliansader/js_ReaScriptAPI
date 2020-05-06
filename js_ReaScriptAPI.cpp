@@ -1,4 +1,4 @@
-#define JS_REASCRIPTAPI_VERSION 1.0041
+#define JS_REASCRIPTAPI_VERSION 1.0042
 
 #include "stdafx.h"
 
@@ -2792,7 +2792,7 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 										else
 										{
 											//c = c + sprintf(temp + c, "\noverlapR: %i, %i, %i, %i", overlapR.left, overlapR.top, overlapR.right, overlapR.bottom);
-											StretchBlt(canvasDC, dstR.left, dstR.top, dstR.right, dstR.bottom, srcDC, coor.srcx, coor.srcy, coor.srcw, coor.srch, SRCCOPY);
+											LICE_ScaledBlit(compositeCanvas, b.first, dstR.left, dstR.top, dstR.right, dstR.bottom, coor.srcx, coor.srcy, coor.srcw, coor.srch, 1, LICE_BLIT_MODE_COPY);
 											#ifdef _WIN32
 											AlphaBlend(windowDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom, canvasDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom, BLENDFUNCTION{ AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
 											#else
