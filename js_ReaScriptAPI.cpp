@@ -2,7 +2,7 @@
 
 using namespace std;
 
-#define JS_REASCRIPTAPI_VERSION 1.0042
+#define JS_REASCRIPTAPI_VERSION 1.10
 
 #ifndef _WIN32
 #define _WDL_SWELL 1
@@ -240,8 +240,8 @@ v1.002
  * WindowsOS: New JS_Composite_Delay function to reduce flickering.
  * JS_Composite: Auto-update now optional.
  * JS_Composite: Fixed incorrect InvalidateRect calculation. 
-v1.01
- * Streamline Compositing function, particularly when window is only partially invalidated.
+v1.10
+ * Streamline Compositing functions, particularly when window is only partially invalidated.
  * Fix bug in JS_WindowMessage_RestoreOrigProcAndErase.
 */
 
@@ -2672,16 +2672,7 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 	{
 		//char temp[1000];
 		//int c = 0;
-	
-		if (w.mapBitmaps.empty())
-		{
-			RECT& i2R = w.mustInvalidRect; // Stuff that extension wants to update (stored updateRect from previous, delayed cycles, as well as bitmaps that were updated)
-			RECT& iR = w.doneInvalidRect;
-			RECT uR{ 0, 0, 0, 0 }; GetUpdateRect(hwnd, &uR, false); // Should cover w.doneInvalidRect
-			//c = c + sprintf(temp + c, "\nuR: %i, %i, %i, %i", uR.left, uR.top, uR.right, uR.bottom);
-			//c = c + sprintf(temp + c, "\niR: %i, %i, %i, %i", iR.left, iR.top, iR.right, iR.bottom);
-			//c = c + sprintf(temp + c, "\ni2R: %i, %i, %i, %i", i2R.left, i2R.top, i2R.right, i2R.bottom);
-		}
+
 		#ifdef _WIN32
 			
 		// Only WindowsOS: Does this window have delay settings?  If so, must check time and perhaps set timer to return later.
