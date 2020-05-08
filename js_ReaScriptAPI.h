@@ -241,3 +241,4 @@ void Xen_DestroyPreviewSystem();
 								X.bottom > Y.bottom	? X.bottom	: Y.bottom };
 
 #define RECTSOVERLAP(X, Y) (X.left < Y.right && X.right > Y.left && X.top < Y.bottom && X.bottom > Y.top)
+#define RECTISEMPTY(X) (X.left == X.right || X.top == X.bottom)

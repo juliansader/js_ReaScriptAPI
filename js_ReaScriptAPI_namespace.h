@@ -156,8 +156,9 @@ namespace Julian
 		LONG_PTR origProc;
 		std::map<UINT, sMsgData> mapMessages; // Most recent msg values received
 		std::map<LICE_IBitmap*, sBlitRects> mapBitmaps; // bitmaps linked to this window for compositing
-		RECT	invalidRect; // On WindowsOS, the rect that must be invalidated in callback;  on Linux and macOS the rect that has *already* been invalidated in this paint cycle.
-		double	lastTime;
+		RECT 	 mustInvalidRect; // On WindowsOS, the rect that must be invalidated in callback;  on Linux and macOS the rect that has *already* been invalidated in this paint cycle.
+		RECT 	 doneInvalidRect;
+		double	 lastTime;
 		UINT_PTR timerID;
 	};
 	const bool BLOCK = false;

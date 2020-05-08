@@ -1,8 +1,13 @@
-#define JS_REASCRIPTAPI_VERSION 1.0042
-
-#include "stdafx.h"
+#include "stdafx.h" // This will in turn #include all the other header files
 
 using namespace std;
+
+#define JS_REASCRIPTAPI_VERSION 1.0042
+
+#ifndef _WIN32
+#define _WDL_SWELL 1
+#define IsWindow(X) ValidatePtr(X, "HWND")
+#endif
 
 // This function is called when REAPER loads or unloads the extension.
 // If rec != nil, the extension is being loaded.  If rec == nil, the extension is being UNloaded.
@@ -105,6 +110,8 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 
 		return 1; // success
 	}
+
+	// rec == nil
 	// Does an extension need to do anything when unloading?  
 	// To prevent memory leaks, perhaps try to delete any stuff that may remain in memory?
 	// On Windows, LICE bitmaps are automatically destroyed when REAPER quits, but to make extra sure, this function will destroy them explicitly.
@@ -128,7 +135,6 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 		for (auto& i : Julian::mLICEBitmaps)
 			LICE__Destroy(i.first);
 		Julian::mLICEBitmaps.clear();
-		LICE__Destroy(Julian::compositeCanvas);
 		for (auto& i : Julian::mapClassNames)
 			free(i.second);
 		for (auto& i : Julian::mapMallocToSize)
@@ -138,6 +144,8 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 		for (HGDIOBJ i : Julian::setGDIObjects)
 			DeleteObject(i);
 		Julian::setGDIObjects.clear();
+
+		LICE__Destroy(Julian::compositeCanvas);
 
 		plugin_register("-accelerator", &(Julian::sAccelerator));
 		return 0;
@@ -232,12 +240,11 @@ v1.002
  * WindowsOS: New JS_Composite_Delay function to reduce flickering.
  * JS_Composite: Auto-update now optional.
  * JS_Composite: Fixed incorrect InvalidateRect calculation. 
+v1.01
+ * Streamline Compositing function, particularly when window is only partially invalidated.
+ * Fix bug in JS_WindowMessage_RestoreOrigProcAndErase.
 */
 
-
-#if defined __APPLE__ || defined __linux__
-#define IsWindow(X) ValidatePtr(X, "HWND")
-#endif
 
 int JS_Zip_Add(char* zipFile, char* inputFiles, int inputFiles_sz)
 {/*
@@ -750,7 +757,7 @@ int JS_Dialog_BrowseForFolder(const char* caption, const char* initialFolder, ch
 
 bool JS_Window_GetRect(void* windowHWND, int* leftOut, int* topOut, int* rightOut, int* bottomOut)
 {
-	#ifndef _WIN32
+	#ifdef _WDL_SWELL
 	if(!ValidatePtr(windowHWND, "HWND")) return false;
 	#endif
 	RECT r{ 0, 0, 0, 0 };
@@ -776,7 +783,7 @@ bool JS_Window_GetRect(void* windowHWND, int* leftOut, int* topOut, int* rightOu
 void JS_Window_ScreenToClient(void* windowHWND, int x, int y, int* xOut, int* yOut)
 {
 	POINT p{ x, y };
-	#ifndef _WIN32
+	#ifdef _WDL_SWELL
 	if(ValidatePtr(windowHWND, "HWND"))
 	#endif
 	// Unlike Win32, Cockos WDL doesn't return a bool to confirm success.
@@ -789,7 +796,7 @@ void JS_Window_ClientToScreen(void* windowHWND, int x, int y, int* xOut, int* yO
 {
 	// Unlike Win32, Cockos WDL doesn't return a bool to confirm success.
 	POINT p{ x, y };
-	#ifndef _WIN32
+	#ifdef _WDL_SWELL
 	if(ValidatePtr(windowHWND, "HWND"))
 	#endif
 	ClientToScreen((HWND)windowHWND, &p);
@@ -912,7 +919,7 @@ void* JS_Window_FromPoint(int x, int y)
 
 void* JS_Window_GetParent(void* windowHWND)
 {
-	#ifndef _WIN32
+	#ifdef _WDL_SWELL
 	if(!ValidatePtr(windowHWND, "HWND")) return nullptr;
 	#endif
 	return GetParent((HWND)windowHWND);
@@ -920,7 +927,7 @@ void* JS_Window_GetParent(void* windowHWND)
 	
 void* JS_Window_SetParent(void* childHWND, void* parentHWND)
 {
-	#ifndef _WIN32
+	#ifdef _WDL_SWELL
 	if(!(ValidatePtr(childHWND, "HWND") && ValidatePtr(parentHWND, "HWND"))) return nullptr;
 	#endif
 	return SetParent((HWND)childHWND, (HWND)parentHWND);
@@ -928,7 +935,7 @@ void* JS_Window_SetParent(void* childHWND, void* parentHWND)
 
 bool  JS_Window_IsChild(void* parentHWND, void* childHWND)
 {
-	#ifndef _WIN32
+	#ifdef _WDL_SWELL
 	if(!(ValidatePtr(childHWND, "HWND") && ValidatePtr(parentHWND, "HWND"))) return false;
 	#endif
 	return !!IsChild((HWND)parentHWND, (HWND)childHWND);
@@ -936,7 +943,7 @@ bool  JS_Window_IsChild(void* parentHWND, void* childHWND)
 
 void* JS_Window_GetRelated(void* windowHWND, const char* relation)
 {
-	#ifndef _WIN32
+	#ifdef _WDL_SWELL
 	if (!ValidatePtr(windowHWND, "HWND")) return nullptr;
 	#endif
 	/*
@@ -962,7 +969,7 @@ void* JS_Window_GetRelated(void* windowHWND, const char* relation)
 
 void  JS_Window_SetFocus(void* windowHWND)
 {
-	#ifndef _WIN32
+	#ifdef _WDL_SWELL
 	if (ValidatePtr(windowHWND, "HWND"))
 	#endif
 	// SWELL returns different types than Win32, so this function won't return anything.
@@ -971,7 +978,7 @@ void  JS_Window_SetFocus(void* windowHWND)
 
 void  JS_Window_SetForeground(void* windowHWND)
 {
-	#ifndef _WIN32
+	#ifdef _WDL_SWELL
 	if(ValidatePtr(windowHWND, "HWND"))
 	#endif
 	// SWELL returns different types than Win32, so this function won't return anything.
@@ -1013,7 +1020,7 @@ int JS_Window_EnableMetal(void* windowHWND)
 	
 void  JS_Window_Enable(void* windowHWND, bool enable)
 {
-	#ifndef _WIN32
+	#ifdef _WDL_SWELL
 	if (ValidatePtr(windowHWND, "HWND"))
 	#endif
 	EnableWindow((HWND)windowHWND, (BOOL)enable); // (enable ? (int)1 : (int)0));
@@ -1021,7 +1028,7 @@ void  JS_Window_Enable(void* windowHWND, bool enable)
 
 void  JS_Window_Destroy(void* windowHWND)
 {
-	#ifndef _WIN32
+	#ifdef _WDL_SWELL
 	if(ValidatePtr(windowHWND, "HWND"))
 	#endif
 	DestroyWindow((HWND)windowHWND);
@@ -1062,7 +1069,7 @@ void  JS_Window_Show(void* windowHWND, const char* state)
 
 bool JS_Window_IsVisible(void* windowHWND)
 {
-	#ifndef _WIN32
+	#ifdef _WDL_SWELL
 	if (!ValidatePtr(windowHWND, "HWND")) return false;
 	#endif
 	return !!IsWindowVisible((HWND)windowHWND);
@@ -1072,7 +1079,7 @@ bool JS_Window_IsVisible(void* windowHWND)
 
 void* JS_Window_SetCapture(void* windowHWND)
 {
-	#ifndef _WIN32
+	#ifdef _WDL_SWELL
 	if (!ValidatePtr(windowHWND, "HWND")) return nullptr;
 	#endif
 	return SetCapture((HWND)windowHWND);
@@ -1091,7 +1098,7 @@ void  JS_Window_ReleaseCapture()
 
 void* JS_Window_GetLongPtr(void* windowHWND, const char* info)
 {
-	#ifndef _WIN32
+	#ifdef _WDL_SWELL
 	if (!ValidatePtr(windowHWND, "HWND")) return nullptr;
 	#endif
 	
@@ -1124,7 +1131,7 @@ void* JS_Window_GetLongPtr(void* windowHWND, const char* info)
 
 void JS_Window_GetLong(void* windowHWND, const char* info, double* retvalOut)
 {
-	#ifndef _WIN32
+	#ifdef _WDL_SWELL
 	if (!ValidatePtr(windowHWND, "HWND")) *retvalOut = 0;
 	#endif
 	
@@ -1157,7 +1164,7 @@ void JS_Window_GetLong(void* windowHWND, const char* info, double* retvalOut)
 
 void JS_Window_SetLong(void* windowHWND, const char* info, double value, double* retvalOut)
 {
-	#ifndef _WIN32
+	#ifdef _WDL_SWELL
 	if (!ValidatePtr(windowHWND, "HWND")) *retvalOut = 0;
 	#endif
 	
@@ -1190,7 +1197,7 @@ void JS_Window_SetLong(void* windowHWND, const char* info, double value, double*
 
 HWND JS_Window_FindEx(HWND parentHWND, HWND childHWND, const char* className, const char* title)
 {
-	#ifndef _WIN32
+	#ifdef _WDL_SWELL
 	if (!(ValidatePtr(parentHWND, "HWND") && ValidatePtr(childHWND, "HWND"))) return nullptr;
 	#endif
 	// REAPER API cannot pass null pointers, so must do another way:
@@ -1202,7 +1209,7 @@ HWND JS_Window_FindEx(HWND parentHWND, HWND childHWND, const char* className, co
 
 HWND JS_Window_FindChildByID(HWND parentHWND, int ID)
 {
-	#ifndef _WIN32
+	#ifdef _WDL_SWELL
 	if (!ValidatePtr(parentHWND, "HWND")) return nullptr;
 	#endif
 	return GetDlgItem(parentHWND, ID);
@@ -1414,7 +1421,7 @@ BOOL CALLBACK JS_Window_FindChild_Callback(HWND hwnd, LPARAM structPtr)
 //		* Optionally matches substrings.
 void* JS_Window_FindChild(void* parentHWND, const char* title, bool exact)
 {
-	#ifndef _WIN32
+	#ifdef _WDL_SWELL
 	if(!(ValidatePtr(parentHWND, "HWND"))) return nullptr;
 	#endif
 	
@@ -1560,7 +1567,7 @@ BOOL CALLBACK JS_Window_ListAllChild_Callback(HWND hwnd, LPARAM lParam)
 
 int JS_Window_ListAllChild(void* parentHWND, char* listOutNeedBig, int listOutNeedBig_sz)
 {
-	#ifndef _WIN32
+	#ifdef _WDL_SWELL
 	if(!(ValidatePtr(parentHWND, "HWND"))) return 0;
 	#endif
 	// Enumerate through all child windows and store their HWNDs in a set. (Sets are nice, since will automatically check for uniqueness.)
@@ -1572,7 +1579,7 @@ int JS_Window_ListAllChild(void* parentHWND, char* listOutNeedBig, int listOutNe
 
 int JS_Window_ArrayAllChild(void* parentHWND, double* reaperarray)
 {
-	#ifndef _WIN32
+	#ifdef _WDL_SWELL
 	if (!(ValidatePtr(parentHWND, "HWND"))) return 0;
 	#endif
 	// Enumerate through all child windows and store ther HWNDs in a set. (Sets are nice, since will automatically check for uniqueness.)
@@ -1706,7 +1713,7 @@ callbacktype CALLBACK JS_Window_Create_WinProc(HWND hwnd, UINT msg, WPARAM wPara
 	}
 }
 
-#ifndef _WIN32
+#ifdef _WDL_SWELL
 #define WS_SIZEBOX WS_THICKFRAME
 #define WS_OVERLAPPEDWINDOW (WS_SIZEBOX|WS_SYSMENU|WS_CAPTION)
 #define WS_OVERLAPPED WS_CAPTION
@@ -1989,7 +1996,7 @@ bool JS_Window_SetPos(void* windowHWND, const char* ZOrder, int x, int y, int w,
 // This function moves windows without resizing or requiring any info about window size.
 void JS_Window_Move(void* windowHWND, int left, int top)
 {
-#ifndef _WIN32
+#ifdef _WDL_SWELL
 	if (ValidatePtr(windowHWND, "HWND"))
 #endif
 	SetWindowPos((HWND)windowHWND, NULL, left, top, 0, 0, SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_NOSIZE);
@@ -1998,7 +2005,7 @@ void JS_Window_Move(void* windowHWND, int left, int top)
 // This function resizes windows without moving or requiring any info about window position.
 void JS_Window_Resize(void* windowHWND, int width, int height)
 {
-#ifndef _WIN32
+#ifdef _WDL_SWELL
 	if (ValidatePtr(windowHWND, "HWND"))
 #endif
 	SetWindowPos((HWND)windowHWND, NULL, 0, 0, width, height, SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_NOMOVE);
@@ -2100,7 +2107,7 @@ bool JS_Window_SetStyle(void* windowHWND, char* style)
 
 void JS_Window_Update(HWND windowHWND)
 {
-#ifndef _WIN32
+#ifdef _WDL_SWELL
 	if (ValidatePtr(windowHWND, "HWND"))
 #endif
 	UpdateWindow(windowHWND);
@@ -2110,7 +2117,7 @@ void JS_Window_Update(HWND windowHWND)
 //!!!! that most functions seem to work with.  NSWindow is more of a container.
 void* JS_Window_GetRoot(void* windowHWND)
 {
-#ifndef _WIN32
+#ifdef _WDL_SWELL
 	if (!ValidatePtr(windowHWND, "HWND")) return nullptr;
 #endif
 
@@ -2141,44 +2148,38 @@ bool JS_Window_InvalidateRect(HWND windowHWND, int left, int top, int right, int
 	
 	if (left >= right || top >= bottom)
 		return false;
-	#ifndef _WIN32
-	// WDL/swell InvalidateRect crashes if hwnd doesn't exist
+	#ifdef _WDL_SWELL
 	if (!ValidatePtr(windowHWND, "HWND")) 
 		return false;
 	#endif
 		
 	RECT rect{ left, top, right, bottom };
 	
-	// If window is composited, Invalidate entire window, because somehow InvalidateRect doesn't work in WM_PAINT callback
-	//		in Classic macOS graphics mode.
+	// If window is composited, details of Invalidated Rects are stored -- and always erase background.
 	if (mapWindowData.count(windowHWND))
 	{
-		RECT& iR = mapWindowData[windowHWND].invalidRect;
+		RECT& iR = mapWindowData[windowHWND].doneInvalidRect;
 		
-		#ifdef _WIN32
-		
-		// No invalidates yet in this paint cycle, so must send InvalidateRect
-		if (iR.left == iR.right && iR.top == iR.bottom)
+		// If not yet invalidated in this paint cycle, InvalidateRect
+		if (iR.left == iR.right || iR.top == iR.bottom)
 		{
 			iR = rect;
-			return InvalidateRect(windowHWND, &rect, true);
+			return InvalidateRect(windowHWND, &iR, true);
 		}
-		// Already invalidated, and rect expands to-be-invalidated iR
+	#ifdef _WIN32
+		// WindowsOS: If window is already invalidated, store rect in to-be-invalidated i2R, to be invalidated during WM_PAINT callback 
+		//		(This avoids dozens of overlapping Invalidates in case of scripts with dozens of composited bitmaps, such as Area(51).)
 		else
 		{
-			UNIONRECT(iR, rect);
+			RECT& i2R = mapWindowData[windowHWND].mustInvalidRect;
+			if (RECTISEMPTY(i2R))
+				i2R = rect;
+			else
+				UNIONRECT(i2R, rect);
 			return true;
 		}
-		
-		#else
-	
-		// No invalidates yet in this paint cycle, so must send InvalidateRect
-		if (iR.left == iR.right && iR.top == iR.bottom)
-		{
-			iR = rect;
-			return InvalidateRect(windowHWND, &rect, true);
-		}
-		// Already invalidated, and rect expands existing area
+	#else
+		// Linux/macOS: InvalidateRect cannot be called inside WM_PAINT callback, so must invalidate now.  But only necessary if rect expands existing iR.
 		else if (left < iR.left || top < iR.top || right > iR.right || bottom > iR.bottom)
 		{
 			UNIONRECT(iR, rect);
@@ -2186,9 +2187,8 @@ bool JS_Window_InvalidateRect(HWND windowHWND, int left, int top, int right, int
 		}
 		// rect area already invalidated, so no need to do anything else
 		else
-			return true;
-			
-		#endif
+			return true;		
+	#endif
 	}
 	
 	return InvalidateRect(windowHWND, &rect, (BOOL)eraseBackground);
@@ -2245,7 +2245,7 @@ bool JS_Window_SetOpacity(HWND windowHWND, const char* mode, double value)
 
 bool JS_Window_SetTitle(void* windowHWND, const char* title)
 {
-#ifndef _WIN32
+#ifdef _WDL_SWELL
 	if (!ValidatePtr(windowHWND, "HWND")) return false;
 #endif
 	return !!SetWindowText((HWND)windowHWND, title); // On Windows, this is DEFINE'd in win32_tuf8.h as GetWindowTextUTF8, which enables Windows' WCHAR and UNICODE.
@@ -2253,7 +2253,7 @@ bool JS_Window_SetTitle(void* windowHWND, const char* title)
 
 void JS_Window_GetTitle(void* windowHWND, char* titleOutNeedBig, int titleOutNeedBig_sz)
 {
-#ifndef _WIN32
+#ifdef _WDL_SWELL
 	if (!ValidatePtr(windowHWND, "HWND")) { titleOutNeedBig[0] = 0; return; }
 #endif
 	GetWindowText((HWND)windowHWND, titleOutNeedBig, titleOutNeedBig_sz); // On Windows, this is DEFINE'd in win32_tuf8.h as GetWindowTextUTF8, which enables Windows' WCHAR and UNICODE.
@@ -2261,7 +2261,7 @@ void JS_Window_GetTitle(void* windowHWND, char* titleOutNeedBig, int titleOutNee
 
 void JS_Window_GetClassName(HWND windowHWND, char* classOut, int classOut_sz)
 {
-#ifndef _WIN32
+#ifdef _WDL_SWELL
 	if (!ValidatePtr(windowHWND, "HWND")) { classOut[0] = 0; return; }
 #endif
 
@@ -2515,7 +2515,7 @@ int JS_WindowMessage_Send(void* windowHWND, const char* message, double wParam, 
 
 bool JS_Window_OnCommand(void* windowHWND, int commandID)
 {
-#ifndef _WIN32
+#ifdef _WDL_SWELL
 	if (!ValidatePtr(windowHWND, "HWND")) return false;
 #endif
 	return JS_WindowMessage_Post(windowHWND, "WM_COMMAND", commandID, 0, 0, 0);
@@ -2562,18 +2562,32 @@ bool JS_WindowMessage_Peek(void* windowHWND, const char* message, bool* passedTh
 }
 
 //TIMERPROC JS_InvalidateTimer(HWND hwnd, UINT msg, UINT_PTR timerID, DWORD millisecs);
-
+// After delay, this timer is called to re-invalidate stored updateRect, which will re-send WM_PAINT
 void JS_InvalidateTimer(HWND hwnd, UINT msg, UINT_PTR timerID, DWORD millisecs)
 {
 	using namespace Julian;
-	if (IsWindow(hwnd) && mapWindowData.count(hwnd))
-	{
-		RECT& ir = mapWindowData[hwnd].invalidRect;
-		if (ir.left < ir.right && ir.top < ir.bottom) // non-empty?
+	//if (IsWindow(hwnd)) // Is it really necessary to check IsWindow?  On WindowsOS, GetClientRect and other window-related functions don't crash if hwnd doesn't exist.
+	//{
+		if (mapWindowData.count(hwnd))
 		{
-			InvalidateRect(hwnd, &ir, true);
+			RECT& i2R = mapWindowData[hwnd].mustInvalidRect;
+			if (!RECTISEMPTY(i2R)) // Anything left to paint?
+			{
+				RECT& iR = mapWindowData[hwnd].doneInvalidRect;
+				if (RECTISEMPTY(iR))
+					iR = i2R;
+				else
+					UNIONRECT(iR, i2R);
+				InvalidateRect(hwnd, &iR, true);
+			}
+			i2R = { 0, 0, 0, 0 };
 		}
-	}
+		else
+		{
+			RECT cR; GetClientRect(hwnd, &cR);
+			InvalidateRect(hwnd, &cR, true);
+		}
+	//}
 }
 
 
@@ -2620,185 +2634,211 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 	// PASSTHROUGH MESSAGE: All messages that aren't blocked, end up here
 	
 	// COMPOSITE LICE BITMAPS - if any
-	/* A few crucial differences between WindowsOS painting and WDL/swell on Linux/macOS:
-	 * 	
-	 * 	1) swell doesn't provide a separate GetUpdateRect function, but BeginPaint can be used. 
-	 * 		Fortunately, swell's BeginPaint is innocuous: It doesn't do background erasing, and doesn't even need an EndPaint. (EndPaint is an empty function that simply returns TRUE). 
-	 * 		In fact, WDL/swell's GetDC uses BeginPaint to get the HDC.
-	 * 	2) On WindowsOS, the entire RECT returned by GetUpdateRect (named uR) is not necessarily invalidated -- that RECT is simply the smallest RECT that contains all the invalidated sub-RECTs.
-	 * 		So to make sure that the extension knows exactly which areas will be re-painted, the entire uR has to be Invalidated.
-	 * 		On WDL/swell (as far as I can tell), the entire RECT returned by BeginPaint will be re-drawn, so no need for additional InvalidateRect.
-	 * 	3) The previous point is fortunate, since on WDL/swell, InvalidateRect doesn't have any effect if called from within this callback function!!
-	 * 		InvalidateRect doesn't change the behaviour of a subsequent call to the original WndProc during this WM_PAINT cycle, and doesn't change the UpdateRect of the next WM_PAINT.
-	 * 	4) On WindowsOS, when the WM_PAINT is passed through to the original WndProc, that WndProc erases the background and resets the UpdateRect.
-	 * 		On WDL/swell, the original WndProc doesn't seem to do that.
-	 * 	5) On WindowsOS, the amount of flickering is affected by the frequency of WM_PAINT updates, each of which requires blitting of the composited bitmaps.
-	 * 		I am not sure why this is happening.  Perhaps because REAPER's updates and GDI , there is some de-synchronization affected by GPU speed, screen refresh rate, 
-	 * 		On WDL/swell, preseumably since REAPER handles both window painting and bitmap blitting, they remain synchronized
-	 * 
-	 * So, how does this extension handle WM_PAINT and compositing differently on WindowsOS vs WDL/swell?
-	 * 
-	 * 	1) 
-	 * 	5) On WindowsOS, w.invalidRect stores the RECT that *must be* invalidated in the next WM_PAINT cycle.  For example, 
-	 * 		On WDL/swell, w.invalidRect stores the RECT that *has already been* invalidated already in this WM_PAINT cycle.
+	/* There are a few crucial differences between WM_PAINT painting on WindowsOS vs on Linux/macOS with WDL/swell:
+				  	
+	  	1) BeginPaint vs GetUpdateRect:
+	 		WDL/swell doesn't provide a separate GetUpdateRect function, but BeginPaint can be used. 
+	  		Fortunately, swell's BeginPaint is innocuous: It doesn't do background erasing, and doesn't even need an EndPaint. (EndPaint is an empty function that simply returns TRUE). 
+	  		In fact, WDL/swell's GetDC uses BeginPaint to get the HDC.
+	  	2) Update RECT:
+	 		On WindowsOS, the entire RECT returned by GetUpdateRect (named uR) is not necessarily invalidated -- that RECT is simply the smallest RECT that contains all the invalidated sub-RECTs.
+	  		So, on WindowsOS, to make sure that the extension knows exactly which areas will be re-painted, the entire uR has to be Invalidated before calling the original WndProc.
+			(If transparent bitmaps are re-blitted onto parts of the window that have not been re-painted, the blitted images will pile up, becoming more and more opaque, so must be very careful!)
+	  		On WDL/swell (as far as I can tell), the entire RECT returned by BeginPaint will be re-drawn, so no need for additional InvalidateRect.
+	  	3) InvalidateRect:
+	 		The previous point is fortunate, since on WDL/swell, InvalidateRect doesn't have any effect if called from within this callback function!!  WARNING!!
+	  		WDL/swell's InvalidateRect doesn't change the behaviour of an immediately following call to the original WndProc inside the callback, and doesn't change the UpdateRect of the next time that WM_PAINT is sent.
+	 		On WindowsOS, InvalidateRect can succesfully be called inside the callback.
+	  	4) Original WndProc:
+	 		On WindowsOS, when the WM_PAINT is passed through to the original WndProc, that WndProc erases the background and resets the UpdateRect.
+	  		On WDL/swell, the original WndProc doesn't seem to do that.
+	  	5) Flickering:
+	 		On WindowsOS, the amount of flickering is affected by the frequency of WM_PAINT updates, each of which requires blitting of the composited bitmaps.
+	  		I am not sure why this is happening, and it may be influenced randomly by GPU speed, screen refresh rate, etc.  The only way that I have found to reduce or even completely remove flicker, is to lower the frequency.
+	  		On WDL/swell, preseumably since REAPER handles both window painting and bitmap blitting, they remain synchronized.  It seems that REAPER does the blitting after doing its own updating of the window contents.
+	 		Another WARNING!!  On macOS, this may not be true if GPU acceleration is enabled in REAPER's Preferences -> Advanced UI/system tweaks.  Some users report that the composited images are not visible at all.  
+	  
+	  So, how does this extension handle WM_PAINT and compositing differently on WindowsOS vs WDL/swell?
+	  
+		1) On WindowOS, InvalidateRect will be called within the callback to ensure that the entire updateRECT will in fact be redrawn.
+	  	5) On WindowsOS, w.invalidRect stores the RECT that must be invalidated in the next WM_PAINT cycle.  For example, 
+	  		On WDL/swell, w.invalidRect stores the RECT that *has already been* invalidated already in this WM_PAINT cycle.
 	
 	 */
-	if (uMsg == WM_PAINT)
-	{
+	if (uMsg == WM_PAINT
+		&& (!w.mapBitmaps.empty() 
 		// Even after all bitmaps have been unlinked, there may be stored areas that need to be invalidated one final time, for example from previous WM_PAINT was delayed.
-		if(w.mapBitmaps.empty())
+		|| !RECTISEMPTY(w.mustInvalidRect)))
+	{
+		//char temp[1000];
+		//int c = 0;
+	
+		if (w.mapBitmaps.empty())
 		{
-			#ifdef _WIN32
-			if (w.invalidRect.right > w.invalidRect.left && w.invalidRect.bottom > w.invalidRect.top)
-				InvalidateRect(hwnd, &w.invalidRect, true);
-			#endif
-			w.invalidRect = {0, 0, 0, 0};
-			// Pass through to end of block, where original WndProc will be called.
+			RECT& i2R = w.mustInvalidRect; // Stuff that extension wants to update (stored updateRect from previous, delayed cycles, as well as bitmaps that were updated)
+			RECT& iR = w.doneInvalidRect;
+			RECT uR{ 0, 0, 0, 0 }; GetUpdateRect(hwnd, &uR, false); // Should cover w.doneInvalidRect
+			//c = c + sprintf(temp + c, "\nuR: %i, %i, %i, %i", uR.left, uR.top, uR.right, uR.bottom);
+			//c = c + sprintf(temp + c, "\niR: %i, %i, %i, %i", iR.left, iR.top, iR.right, iR.bottom);
+			//c = c + sprintf(temp + c, "\ni2R: %i, %i, %i, %i", i2R.left, i2R.top, i2R.right, i2R.bottom);
 		}
-		else
-		{
-			//char temp[1000];
-			//int c = 0;
-
-			#ifdef _WIN32
+		#ifdef _WIN32
 			
-			// Only WindowsOS: Does this window have delay settings?  If so, must check time and perhaps set timer to return later.
-			if (mapDelayData.count(hwnd))
-			{		
-				// Calculate delay
-				auto d = mapDelayData[hwnd];
-				double delay = d.minTime + (d.maxTime - d.minTime) * (w.mapBitmaps.size() / d.maxBitmaps);
-				if (delay > d.maxTime) 
-					delay = d.maxTime;
+		// Only WindowsOS: Does this window have delay settings?  If so, must check time and perhaps set timer to return later.
+		if (mapDelayData.count(hwnd))
+		{		
+			// Calculate delay
+			auto d = mapDelayData[hwnd];
+			double delay = d.minTime + (d.maxTime - d.minTime) * (w.mapBitmaps.size() / d.maxBitmaps);
+			if (delay > d.maxTime) 
+				delay = d.maxTime;
 				
-				double timeNow	= time_precise();
-				if (w.lastTime > timeNow) // lastTime should have starting value of 0, but double-check
-					w.lastTime = 0;
+			double timeNow	= time_precise();
+			if (w.lastTime > timeNow) // lastTime should have starting value of 0, but double-check
+				w.lastTime = 0;
 
-				// Has delay passed?  No, too soon.
-				if (timeNow < w.lastTime + delay)
-				{
-					// If the updateRect is not validated before returning, the system will continue to try to send WM_PAINT, and this will slow down REAPER.
-					//		(For example, script defer cycle will slow down to the same rate as the composite delay.)
-					// But the updateRect must be repainted as some point, so store the rect in w.invalidRect, to be manually invalidated when delay is over.
-					RECT& ir = w.invalidRect;
-					RECT ur; GetUpdateRect(hwnd, &ur, false);
-					if (ir.left >= ir.right || ir.top >= ir.bottom) // empty rect?
-						ir = ur;
-					else
-						UNIONRECT(ir, ur);
-					ValidateRect(hwnd, &cr); // Don't want REAPER to desperately re-send WM_PAINT
-					if (!w.timerID) 
-						w.timerID = SetTimer(hwnd, 0, static_cast<UINT>(1001*(w.lastTime + delay - timeNow)), (TIMERPROC)JS_InvalidateTimer); // Instead, set my own timer to invalidate
-					return 0; // What is best?  1 or 0 return value?  0 = message processed.
-				}
-				
-				// OK, delay has passed, so remove any remaining timer and go ahead with blitting
+			// Has delay passed?  No, too soon.
+			if (timeNow < w.lastTime + delay)
+			{
+				// If the updateRect is not validated before returning, the system will continue to try to send WM_PAINT, and this will slow down REAPER.
+				//		(For example, script defer cycle will slow down to the same rate as the composite delay.)
+				// But the updateRect must be repainted as some point, so store the rect in w.invalidRect, to be manually invalidated when delay is over.
+				RECT& i2R = w.mustInvalidRect;
+				RECT uR; GetUpdateRect(hwnd, &uR, false); // uR should cover doneInvalidRect
+				if (RECTISEMPTY(i2R)) // empty rect?
+					i2R = uR;
 				else
-				{
-					if (w.timerID) 
-					{
-						KillTimer(hwnd, w.timerID);
-						w.timerID = 0;
-					}
-					w.lastTime = timeNow;
-				}
+					UNIONRECT(i2R, uR);
+				w.doneInvalidRect = {0, 0, 0, 0};
+				RECT cR; GetClientRect(hwnd, &cR);
+				ValidateRect(hwnd, &cR); // Don't want REAPER to desperately re-send WM_PAINT
+				if (!w.timerID) 
+					w.timerID = SetTimer(hwnd, 0, static_cast<UINT>(1001*(w.lastTime + delay - timeNow)), (TIMERPROC)JS_InvalidateTimer); // Instead, set my own timer to invalidate
+				return 0; // What is best?  1 or 0 return value?  0 = message processed.
 			}
+				
+			// OK, delay has passed, so remove any remaining timer and go ahead with blitting
+			else
+			{
+				if (w.timerID) 
+				{
+					KillTimer(hwnd, w.timerID);
+					w.timerID = 0;
+				}
+				w.lastTime = timeNow;
+			}
+		}
 			
-			RECT& iR = w.invalidRect; // Stuff that extension wants to update (stored updateRect from previous, delayed cycles, as well as bitmaps that were updated)
-			RECT uR{ 0, 0, 0, 0 }; GetUpdateRect(hwnd, &uR, false);
-			//c = c + sprintf(temp + c, "\nuR: %i, %i, %i, %i", uR.left, uR.top, uR.right, uR.bottom);
-			if (iR.left < iR.right && iR.top < iR.bottom) // Combine uR and iR and make sure both are completely invalidated.
-				UNIONRECT(uR, iR);
+		RECT& i2R = w.mustInvalidRect; // Stuff that extension wants to update (stored updateRect from previous, delayed cycles, as well as bitmaps that were updated)
+		RECT& iR  = w.doneInvalidRect;
+		RECT  uR; GetUpdateRect(hwnd, &uR, false); // Should cover w.doneInvalidRect
+		//c = c + sprintf(temp + c, "\nuR: %i, %i, %i, %i", uR.left, uR.top, uR.right, uR.bottom);
+		//c = c + sprintf(temp + c, "\niR: %i, %i, %i, %i", iR.left, iR.top, iR.right, iR.bottom);
+		//c = c + sprintf(temp + c, "\ni2R: %i, %i, %i, %i", i2R.left, i2R.top, i2R.right, i2R.bottom);
+		if (!RECTISEMPTY(i2R)) // if i2R non-empty, combine with uR and make sure both are completely invalidated.
+			UNIONRECT(uR, i2R);
+		if (uR.left < iR.left || uR.top < iR.top || uR.right > iR.right || uR.bottom > iR.bottom) // Has entire uR already been Invalidated?  If not Invalidate.
 			InvalidateRect(hwnd, &uR, false); // WARNING! The entire updateRect is not necessarily invalidated.  So even if uR contains iR, must still InvalidateRect entire uR to ensure that all parts will be redrawn.
-			iR = { 0, 0, 0, 0 };  // Reset iR for next cycle
+		iR  = { 0, 0, 0, 0 };  // Reset iR for next cycle
+		i2R = { 0, 0, 0, 0 };
 			
-			// CALL ORIGINAL WNDPROC
-			LRESULT result = CallWindowProc((WNDPROC)(intptr_t)w.origProc, hwnd, uMsg, wParam, lParam);
+		// CALL ORIGINAL WNDPROC
+		LRESULT result = CallWindowProc((WNDPROC)(intptr_t)w.origProc, hwnd, uMsg, wParam, lParam);
 			
-			#else
+		#else
 			
-			PAINTSTRUCT p; BeginPaint(hwnd, &p); // swell doesn't provide a separate GetUpdateRect function. swell's BeginPaint is innocuous and doesn't start painting - even GetDC uses BeginPaint to get DC.  Doesn't need EndPaint, which just return TRUE.
-			RECT& uR = p.rcPaint;
-			//c = c + sprintf(temp + c, "\nuR: %i, %i, %i, %i", uR.left, uR.top, uR.right, uR.bottom);
-			w.invalidRect = { 0, 0, 0, 0 }; // Reset iR for next cycle
-			//c = c + sprintf(temp + c, "\nWM_PAINT received\n#bitmaps: %li", w.mapBitmaps.size());
+		PAINTSTRUCT p; BeginPaint(hwnd, &p); // swell doesn't provide a separate GetUpdateRect function. swell's BeginPaint is innocuous and doesn't start painting - even GetDC uses BeginPaint to get DC.  Doesn't need EndPaint, which just return TRUE.
+		RECT& uR = p.rcPaint;
+		//c = c + sprintf(temp + c, "\nuR: %i, %i, %i, %i", uR.left, uR.top, uR.right, uR.bottom);
+		w.mustInvalidRect = { 0, 0, 0, 0 }; // Reset iR for next cycle
+		w.doneInvalidRect = { 0, 0, 0, 0 };
+		//c = c + sprintf(temp + c, "\nWM_PAINT received\n#bitmaps: %li", w.mapBitmaps.size());
 			
-			// CALL ORIGINAL WNDPROC
-			LRESULT result = ((WNDPROC)(intptr_t)w.origProc)(hwnd, uMsg, wParam, lParam);
+		// CALL ORIGINAL WNDPROC
+		LRESULT result = ((WNDPROC)(intptr_t)w.origProc)(hwnd, uMsg, wParam, lParam);
 			
-			#endif
+		#endif
 			
-			// Iterate through all linked bitmaps				
-			RECT cR; GetClientRect(hwnd, &cR);
-			bool updateEntireClientArea = (uR.left == 0 && uR.top == 0 && uR.right == cR.right && uR.bottom == cR.bottom);
-			if (!updateEntireClientArea)
+		/*	Before blitting, first check: is entire client area invalidated?
+		If the updateRECT partially overlaps the destinationRECT of a bitmap -- and if the bitmap is stretched/scaled -- it may not be possible to directly blit only the overlapped part into the window.
+			For example, if a 5x5 bitmap is blitted into a 1000x1000 area, but only a small 100x50 area is invalidated (which may happen if a tooltip pops up), 
+			StretchBlt and AlphaBlend, which only accept integer arguments, cannot blit only the affected area.
+		How can this be handled?  On WindowsOS, the updateRECT can be enlarged to cover the entire client area, but on WDL/swell, InvalidateRect cannot be called from within the callback.
+		What this extension does, is to use a two-step solution: 
+			1) First, any bitmap that is partially overlapped and also stretched, is ScaledBlitted into a temporary bitmap, Julian::compositeCanvas (with stretching, but without alphablending).
+			2) The overlapping section (*only* this section) is then blitted without stretching (but with alpha blending) onto the window.
+		If the entire client area is not invalidated, must make sure that the temporary canvas is at least as big as the target client area.
+		 */
+		RECT cR; GetClientRect(hwnd, &cR);
+		HDC canvasDC = NULL;
+		bool updateEntireClientArea = (uR.left <= 0 && uR.top <= 0 && uR.right >= cR.right && uR.bottom >= cR.bottom);
+		if (!updateEntireClientArea)
+		{
+			int width = compositeCanvas->getWidth();
+			int height = compositeCanvas->getHeight();
+			if (width < cR.right || height < cR.bottom)
 			{
-				int width = compositeCanvas->getWidth();
-				int height = compositeCanvas->getHeight();
-				if (width < cR.right || height < cR.bottom)
-				{
-					BOOL resizeOK = compositeCanvas->resize(width > cR.right ? width : cR.right, height > cR.bottom ? height : cR.bottom);
-					//c = c + sprintf(temp + c, "\nresize: %i, %i", width, height);
-				}
+				BOOL resizeOK = compositeCanvas->resize(width > cR.right ? width : cR.right, height > cR.bottom ? height : cR.bottom);
 			}
-			
+			canvasDC = compositeCanvas->getDC();
+		}
+		
+		// Finally, do the compositing!  Iterate through all linked bitmaps.
+		if (updateEntireClientArea || canvasDC)
+		{
 			HDC windowDC = GetDC(hwnd);
-			if (windowDC) 
+			if (windowDC)
 			{
-				HDC canvasDC = compositeCanvas->getDC();
-				if (canvasDC) 
+				for (auto& b : w.mapBitmaps) // Map that contains all the linked bitmaps: b.first is a LICE_IBitmap*
 				{
-					for (auto& b : w.mapBitmaps) // Iterate through all the linked bitmaps: b.first is a LICE_IBitmap*
+					sBlitRects& coor = b.second; // Coordinates: b.second is a struct with src and dst coordinates that specify where the bitmaps should be blitted
+					if (coor.dstw != 0 && coor.dstw != 0) // Making size 0 is common way of quickly hiding bitmap without needing to call Composite_Unlink
 					{
-						sBlitRects& coor = b.second; // Coordinates: b.second is a struct with src and dst coordinates that specify where the bitmaps should be blitted
-						if (coor.dstw != 0 && coor.dstw != 0) // Making size 0 is common way of quickly hiding bitmap without needing to call Composite_Unlink
+						if (mLICEBitmaps.count(b.first)) // Double-check that the bitmap actually still exist?
 						{
-							if (mLICEBitmaps.count(b.first)) // Double-check that the bitmap actually still exist? And is it visible on-screen
+							HDC srcDC = b.first->getDC();
+							if (srcDC)
 							{
-								HDC srcDC = b.first->getDC();
-								if (srcDC)
-								{
-									RECT dstR = cR;  // Calculate destination rect - updated for current client size. If dstw or dsth is -1, bitmap is stretched over entire width or height of clientRect. If not, use dst coordinates.
-									if (coor.dstw != -1) { dstR.left = coor.dstx; dstR.right  = coor.dstw; }
-									if (coor.dsth != -1) { dstR.top  = coor.dsty; dstR.bottom = coor.dsth; }
-									//c = c + sprintf(temp + c, "\ndstR: %i, %i, %i, %i", dstR.left, dstR.top, dstR.right, dstR.bottom);
+								RECT dstR = cR;  // Calculate destination rect - updated for current client size. If dstw or dsth is -1, bitmap is stretched over entire width or height of clientRect. If not, use dst coordinates.
+								if (coor.dstw != -1) { dstR.left = coor.dstx; dstR.right  = coor.dstw; }
+								if (coor.dsth != -1) { dstR.top  = coor.dsty; dstR.bottom = coor.dsth; }
+								//c = c + sprintf(temp + c, "\ndstR: %i, %i, %i, %i", dstR.left, dstR.top, dstR.right, dstR.bottom);
 									
-									RECT overlapR; // How does the dstR overlap with the updateRect uR?  Only the overlapping part must be blitted.
-									overlapR.left 	= (dstR.left > uR.left) ? dstR.left : uR.left;
-									overlapR.top	= (dstR.top  > uR.top)	? dstR.top  : uR.top;
-									overlapR.right  = (dstR.left+dstR.right < uR.right)  ? dstR.left+dstR.right-overlapR.left : uR.right-overlapR.left;
-									overlapR.bottom = (dstR.top+dstR.bottom < uR.bottom) ? dstR.top+dstR.bottom-overlapR.top  : uR.bottom-overlapR.top;
+								RECT overlapR; // How does the dstR overlap with the updateRect uR?  Only the overlapping part must be blitted.
+								overlapR.left 	= (dstR.left > uR.left) ? dstR.left : uR.left;
+								overlapR.top	= (dstR.top  > uR.top)	? dstR.top  : uR.top;
+								overlapR.right  = (dstR.left+dstR.right < uR.right)  ? dstR.left+dstR.right-overlapR.left : uR.right-overlapR.left;
+								overlapR.bottom = (dstR.top+dstR.bottom < uR.bottom) ? dstR.top+dstR.bottom-overlapR.top  : uR.bottom-overlapR.top;
 									 
-									// Only need to go ahead if the dstR overlaps with the updateRect uR
-									if (overlapR.right > 0 && overlapR.bottom > 0)
-									{
-										// The are three 
+								// Only need to go ahead if the dstR overlaps with the updateRect uR
+								if (overlapR.right > 0 && overlapR.bottom > 0)
+								{
+									// As explained above, there are two ways in which bitmaps can be blitted:  partial stretched bitmaps will first be stretch-blitted into temporary canvas. 
+									//		Other bitmaps can be blitted directly onto windowDC.
 
-										if (updateEntireClientArea
-										// dstR is fully within uR, so no need to clip and can StretchBlt directly into windowDC
-										|| (overlapR.right == dstR.right && overlapR.bottom == dstR.bottom)
-										// or, dstR and uR partially overlap, but no stretching: Only blit overlapping part
-										|| (dstR.right == coor.srcw && dstR.bottom == coor.srch))
-										{
-											#ifdef _WIN32
-											AlphaBlend(windowDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom, srcDC, coor.srcx+(overlapR.left-dstR.left), coor.srcy+(overlapR.top-dstR.top), coor.srcw+(overlapR.right-dstR.right), coor.srch+(overlapR.bottom-dstR.bottom), BLENDFUNCTION{ AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
-											#else
-											StretchBlt(windowDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom, srcDC, coor.srcx+(overlapR.left-dstR.left), coor.srcy+(overlapR.top-dstR.top), coor.srcw+(overlapR.right-dstR.right), coor.srch+(overlapR.bottom-dstR.bottom), SRCCOPY_USEALPHACHAN);
-											#endif
-										}									
+									if (updateEntireClientArea
+									// dstR is fully within uR, so no need to clip and can StretchBlt directly into windowDC
+									|| (overlapR.right == dstR.right && overlapR.bottom == dstR.bottom)
+									// or, dstR and uR partially overlap, but no stretching: Only blit overlapping part
+									|| (dstR.right == coor.srcw && dstR.bottom == coor.srch))
+									{
+										#ifdef _WIN32
+										AlphaBlend(windowDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom, srcDC, coor.srcx+(overlapR.left-dstR.left), coor.srcy+(overlapR.top-dstR.top), coor.srcw+(overlapR.right-dstR.right), coor.srch+(overlapR.bottom-dstR.bottom), BLENDFUNCTION{ AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
+										#else
+										StretchBlt(windowDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom, srcDC, coor.srcx+(overlapR.left-dstR.left), coor.srcy+(overlapR.top-dstR.top), coor.srcw+(overlapR.right-dstR.right), coor.srch+(overlapR.bottom-dstR.bottom), SRCCOPY_USEALPHACHAN);
+										#endif
+									}									
 										
-										// Stretching and partially overlapping: Two steps: first StretchBlt to temporary canvas, then BitBlt overlapping part into window
-										else
-										{
-											//c = c + sprintf(temp + c, "\noverlapR: %i, %i, %i, %i", overlapR.left, overlapR.top, overlapR.right, overlapR.bottom);
-											LICE_ScaledBlit(compositeCanvas, b.first, dstR.left, dstR.top, dstR.right, dstR.bottom, coor.srcx, coor.srcy, coor.srcw, coor.srch, 1, LICE_BLIT_MODE_COPY);
-											#ifdef _WIN32
-											AlphaBlend(windowDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom, canvasDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom, BLENDFUNCTION{ AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
-											#else
-											StretchBlt(windowDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom, canvasDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom, SRCCOPY_USEALPHACHAN);
-											#endif
-										}
+									// Stretching and partially overlapping: Two steps: first StretchBlt to temporary canvas, then BitBlt overlapping part into window
+									else
+									{
+										//c = c + sprintf(temp + c, "\noverlapR: %i, %i, %i, %i", overlapR.left, overlapR.top, overlapR.right, overlapR.bottom);
+										LICE_ScaledBlit(compositeCanvas, b.first, dstR.left, dstR.top, dstR.right, dstR.bottom, coor.srcx, coor.srcy, coor.srcw, coor.srch, 1, LICE_BLIT_MODE_COPY);
+										#ifdef _WIN32
+										AlphaBlend(windowDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom, canvasDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom, BLENDFUNCTION{ AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
+										#else
+										StretchBlt(windowDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom, canvasDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom, SRCCOPY_USEALPHACHAN);
+										#endif
 									}
 								}
 							}
@@ -2807,124 +2847,9 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 				}
 				ReleaseDC(hwnd, windowDC);
 			}
-			//if (c) ShowConsoleMsg(temp);
-			return result;
 		}
-						
-#if 0
-																			
-										// dstR is fully within uR, so no need to clip and can StretchBlt directly into windowDC
-										//if ((overlapR.right == dstR.right && overlapR.bottom == dstR.bottom) //(updateEntireClientArea || (dstR.left >= uR.left && dstR.top >= uR.top && dstR.left+dstR.right <= uR.bottom && dstR.top+dstR.bottom <= uR.bottom))
-										/*{
-											#ifdef _WIN32
-											AlphaBlend(windowDC, dstR.left, dstR.top, dstR.right, dstR.bottom, srcDC, c.srcx, c.srcy, c.srcw, c.srch, BLENDFUNCTION{ AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
-											#else
-											StretchBlt(windowDC, dstR.left, dstR.top, dstR.right, dstR.bottom, srcDC, c.srcx, c.srcy, c.srcw, c.srch, SRCCOPY_USEALPHACHAN);
-											#endif
-										}	
-										
-										
-										*/
-												
-								//if (dstR.left < uR.right && dstR.top < uR.bottom && dstR.left+dstR.right > uR.left && dstR.top+dstR.bottom > uR.top)
-						
-									//if (dstR.left >= uR.left && dstR.top >= uR.top && dstR.left+dstR.right <= uR.bottom && dstR.top+dstR.bottom <= uR.bottom)
-									if (overlapR.right == dstR.right && overlapR.bottom == dstR.bottom)
-
-									else if 
-						
-			// Is entire client area invalidated?  Then blit all linked bitmaps (if visible)
-			if (ur.left < ur.right && ur.top < ur.bottom)
-			{
-				RECT cR{0,0,0,0}; GetClientRect(hwnd, &cR);
-				if (false) //(ur.left <= 0 && ur.top <= 0 && ur.right >= cR.right && ur.bottom >= cR.bottom)
-				{
-					//c = c + sprintf(temp + c, "\nEntire bitmap");
-					HDC windowDC = GetDC(hwnd);
-					if (windowDC) 
-					{
-						for (auto& b : w.mapBitmaps) // Iterate through all the linked bitmaps: b.first is a LICE_IBitmap*
-						{
-							sBlitRects& i = b.second; // b.second is a struct with src and dst coordinates that specify where the bitmaps should be blitted
-							if (i.dstw != 0 && i.dstw != 0 && mLICEBitmaps.count(b.first)) // Double-check that the bitmap actually still exist? And is it visible on-screen?
-							{ 
-								HDC srcDC = b.first->getDC();
-								if (srcDC) 
-								{
-									RECT r = cR; // If dstw or dsth is -1, bitmap is stretched over entire width or height of clientRect. If not, use dst coordinates.
-									if (i.dstw != -1) { r.left = i.dstx; r.right = i.dstw; }
-									if (i.dsth != -1) { r.top = i.dsty; r.bottom = i.dsth; }
-									#ifdef _WIN32
-									AlphaBlend(windowDC, r.left, r.top, r.right, r.bottom, srcDC, i.srcx, i.srcy, i.srcw, i.srch, BLENDFUNCTION{ AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
-									#else
-									StretchBlt(windowDC, r.left, r.top, r.right, r.bottom, srcDC, i.srcx, i.srcy, i.srcw, i.srch, SRCCOPY_USEALPHACHAN);
-									#endif
-								}
-							}
-						}
-						ReleaseDC(hwnd, windowDC);
-					}
-				}
-				
-				// Client are partially invalidated, so only blit overlapping bitmaps
-				else
-				{
-					//c = c + sprintf(temp + c, "\npartial ur: %i, %i, %i, %i", ur.left, ur.top, ur.right-ur.left, ur.bottom-ur.top);
-					{
-						int width = compositeCanvas->getWidth();
-						int height = compositeCanvas->getHeight();
-						if (width < cR.right || height < cR.bottom)
-						{
-							BOOL resizeOK = compositeCanvas->resize(width > cR.right ? width : cR.right, height > cR.bottom ? height : cR.bottom);
-							//c = c + sprintf(temp + c, "\nresize: %i, %i", width, height);
-						}
-					}
-					HDC windowDC = GetDC(hwnd);
-					if (windowDC) 
-					{
-						HDC canvasDC = compositeCanvas->getDC();
-						if (canvasDC) 
-						{
-							for (auto& b : w.mapBitmaps) // Iterate through all the linked bitmaps: b.first is a LICE_IBitmap*
-							{
-								if (mLICEBitmaps.count(b.first)) // Double-check that the bitmap actually still exist? And is it visible on-screen
-								{
-									sBlitRects& i = b.second; // b.second is a struct with src and dst coordinates that specify where the bitmaps should be blitted
-									RECT dstr = cR;  // Calculate destination rect - updated for current client size. If dstw or dsth is -1, bitmap is stretched over entire width or height of clientRect. If not, use dst coordinates.
-									if (i.dstw != -1) { dstr.left = i.dstx; dstr.right = i.dstw; }
-									if (i.dsth != -1) {	dstr.top = i.dsty;  dstr.bottom = i.dsth; }
-									//c = c + sprintf(temp + c, "\ndstr: %i, %i, %i, %i", dstr.left, dstr.top, dstr.right, dstr.bottom);
-									// Only blit overlapping rects. WARNING! Remember that ur uses left-right-top-bottom, whereas dstr uses width-height.
-									RECT overlapr;
-									overlapr.left 	= (dstr.left > ur.left) ? dstr.left : ur.left;
-									overlapr.top	= (dstr.top  > ur.top)	? dstr.top  : ur.top;
-									overlapr.right  = (dstr.left+dstr.right < ur.right) ? dstr.left+dstr.right-overlapr.left : ur.right-overlapr.left;
-									overlapr.bottom = (dstr.top+dstr.bottom < ur.bottom) ? dstr.top+dstr.bottom-overlapr.top : ur.bottom-overlapr.top;
-
-									if (overlapr.right > 0 && overlapr.bottom > 0) //dstr.left < ur.left+ur.right && dstr.left+dstr.right > ur.left && dstr.top < ur.top+ur.bottom && dstr.top+dstr.bottom > ur.top)
-									{
-										//c = c + sprintf(temp + c, "\noverlapr: %i, %i, %i, %i", overlapr.left, overlapr.top, overlapr.right, overlapr.bottom);
-										HDC srcDC = b.first->getDC();
-										if (srcDC)
-										{
-											StretchBlt(canvasDC, dstr.left, dstr.top, dstr.right, dstr.bottom, srcDC, i.srcx, i.srcy, i.srcw, i.srch, SRCCOPY);
-											#ifdef _WIN32
-											AlphaBlend(windowDC, overlapr.left, overlapr.top, overlapr.right, overlapr.bottom, canvasDC, overlapr.left, overlapr.top, overlapr.right, overlapr.bottom, BLENDFUNCTION{ AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
-											#else
-											StretchBlt(windowDC, overlapr.left, overlapr.top, overlapr.right, overlapr.bottom, canvasDC, overlapr.left, overlapr.top, overlapr.right, overlapr.bottom, SRCCOPY_USEALPHACHAN);
-											#endif
-										}
-									}
-								}
-							}
-						}
-						ReleaseDC(hwnd, windowDC);
-					}
-				}
-			}
-			return result;
-#endif
-			//if (c) ShowConsoleMsg(temp);
+		//if (c) ShowConsoleMsg(temp);
+		return result;
 	}
 	
 	// NO COMPOSITING -- call original WndProc and return results
@@ -2943,233 +2868,6 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 	return result;
 }
 
-#if 0
-/*
-LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-	using namespace Julian;
-	char temp[1000];
-	int c = 0;
-	//c = c + sprintf(temp+c, "\n\nHWND: %p, Msg: %i", hwnd, uMsg);
-	//ShowConsoleMsg(temp);
-
-	// If not in map, something went awry. Don't know how to call original window process.
-	if (mapWindowData.count(hwnd) == 0)
-		return 1;
-
-	// INTERCEPT / BLOCK WINDOW MESSAGES
-	sWindowData& w = mapWindowData[hwnd]; // Get reference/alias because want to write into existing struct.
-
-	// Event that should be intercepted? 
-	if (w.mapMessages.count(uMsg)) // ".contains" has only been implemented in more recent C++ versions
-	{
-		w.mapMessages[uMsg].time = time_precise();
-		w.mapMessages[uMsg].wParam = wParam;
-		w.mapMessages[uMsg].lParam = lParam;
-
-		// If event will not be passed through, can quit here.
-		if (w.mapMessages[uMsg].passthrough == false)
-		{
-			// Most WM_ messages return 0 if processed, with only a few exceptions:
-			switch (uMsg)
-			{
-			case WM_SETCURSOR:
-			case WM_DRAWITEM:
-			case WM_COPYDATA:
-			case WM_ERASEBKGND:
-				return 1;
-			case WM_MOUSEACTIVATE:
-				return 3;
-			default:
-				return 0;
-			}
-		}
-	}
-
-	// All messages that aren't blocked, end up here
-	
-	
-	// COMPOSITE LICE BITMAPS - if any (also clean up remaining invalid rect)
-	if (uMsg == WM_PAINT && (!w.mapBitmaps.empty() || w.invalidRect.left != w.invalidRect.right || w.invalidRect.top != w.invalidRect.bottom))
-	{
-		// If the invalidated parts of the window overlap a composited bitmap, that bitmap must be re-blitted, otherwise it will be partly removed.
-		// Existing bitmaps must be wiped before re-blitting so that transparencies don't pile up.
-		// On Linux and macOS, WDL/swell does not offer an GetUpdateRect function equivalent, so the extension does not know which parts will be re-drawn, 
-		//	so the entire window will be invalidated, and all bitmaps will be re-blitted.
-		// In contrast, on WindowsOS, the extension tries to minimize the re-drawing by 
-		//	1) minimizing the invalidRect, which must also be enlarged to include updateRect and all -- but only -- overlapping bitmaps.  
-		//		Expanding the invalidRect to cover one bitmap, may overlap another that wasn't previous overlapped; 
-		//		so the code must loop and re-check each bitmap until no further expansion was required.
-		//	2) timing and slowing down the re-drawing to the times set in mapWindowDelay.
-		//	WARNING: The entire rect returned by GetUpdateRect has *not* necessarily been completely invalidated.  There may be parts of invalidRect that have *not* been invalidated.
-		//	The extension must therefore include invalidRect in its final rect to be invalidated.
-		std::map<LICE_IBitmap*, RECT> nonOverlappingRects; // After looping through all bitmaps, those that don't need to be blitted will be remain in here.
-
-		RECT cr{ 0,0,0,0 };
-		GetClientRect(hwnd, &cr);
-		RECT& ir = w.invalidRect;
-
-#ifdef _WIN32
-
-		// Can window be re-drawn yet?  Calculate delay time.
-		double timeNow	= time_precise();
-		size_t s		= w.mapBitmaps.size();
-		double delay	= 0;
-		if (mapDelayData.count(hwnd))
-		{
-			auto d = mapDelayData[hwnd];
-			delay = d.minTime + (d.maxTime - d.minTime) * (w.mapBitmaps.size() / d.maxBitmaps);
-			if (delay > d.maxTime) delay = d.maxTime;
-		}
-
-		// Too soon
-		if (timeNow < w.lastTime + delay)
-		{
-			// If the updateRect is not validated before returning, the system will continue to try to send WM_PAINT, and this will slow down REAPER.
-			//		(For example, script defer cycle will slow down to the same rate as the composite delay.)
-			// But the updateRect must be repainted as some point, so store the rect in w.invalidRect, to be manually invalidated when delay is over.
-			RECT ur; GetUpdateRect(hwnd, &ur, false);
-			if (ir.left >= ir.right || ir.top >= ir.bottom) // empty rect?
-				ir = ur;
-			else
-				UNIONRECT(ir, ur);
-			ValidateRect(hwnd, &cr); // Don't want REAPER to desperately re-send WM_PAINT
-			if (!w.timerID) 
-				w.timerID = SetTimer(hwnd, 0, static_cast<UINT>(1001*(w.lastTime + delay - timeNow)), (TIMERPROC)JS_InvalidateTimer); // Instead, set my own timer to invalidate
-			return 0; // What is best?  1 or 0 return value?  0 = message processed.
-		}
-
-		// OK, refresh and composite
-		else
-		{
-			if (w.timerID) {
-				KillTimer(hwnd, w.timerID);
-				w.timerID = 0;
-			}
-			w.lastTime = timeNow;
-
-			RECT ur{ 0, 0, 0, 0 };
-			GetUpdateRect(hwnd, &ur, true);
-			//c = c + sprintf(temp + c, "\n------------------\nUpdateRect: %i, %i, %i, %i", ur.left, ur.top, ur.right, ur.bottom);
-			RECT& ir = w.invalidRect;
-			if (ir.left < ir.right && ir.top < ir.bottom)
-				UNIONRECT(ur, ir);
-			//c = c + sprintf(temp + c, "\nmovedr: %i, %i, %i, %i", movedr.left, movedr.top, movedr.right, movedr.bottom);
-			ir = { 0, 0, 0, 0 };
-			// Only need to bother calculating minimum update rect if update rect doesn't already cover entire client rect.
-			if (ur.left <= cr.left && ur.top <= cr.top && ur.right >= cr.right && ur.bottom >= cr.bottom)
-			{
-				InvalidateRect(hwnd, &cr, true);
-			}
-			else
-			{
-				// Convert rects from xywh to lrtb format, using current client rect size
-				for (auto& b : w.mapBitmaps)
-				{
-					sBlitRects& r = b.second;
-					if (r.dstw != 0 && r.dsth != 0) // Skip zero-sized, invisible images
-						nonOverlappingRects[b.first] = { r.dstw == -1 ? 0 : r.dstx,
-														r.dsth == -1 ? 0 : r.dsty,
-														r.dstw == -1 ? cr.right : (r.dstx + r.dstw),
-														r.dsth == -1 ? cr.bottom : (r.dsty + r.dsth) };
-				}
-				//c = c + sprintf(temp + c, "\n# non-0 bitmaps: %i", nonOverlappingRects.size());
-				// Expanding the rect to cover one bitmap, may overlap another that wasn't previous overlapped; 
-				// so this loop must re-check each bitmap until no further expansion was required.
-				RECT prevr;
-				do
-				{
-					//c = c + sprintf(temp + c, "\nExpand: %i, %i, %i, %i", ur.left, ur.top, ur.right, ur.bottom);
-					prevr = ur;
-					for (auto it = nonOverlappingRects.begin(), nextit = it; it != nonOverlappingRects.end(); it = nextit) // auto& b : windowData.mapBitmaps) // Why not loop through nonOverlappingBitmaps? Because will erase entries while looping.
-					{
-						++nextit;
-						RECT r = it->second;
-						if (RECTSOVERLAP(ur, r))
-						{
-							UNIONRECT(ur, r) // Place union in ur
-								nonOverlappingRects.erase(it);
-						}
-					}
-				} while (!EqualRect(&ur, &prevr));
-				//c = c + sprintf(temp + c, "\n# non-overlapping bitmaps: %i", nonOverlappingRects.size());
-				InvalidateRect(hwnd, &ur, true);
-			}
-
-			LRESULT result = CallWindowProc((WNDPROC)(intptr_t)w.origProc, hwnd, uMsg, wParam, lParam);
-
-#else
-		// WDL/swell does not offer an GetUpdateRect function equivalent, so the entire window must be re-drawn whenever WM_PAINT is received.
-		// WARNING! For some reason, on REAPER macOS, Advanced UI tweaks -> Classic mode, InvalidateRect does NOT work properly
-		//		if called in this callback function.  The window does not properly update.  Probably some double-buffering in GPU memory.
-		// Fortunately, InvalidateRect does seem to work fine if called by a script earlier in the defer cycle.
-		// So this extension lets JS_Composite, JS_Window_InvalidateRect etc invalidate the *entire* window.
-		// If the window has been invalidated already, don't need to do it in this callback.
-
-		c = c + sprintf(temp+c, "\n\ncr: %i, %i, %i, %i\nir: %i, %i, %i, %i", cr.left, cr.top, cr.right, cr.bottom, ir.left, ir.top, ir.right, ir.bottom);
-		c = c + sprintf(temp+c, "\nNum bm: %i, Num nonoverl: %i", w.mapBitmaps.size(), nonOverlappingRects.size());
-		if (TRUE) //ir.right < cr.right || ir.bottom < cr.bottom || ir.left > cr.left || ir.top > cr.top)
-		{
-					//c = c + sprintf(temp+c, "\nInvalidated");
-
-			InvalidateRect(hwnd, &cr, true);
-		}
-		// On macOS and Linux invalidRect contains the retc has has *already* been InvalidateRect'd.  Must therefore be reset at each paint cycle w.invalidRect.
-		ir = { 0, 0, 0, 0 };
-
-		{
-			LRESULT result = ((WNDPROC)(intptr_t)w.origProc)(hwnd, uMsg, wParam, lParam);
-#endif
-			HDC windowDC = GetDC(hwnd);
-			if (windowDC) {
-				for (auto& b : w.mapBitmaps) {
-					sBlitRects& i = b.second;
-					if (i.dstw != 0 && i.dstw != 0 && !nonOverlappingRects.count(b.first) && mLICEBitmaps.count(b.first)) { // Does this bitmap overlap the invalid area? Does it still exist?
-						HDC bitmapDC = b.first->getDC();
-						if (bitmapDC) {
-							c = c + sprintf(temp+c, "\nOrigDC: %p, NewDC: %p", mLICEBitmaps[b.first], bitmapDC);
-							RECT r = cr;
-							if (i.dstw != -1) {
-								r.left = i.dstx; r.right = i.dstw;
-							}
-							if (i.dsth != -1) {
-								r.top = i.dsty; r.bottom = i.dsth;
-							}
-	#ifdef _WIN32
-							AlphaBlend(windowDC, r.left, r.top, r.right, r.bottom, bitmapDC, i.srcx, i.srcy, i.srcw, i.srch, BLENDFUNCTION{ AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
-	#else
-							StretchBlt(windowDC, r.left, r.top, r.right, r.bottom, bitmapDC, i.srcx, i.srcy, i.srcw, i.srch, SRCCOPY_USEALPHACHAN);
-	#endif
-						}
-						else
-							c = c + sprintf(temp+c, "\nDC error");
-					}
-				}
-				ReleaseDC(hwnd, windowDC);
-			}
-			ShowConsoleMsg(temp);
-			return result;
-		}
-	} // if (uMsg == WM_PAINT && ...)
-
-	// NO COMPOSITING - just return original results
-	else
-	{
-#ifdef _WIN32
-		LRESULT result = CallWindowProc((WNDPROC)(intptr_t)w.origProc, hwnd, uMsg, wParam, lParam);
-#else
-		LRESULT result = ((WNDPROC)(intptr_t)w.origProc)(hwnd, uMsg, wParam, lParam);
-#endif
-		
-		// If DESTROYING window, must remove from mapWindowData before going ahead.
-		if (uMsg == WM_DESTROY && !IsWindow(hwnd))
-			mapWindowData.erase(hwnd);
-			
-		return result;
-	}
-}
-*/
-#endif
 
 // Intercept a single message type
 int JS_WindowMessage_Intercept(void* windowHWND, const char* message, bool passthrough)
@@ -3447,6 +3145,7 @@ void JS_WindowMessage_ReleaseWindow(void* windowHWND)
 
 // Call this function to clean up intercepts, after clearing mapMessages or mapBitmaps.
 // WARNING: DO NOT call this function inside a loop over mapWindowData, since this function may delete entries in mapWindowData.
+// This function does not do InvalidateRect.
 void JS_WindowMessage_RestoreOrigProcAndErase()
 {
 	using namespace Julian;
@@ -3455,17 +3154,17 @@ void JS_WindowMessage_RestoreOrigProcAndErase()
 		if (m.second.mapBitmaps.empty() && m.second.mapMessages.empty())
 			toDelete.insert(m.first);
 
-	for (HWND w : toDelete)
+	for (HWND hwnd : toDelete)
 	{
-		if (IsWindow(w) && Julian::mapWindowData[w].origProc) 
+		if (IsWindow(hwnd) && Julian::mapWindowData[hwnd].origProc)
 		{
 			#ifdef _WIN32
-			SetWindowLongPtr(w, GWLP_WNDPROC, Julian::mapWindowData[w].origProc);
+			SetWindowLongPtr(hwnd, GWLP_WNDPROC, Julian::mapWindowData[hwnd].origProc);
 			#else			
-			SetWindowLong(w, GWL_WNDPROC, Julian::mapWindowData[w].origProc);
+			SetWindowLong(hwnd, GWL_WNDPROC, Julian::mapWindowData[hwnd].origProc);
 			#endif
 		}
-		mapWindowData.erase(w);
+		mapWindowData.erase(hwnd);
 	}
 }
 
@@ -3586,7 +3285,7 @@ void* JS_Mouse_GetCursor()
 
 void* JS_GDI_GetClientDC(void* windowHWND)
 {
-#ifndef _WIN32
+#ifdef _WDL_SWELL
 	if (!ValidatePtr(windowHWND, "HWND")) return nullptr;
 #endif
 	HDC dc = GetDC((HWND)windowHWND);
@@ -3596,7 +3295,7 @@ void* JS_GDI_GetClientDC(void* windowHWND)
 
 void* JS_GDI_GetWindowDC(void* windowHWND)
 {
-#ifndef _WIN32
+#ifdef _WDL_SWELL
 	if (!ValidatePtr(windowHWND, "HWND")) return nullptr;
 #endif
 	HDC dc = GetWindowDC((HWND)windowHWND);
@@ -3892,7 +3591,6 @@ int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap
 		
 	// If autoUpdate, the composite function will call InvalidateRect to start the blitting, so the destination rect must be calculated.
 	// ALSO: If the window and bitmap were already composited, its destination coordinates may be moving, so the invalidated rect must cover the new as well as the previous dst rect.
-	
 	RECT cR; // Client rect
 	RECT dstR; // Destination rect (that must be Invalidated)
 	if (autoUpdate)
@@ -3921,7 +3619,8 @@ int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap
 		#endif
 		
 		Julian::mapWindowData[hwnd] = sWindowData{ origProc };
-		Julian::mapWindowData[hwnd].invalidRect = { 0, 0, 0, 0 };
+		Julian::mapWindowData[hwnd].mustInvalidRect = { 0, 0, 0, 0 };
+		Julian::mapWindowData[hwnd].doneInvalidRect = { 0, 0, 0, 0 };
 		Julian::mapWindowData[hwnd].lastTime = 0;
 	}
 
@@ -3929,10 +3628,11 @@ int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap
 	else if (autoUpdate && mapWindowData[hwnd].mapBitmaps.count(sysBitmap))
 	{
 		auto& b = mapWindowData[hwnd].mapBitmaps[sysBitmap];
-		RECT prevr{ b.dstx, b.dsty, b.dstx + b.dstw, b.dsty + b.dsth };
-		if (b.dstw == -1) { prevr.left = 0; prevr.right = cR.right; }
-		if (b.dsth == -1) { prevr.top = 0;  prevr.bottom = cR.bottom; }
-		UNIONRECT(dstR, prevr);
+		RECT prevR{ b.dstx, b.dsty, b.dstx + b.dstw, b.dsty + b.dsth };
+		if (b.dstw == -1) { prevR.left = 0; prevR.right = cR.right; }
+		if (b.dsth == -1) { prevR.top = 0;  prevR.bottom = cR.bottom; }
+		if (!RECTISEMPTY(prevR))
+			UNIONRECT(dstR, prevR);
 	}
 
 	// OK, hwnd should now be in map. Don't use emplace, since may need to replace previous dst or src RECT of already-linked bitmap
@@ -3941,23 +3641,28 @@ int JS_Composite(HWND hwnd, int dstx, int dsty, int dstw, int dsth, LICE_IBitmap
 	if (autoUpdate)
 	{
 		BOOL invalidateOK;
-		RECT& iR = mapWindowData[hwnd].invalidRect;
+		RECT& iR = mapWindowData[hwnd].doneInvalidRect;
 		
 		// No invalidates yet in this paint cycle, so must send InvalidateRect
-		if (iR.left == iR.right || iR.top == iR.bottom)
+		if (RECTISEMPTY(iR))
 		{
 			iR = dstR;
-			invalidateOK = InvalidateRect(hwnd, &dstR, true);
+			invalidateOK = InvalidateRect(hwnd, &iR, true);
 		}
 		#ifdef _WIN32
-		// Already invalidated, and rect expands to-be-invalidated iR -- final updateRect will be invalidated inside WM_PAINT callback
-		else
+		// WindowsOS: If window is already invalidated, store rect in to-be-invalidated i2R, to be invalidated during WM_PAINT callback 
+		//		(This avoids dozens of overlapping Invalidates in case of scripts with dozens of composited bitmaps, such as Area(51).)
+		else 
 		{
-			UNIONRECT(iR, dstR);
+			RECT& i2R = mapWindowData[hwnd].mustInvalidRect;
+			if (RECTISEMPTY(i2R))
+				i2R = dstR;
+			else
+				UNIONRECT(i2R, dstR);
 			invalidateOK = TRUE;
 		}
 		#else
-		// Already invalidated, and rect expands existing area
+		// Linux/macOS: InvalidateRect cannot be called inside WM_PAINT callback, so must invalidate now.  But only necessary if rect expands existing iR.
 		else if (dstR.left < iR.left || dstR.top < iR.top || dstR.right > iR.right || dstR.bottom > iR.bottom)
 		{
 			UNIONRECT(iR, dstR);
@@ -3976,54 +3681,55 @@ void JS_Composite_Unlink(HWND hwnd, LICE_IBitmap* bitmap = nullptr, bool autoUpd
 	using namespace Julian;
 	if (mapWindowData.count(hwnd)) 
 	{
+		auto& w = mapWindowData[hwnd];
+
 		if (!bitmap) // Unlink ALL bitmaps from window
 		{
-			mapWindowData[hwnd].mapBitmaps.clear();
+			w.mapBitmaps.clear();
 
 			if (IsWindow(hwnd))
 			{
-				GetClientRect(hwnd, &mapWindowData[hwnd].invalidRect);
-				InvalidateRect(hwnd, &mapWindowData[hwnd].invalidRect, true);
+				GetClientRect(hwnd, &w.doneInvalidRect);
+				InvalidateRect(hwnd, &w.doneInvalidRect, true);
+				w.mustInvalidRect = {0, 0, 0, 0};
 			}
 		}
 
 		// Unlinking bitmap should also erase blitted image from hwnd.
 		// Must first store dst rect coordinates, then erase the link, the InvalidateRect the composited area to remove image.
-		else if (mapWindowData[hwnd].mapBitmaps.count(bitmap))
+		else if (w.mapBitmaps.count(bitmap))
 		{
-			sBlitRects b = mapWindowData[hwnd].mapBitmaps[bitmap]; // Store existing dst and src rects
+			//char temp[1000];
+			//int c = 0;
+			sBlitRects b = w.mapBitmaps[bitmap]; // Store existing dst and src rects
 
-			mapWindowData[hwnd].mapBitmaps.erase(bitmap); // Erase link
+			w.mapBitmaps.erase(bitmap); // Erase link
 
-			if (autoUpdate && IsWindow(hwnd)) 
+			if (autoUpdate && IsWindow(hwnd))
 			{
 				RECT dstR; GetClientRect(hwnd, &dstR); // Start as client rect, contract to destination image
-				RECT& iR = mapWindowData[hwnd].invalidRect;
+				if (b.dstw != -1) { dstR.left = b.dstx; dstR.right = b.dstx + b.dstw; }
+				if (b.dsth != -1) { dstR.top = b.dsty; dstR.bottom = b.dsty + b.dsth; }
 
-				// Adjust for -1 w or h, which expands to entire client rect
-				if (b.dstw != -1) { dstR.left = b.dstx; dstR.right  = b.dstx + b.dstw; } 
-				if (b.dsth != -1) { dstR.top  = b.dsty; dstR.bottom = b.dsty + b.dsth; }
-				
-				// No invalidates yet in this paint cycle, so must send InvalidateRect
-				if (iR.left >= iR.right || iR.top >= iR.bottom)
+				if (!RECTISEMPTY(dstR)) // Was bitmap visible?
 				{
-					iR = dstR;
-					InvalidateRect(hwnd, &dstR, true);
+					RECT& iR = mapWindowData[hwnd].doneInvalidRect;
+
+					// No invalidates yet in this paint cycle, so must send InvalidateRect
+					if (RECTISEMPTY(iR))
+					{
+						iR = dstR;
+						InvalidateRect(hwnd, &iR, true);
+					}
+					// Already invalidated, but rect expands existing iR, 
+					// WARNING: When unlinking bitmaps, RestoreOrigProcAndErase might end up completely removing the intercept, so w.mustInvalidate won't be applied inside WM_PAINT callback
+					//		Must therefore invalidate here.
+					else if (dstR.left < iR.left || dstR.top < iR.top || dstR.right > iR.right || dstR.bottom > iR.bottom)
+					{
+						UNIONRECT(iR, dstR);
+						InvalidateRect(hwnd, &iR, true);
+					}
 				}
-				#ifdef _WIN32
-				// Already invalidated, but rect expands *to-be-invalidated* iR -- final updateRect will be invalidated inside WM_PAINT callback
-				else
-				{
-					UNIONRECT(iR, dstR);
-				}
-				#else
-				// Already invalidated, but rect expands existing iR, and on WDL/swell, iR should give *already* invalidated rect
-				else if (dstR.left < iR.left || dstR.top < iR.top || dstR.right > iR.right || dstR.bottom > iR.bottom)
-				{
-					UNIONRECT(iR, dstR);
-					InvalidateRect(hwnd, &iR, true);
-				}
-				#endif				
 			}
 		}
 		JS_WindowMessage_RestoreOrigProcAndErase();
@@ -4043,6 +3749,7 @@ int JS_Composite_ListBitmaps(HWND hwnd, char* listOutNeedBig, int listOutNeedBig
 int  JS_Composite_Delay(HWND hwnd, double minTime, double maxTime, int maxBitmaps, double* prevMinTimeOut, double* prevMaxTimeOut, int* prevBitmapsOut)
 {
 	using namespace Julian;
+	// Return previous values
 	if (mapDelayData.count(hwnd))
 	{
 		*prevMinTimeOut = mapDelayData[hwnd].minTime;
@@ -4051,15 +3758,21 @@ int  JS_Composite_Delay(HWND hwnd, double minTime, double maxTime, int maxBitmap
 	}
 	else
 	{
-		*prevMinTimeOut = -1;
-		*prevMaxTimeOut = -1;
-		*prevBitmapsOut = -1;
+		*prevMinTimeOut = 0;
+		*prevMaxTimeOut = 0;
+		*prevBitmapsOut = 0;
 	}
-	if (minTime >= 0 && maxTime >= minTime && maxBitmaps > 1)
+
+	// Remove delay settings if all 0
+	if (minTime == 0 && maxTime == 0)
 	{
-		//if (minTime < 0) minTime = 0;
-		//if (maxTime < minTime) maxTime = minTime;
-		//if (maxBitmaps <= 0) maxBitmaps = 100;
+		mapDelayData.erase(hwnd);
+		return 1;
+	}
+
+	// Check if new values are acceptable
+	else if (minTime >= 0 && maxTime >= minTime && maxBitmaps > 1)
+	{
 		mapDelayData[hwnd] = sDelayData{ minTime, maxTime, maxBitmaps };
 		return 1;
 	}
@@ -4140,7 +3853,7 @@ void JS_LICE_DestroyBitmap(LICE_IBitmap* bitmap)
 			}
 		}
 		for (auto& w : linkedWindows) 
-			JS_Composite_Unlink(w, bitmap, true); // Will also InvalidateRect the dst window, may delete mapWindowData is no intercepts.
+			JS_Composite_Unlink(w, bitmap, true); // Will also InvalidateRect the dst window, may delete mapWindowData if no intercepts.
 		mLICEBitmaps.erase(bitmap);
 		LICE__Destroy(bitmap);
 	}
@@ -4673,7 +4386,7 @@ void JS_Window_AttachResizeGrip(void* windowHWND)
 
 int JS_ListView_GetItemCount(HWND listviewHWND)
 {
-#ifndef _WIN32
+#ifdef _WDL_SWELL
 	if (!ValidatePtr((HWND)listviewHWND, "HWND")) return -1;
 #endif
 	return ListView_GetItemCount(listviewHWND);
@@ -4681,7 +4394,7 @@ int JS_ListView_GetItemCount(HWND listviewHWND)
 
 int JS_ListView_GetSelectedCount(HWND listviewHWND)
 {
-#ifndef _WIN32
+#ifdef _WDL_SWELL
 	if (!ValidatePtr((HWND)listviewHWND, "HWND")) return -1;
 #endif
 	return ListView_GetSelectedCount(listviewHWND);
@@ -4689,7 +4402,7 @@ int JS_ListView_GetSelectedCount(HWND listviewHWND)
 
 int JS_ListView_GetFocusedItem(HWND listviewHWND, char* textOut, int textOut_sz)
 {
-#ifndef _WIN32
+#ifdef _WDL_SWELL
 	if (!ValidatePtr((HWND)listviewHWND, "HWND")) return -1;
 #endif
 	int index = ListView_GetNextItem(listviewHWND, -1, LVNI_FOCUSED);
@@ -4702,7 +4415,7 @@ int JS_ListView_GetFocusedItem(HWND listviewHWND, char* textOut, int textOut_sz)
 
 void JS_ListView_EnsureVisible(HWND listviewHWND, int index, bool partialOK)
 {
-#ifndef _WIN32
+#ifdef _WDL_SWELL
 	if (ValidatePtr((HWND)listviewHWND, "HWND"))
 #endif
 	ListView_EnsureVisible(listviewHWND, index, partialOK);
@@ -4710,7 +4423,7 @@ void JS_ListView_EnsureVisible(HWND listviewHWND, int index, bool partialOK)
 
 int JS_ListView_EnumSelItems(HWND listviewHWND, int index)
 {
-#ifndef _WIN32
+#ifdef _WDL_SWELL
 	if (!ValidatePtr((HWND)listviewHWND, "HWND")) return -1;
 #endif
 	// WDL/swell doesn't offer all these flag options, so this function only offers SELECTED:
@@ -4719,13 +4432,13 @@ int JS_ListView_EnumSelItems(HWND listviewHWND, int index)
 
 void JS_ListView_GetItem(HWND listviewHWND, int index, int subItem, char* textOut, int textOut_sz, int* stateOut)
 {
-#ifndef _WIN32
+#ifdef _WDL_SWELL
 	if (!ValidatePtr((HWND)listviewHWND, "HWND")) {	textOut[0] = 0; *stateOut = 0; return; }
 #endif
 	ListView_GetItemText(listviewHWND, index, subItem, textOut, textOut_sz);
 	*stateOut = ListView_GetItemState(listviewHWND, index, LVIS_SELECTED | LVIS_FOCUSED);
 	// WIN32 and swell define LVIS_SELECTED and LVIS_FOCUSED differently, so if swell, swap values:
-	#ifndef _WIN32
+	#ifdef _WDL_SWELL
 	if (((*stateOut) & LVIS_SELECTED) && !((*stateOut) & LVIS_FOCUSED))
 	{
 		*stateOut |= LVIS_FOCUSED;
@@ -4741,12 +4454,12 @@ void JS_ListView_GetItem(HWND listviewHWND, int index, int subItem, char* textOu
 
 int JS_ListView_GetItemState(HWND listviewHWND, int index)
 {
-#ifndef _WIN32
+#ifdef _WDL_SWELL
 	if (!ValidatePtr((HWND)listviewHWND, "HWND")) return 0;
 #endif
 	int state = ListView_GetItemState(listviewHWND, index, LVIS_SELECTED | LVIS_FOCUSED);
 	// WIN32 and swell define LVIS_SELECTED and LVIS_FOCUSED differently, so if swell, swap values:
-	#ifndef _WIN32
+	#ifdef _WDL_SWELL
 	if ((state & LVIS_SELECTED) && !(state & LVIS_FOCUSED))
 	{
 		state |= LVIS_FOCUSED;
@@ -4763,7 +4476,7 @@ int JS_ListView_GetItemState(HWND listviewHWND, int index)
 
 void JS_ListView_GetItemText(HWND listviewHWND, int index, int subItem, char* textOut, int textOut_sz)
 {
-#ifndef _WIN32
+#ifdef _WDL_SWELL
 	if (!ValidatePtr((HWND)listviewHWND, "HWND")) {	textOut[0] = 0; return; }
 #endif
 	ListView_GetItemText(listviewHWND, index, subItem, textOut, textOut_sz);
@@ -4771,7 +4484,7 @@ void JS_ListView_GetItemText(HWND listviewHWND, int index, int subItem, char* te
 
 int JS_ListView_ListAllSelItems(HWND listviewHWND, char* itemsOutNeedBig, int itemsOutNeedBig_sz)
 {
-#ifndef _WIN32
+#ifdef _WDL_SWELL
 	if (!ValidatePtr((HWND)listviewHWND, "HWND")) { itemsOutNeedBig[0] = 0; return 0; }
 #endif
 	using namespace Julian;
