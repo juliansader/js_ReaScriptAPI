@@ -2,7 +2,7 @@ os: osx
 #os: linux
 language: cpp
 compiler: g++-5
-env: ARCH="x86" COMPILER_NAME=g++-5 CXX=g++-5 CC=gcc-5 CXX_FOR_BUILD=g++-5 CC_FOR_BUILD=gcc-5
+env: COMPILER_NAME=g++-5 CXX=g++-5 CC=gcc-5 CXX_FOR_BUILD=g++-5 CC_FOR_BUILD=gcc-5
 before_install:
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then export CXX="g++-5"; export CXX_FOR_BUILD="g++-5"; sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y; sudo apt-get update -q; sudo apt-get install g++-5 libgtk-3-dev gcc-5-multilib g++-5-multilib; fi
   #- if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install g++5 libgtk-3-dev gcc-multilib g++-multilib; fi
