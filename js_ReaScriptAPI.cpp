@@ -2634,45 +2634,66 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 	// PASSTHROUGH MESSAGE: All messages that aren't blocked, end up here
 	
 	// COMPOSITE LICE BITMAPS - if any
-	/* There are a few crucial differences between WM_PAINT painting on WindowsOS vs on Linux/macOS with WDL/swell:
+	/* The basic idea is quite simple:  
+		* Assume that REAPER only paints its windows when receiving WM_PAINT messages.
+		* Whenever a WM_PAINT is received, first call the window's original WndProc to update the window with REAPER's own stuff (which should paint over composited bitmap images), 
+		* then, if any bitmaps are composited to this window, blit the bitmaps into the Invalidated part of the window.
+		* Hope that the tiny fraction of a second between REAPER's updates and the bitmap blits don't cause flickering.
+	
+	There are a few crucial differences between WM_PAINT painting on WindowsOS vs Linux/macOS with WDL/swell:
 				  	
 	  	1) BeginPaint vs GetUpdateRect:
 	 		WDL/swell doesn't provide a separate GetUpdateRect function, but BeginPaint can be used. 
-	  		Fortunately, swell's BeginPaint is innocuous: It doesn't do background erasing, and doesn't even need an EndPaint. (EndPaint is an empty function that simply returns TRUE). 
-	  		In fact, WDL/swell's GetDC uses BeginPaint to get the HDC.
-	  	2) Update RECT:
-	 		On WindowsOS, the entire RECT returned by GetUpdateRect (named uR) is not necessarily invalidated -- that RECT is simply the smallest RECT that contains all the invalidated sub-RECTs.
+	  		Fortunately, swell's BeginPaint is innocuous: It doesn't do background erasing, and doesn't even need an EndPaint. (EndPaint is simply an empty function that simply returns TRUE). 
+	  		In fact, swell's GetDC uses BeginPaint to get the HDC.
+	  	2) The UpdateRect:
+	 		On WindowsOS, the entire RECT returned by GetUpdateRect (named uR) is not necessarily invalidated -- uR is simply the smallest RECT that contains all the invalidated sub-RECTs.
 	  		So, on WindowsOS, to make sure that the extension knows exactly which areas will be re-painted, the entire uR has to be Invalidated before calling the original WndProc.
-			(If transparent bitmaps are re-blitted onto parts of the window that have not been re-painted, the blitted images will pile up, becoming more and more opaque, so must be very careful!)
+			(Why is this important?  If transparent bitmaps are re-blitted onto parts of the window that have not been re-painted, the blitted images will pile up, becoming more and more opaque, so must be very careful!)
 	  		On WDL/swell (as far as I can tell), the entire RECT returned by BeginPaint will be re-drawn, so no need for additional InvalidateRect.
 	  	3) InvalidateRect:
 	 		The previous point is fortunate, since on WDL/swell, InvalidateRect doesn't have any effect if called from within this callback function!!  WARNING!!
 	  		WDL/swell's InvalidateRect doesn't change the behaviour of an immediately following call to the original WndProc inside the callback, and doesn't change the UpdateRect of the next time that WM_PAINT is sent.
 	 		On WindowsOS, InvalidateRect can succesfully be called inside the callback.
 	  	4) Original WndProc:
-	 		On WindowsOS, when the WM_PAINT is passed through to the original WndProc, that WndProc erases the background and resets the UpdateRect.
-	  		On WDL/swell, the original WndProc doesn't seem to do that.
+	 		On WindowsOS, the original WndProc is responsible for erasing the background and resetting the UpdateRect.
+	  		On WDL/swell, the original WndProc doesn't seem to do that, and the background gets erased even if WM_PAINT and WM_ERASEBCKGRD is blocked.
 	  	5) Flickering:
-	 		On WindowsOS, the amount of flickering is affected by the frequency of WM_PAINT updates, each of which requires blitting of the composited bitmaps.
+	 		On WindowsOS, the amount of flickering seems to be affected by the frequency of WM_PAINT updates, each of which requires blitting of the composited bitmaps.
 	  		I am not sure why this is happening, and it may be influenced randomly by GPU speed, screen refresh rate, etc.  The only way that I have found to reduce or even completely remove flicker, is to lower the frequency.
-	  		On WDL/swell, preseumably since REAPER handles both window painting and bitmap blitting, they remain synchronized.  It seems that REAPER does the blitting after doing its own updating of the window contents.
+	  		On WDL/swell, preseumably since REAPER handles both window painting and bitmap blitting, they remain synchronized.  
+			It seems that REAPER does the blitting after doing its own updating of the window contents, and the window is updated once per script defer cycle.
 	 		Another WARNING!!  On macOS, this may not be true if GPU acceleration is enabled in REAPER's Preferences -> Advanced UI/system tweaks.  Some users report that the composited images are not visible at all.  
 	  
 	  So, how does this extension handle WM_PAINT and compositing differently on WindowsOS vs WDL/swell?
 	  
-		1) On WindowOS, InvalidateRect will be called within the callback to ensure that the entire updateRECT will in fact be redrawn.
-	  	5) On WindowsOS, w.invalidRect stores the RECT that must be invalidated in the next WM_PAINT cycle.  For example, 
-	  		On WDL/swell, w.invalidRect stores the RECT that *has already been* invalidated already in this WM_PAINT cycle.
-	
+		1) InvalidateRect:
+			On WindowsOS, InvalidateRect will be called within the callback to ensure that the entire updateRECT will in fact be redrawn.
+		2) Timer callback:
+			On WindowsOS, JS_Composite_Delay can be used to set the frequency of WM_PAINT updates.  
+			WM_PAINT messages that are received too soon will be blocked, and a timer callback function will be set to re-Invalidate the window after the delay time.
+		3) RECT mustInvalidRect:
+			On WindowsOS, to ensure that the window is correctly updated by the timer after the delay, the blocked UpdateRect RECT that should have been updated is stored in mapWindowData[hwnd].mustInvalidRect.
+			mapWindowData[hwnd].mustInvalidRect stores the union of all RECTs that must be invalidated in the next WM_PAINT cycle.
+	  	3) Skip unneccesary InvalidateRect:
+			On WindowsOS, given that InvalidateRect will in any case be called in this WndProc, and that to-be-invalidated RECTs are stored in mustInvalidRect,
+			there is no need to call InvalidateRect dozens of times per paint cycle (which may happen with scripts such as Area(51), when it composites hundreds of bitmaps at once).
+			Instead, after the first InvalidateRect called by a script, the extension will store all subsequent Invalidated RECTs in mustInvalidRect, to be Invalidated with a single call just before calling the original WndProc.
+		4) RECT doneInvalidRect:
+			On WDL/swell, since InvalidateRect cannot be called inside this WndProc, and since WM_PAINT don't need to be delayed, mustInvalidRect is never used.
+			However, another entry in the mapWindowData, doneInvalidRect, is used to store RECTs that have already been invalidated by this extension (and scripts) in this paint cycle.
+			If the extension receives an InvalidateRect request that falls within the already-invalidated doneInvalidRect, it can be skipped.
 	 */
 	if (uMsg == WM_PAINT
+	    	// Is the window is not composited to any bitmaps, skip this ...
 		&& (!w.mapBitmaps.empty() 
-		// Even after all bitmaps have been unlinked, there may be stored areas that need to be invalidated one final time, for example from previous WM_PAINT was delayed.
+		// ... except if, even after all bitmaps have been unlinked, there may be stored areas that still need to be invalidated one final time, 
+		//	for example from a previous WM_PAINT that was delayed.
 		|| !RECTISEMPTY(w.mustInvalidRect)))
 	{
-		//char temp[1000];
+		//char temp[1000];  // Just for debugging
 		//int c = 0;
-
+		
 		#ifdef _WIN32
 			
 		// Only WindowsOS: Does this window have delay settings?  If so, must check time and perhaps set timer to return later.
