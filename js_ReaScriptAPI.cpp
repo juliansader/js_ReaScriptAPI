@@ -2685,7 +2685,7 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 			If the extension receives an InvalidateRect request that falls within the already-invalidated doneInvalidRect, it can be skipped.
 	 */
 	if (uMsg == WM_PAINT
-	    	// Is the window is not composited to any bitmaps, skip this ...
+	    	// If the window is not composited to any bitmaps, skip this ...
 		&& (!w.mapBitmaps.empty() 
 		// ... except if, even after all bitmaps have been unlinked, there may be stored areas that still need to be invalidated one final time, 
 		//	for example from a previous WM_PAINT that was delayed.
