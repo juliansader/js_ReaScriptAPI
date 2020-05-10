@@ -235,10 +235,12 @@ int Xen_StartSourcePreview(PCM_source* src, double gain, bool loop, int startOut
 int Xen_StopSourcePreview(int id);
 void Xen_DestroyPreviewSystem();
 
-#define UNIONRECT(X, Y) X = {	X.left	 < Y.left	? X.left	: Y.left, \
+#define UNION_RECT(X, Y) X = {	X.left	 < Y.left	? X.left	: Y.left, \
 								X.top	 < Y.top	? X.top		: Y.top, \
 								X.right  > Y.right	? X.right	: Y.right, \
 								X.bottom > Y.bottom	? X.bottom	: Y.bottom };
 
-#define RECTSOVERLAP(X, Y) (X.left < Y.right && X.right > Y.left && X.top < Y.bottom && X.bottom > Y.top)
-#define RECTISEMPTY(X) (X.left == X.right || X.top == X.bottom)
+#define RECTS_OVERLAP(X, Y) (X.left < Y.right && X.right > Y.left && X.top < Y.bottom && X.bottom > Y.top)
+#define RECT_IS_EMPTY(X) (X.left == X.right || X.top == X.bottom)
+#define CONTRACT_TO_CLIENTRECT(X, C) if (X.left >= C.right || X.right <= 0 || X.top >= C.bottom || X.bottom <= C.top) X = { 0, 0, 0, 0};  \
+									 else { if (X.left < 0) X.left = 0; if (X.top < 0) X.top = 0; if (X.right > C.right) X.right = C.right; if (X.bottom > C.bottom) X.bottom = C.bottom; }
