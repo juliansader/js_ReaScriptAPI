@@ -1,4 +1,4 @@
-/*
+
 #ifndef SWELL_TARGET_OSX
 #define SWELL_TARGET_OSX 1
 #endif
@@ -10,7 +10,7 @@
 #ifdef SWELL_NO_METAL
 #error "SWELL_NO_METAL should be defined for the entire project"
 #endif
-*/
+
 
 #import <Cocoa/Cocoa.h>
 #import <objc/objc-runtime.h>
