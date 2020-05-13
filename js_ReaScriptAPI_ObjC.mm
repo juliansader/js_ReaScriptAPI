@@ -265,6 +265,7 @@ bool JS_Window_SetZOrder_ObjC(void* hwnd, void* insertAfterHWND)
    	return false;
 }
 
+/*
 int JS_GetMetalMode(void* hwnd)
 {
 	if (!hwnd) return -10;
@@ -272,3 +273,4 @@ int JS_GetMetalMode(void* hwnd)
 	SWELL_hwndChild *ch = (SWELL_hwndChild *)hwnd;
   	return ch->m_use_metal;
 }
+*/
