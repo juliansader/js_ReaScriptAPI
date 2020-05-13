@@ -5,7 +5,7 @@ using namespace std;
 #define JS_REASCRIPTAPI_VERSION 1.200
 
 #ifndef _WIN32
-#define _WDL_SWELL 1
+#define _WDL_SWELL 1 // So that I don't have to type #ifdef __linux__ and __apple__ everywhere
 #define IsWindow(X) ValidatePtr(X, "HWND")
 #define jsAlphaBlend(A, B, C, D, E, F, G, H, I, J) StretchBlt(A, B, C, D, E, F, G, H, I, J, SRCCOPY_USEALPHACHAN)
 #else
@@ -1017,11 +1017,11 @@ int JS_Window_EnableMetal(void* windowHWND)
 {
 #ifdef __apple__
 	if (ValidatePtr(windowHWND, "HWND"))
-		return SWELL_EnableMetal((HWND)windowHWND, 0);
+		return JS_GetMetalMode((HWND)windowHWND); //SWELL_EnableMetal((HWND)windowHWND, 0);
 	else
-		return 0;
+		return -9;
 #else
-	return 0;
+	return -8;
 #endif
 }
 	
@@ -2338,7 +2338,7 @@ bool  JS_Window_IsWindow(void* windowHWND)
 #else
 	return ValidatePtr(windowHWND, "HWND");
 	/*
-	Older versïons: 
+	Older versÃ¯ons: 
 
 	if (Julian::REAPER_VERSION >= 5.974)
 		return ValidatePtr(windowHWND, "HWND");
