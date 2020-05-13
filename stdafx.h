@@ -27,9 +27,13 @@
 // WARNING: THIS EXTENSION USES A CUSTOMIZED lice.h, SINCE STANDARD lice.h HIDES SOME FUNCTIONS WHEN LICE_PROVIDED_BY_APP, 
 // EVEN THOUGH THOSE FUNCTIONS ARE NOT ACTUALLY PROVIDED BY REAPER.
 #define REAPERAPI_IMPLEMENT
-//#ifndef LICE_PROVIDED_BY_APP
-//#error "LICE_PROVIDED_BY_APP should be defined for entire project (if using command line, add -DLICE_PROVIDED_BY_APP to command)."
-//#endif
+#ifndef PNG_WRITE_SUPPORTED
+#error "PNG_WRITE_SUPPORTED should be defined for the entire project (if using command line, add -DPNG_WRITE_SUPPORTED to command)."
+#endif
+// LICE_PROVIDED_BY_APP is NOT defined for entire project, so that LICE cpp files can access full lice.h
+#ifdef LICE_PROVIDED_BY_APP
+#error "LICE_PROVIDED_BY_APP should *not* be defined for the entire project, in order to allow LICE source files to access the entire lice.h."
+#endif
 #define LICE_PROVIDED_BY_APP
 #define LICE_FAVOR_SPEED
 #include "./WDL/lice/lice.h" // !!!!!!!!!!!!!!!! CUSTOMIZED LICE.H !!!!!!!!!!!!!!!!

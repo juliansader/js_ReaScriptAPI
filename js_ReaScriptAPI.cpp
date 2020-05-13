@@ -2,11 +2,14 @@
 
 using namespace std;
 
-#define JS_REASCRIPTAPI_VERSION 1.01
+#define JS_REASCRIPTAPI_VERSION 1.200
 
 #ifndef _WIN32
 #define _WDL_SWELL 1
 #define IsWindow(X) ValidatePtr(X, "HWND")
+#define jsAlphaBlend(A, B, C, D, E, F, G, H, I, J) StretchBlt(A, B, C, D, E, F, G, H, I, J, SRCCOPY_USEALPHACHAN)
+#else
+#define jsAlphaBlend(A, B, C, D, E, F, G, H, I, J) AlphaBlend(A, B, C, D, E, F, G, H, I, J, BLENDFUNCTION{ AC_SRC_OVER, 0, 255, AC_SRC_ALPHA })
 #endif
 
 // This function is called when REAPER loads or unloads the extension.
@@ -240,9 +243,12 @@ v1.002
  * WindowsOS: New JS_Composite_Delay function to reduce flickering.
  * JS_Composite: Auto-update now optional.
  * JS_Composite: Fixed incorrect InvalidateRect calculation. 
-v1.10
+v1.010
  * Streamline Compositing functions, particularly when window is only partially invalidated.
  * Fix bug in JS_WindowMessage_RestoreOrigProcAndErase.
+v1.200
+ * macOS: Enable compositing if Metal graphics is enabled.
+ * Update WDL/swell to recent version with working SWELL_EnableMetal.
 */
 
 
@@ -1011,8 +1017,8 @@ void* JS_Window_GetForeground()
 int JS_Window_EnableMetal(void* windowHWND)
 {
 #ifdef __apple__
-	if ValidatePtr(windowHWND, "HWND") 
-		return EnableMetal((HWND)windowHWND, 0);
+	if (ValidatePtr(windowHWND, "HWND"))
+		return SWELL_EnableMetal((HWND)windowHWND, 0);
 #else
 	return 0;
 #endif
@@ -2786,87 +2792,96 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 				2) The overlapping section (*only* this section) is then blitted without stretching (but with alpha blending) onto the window.
 			If the entire client area is not invalidated, must make sure that the temporary canvas is at least as big as the target client area.
 			 */
-			HDC canvasDC = NULL;
+			/* 
+			UPDATE: StretchBlt is not fully implemented for macOS windows that use Metal!
+				* Alpha-blending is not implemented
+				* Scaling is not implemented.
+			If Metal is enabled, the blitting will therefore also use a temporary LICE bitmap: 
+				the target window uR will be blitted (with SRCCOPY) into the temporary bitmap, scaling and alpha-blending will be performed in this bitmap, and the results will be copied back to the window.
+			*/
+#ifdef __APPLE__
+			bool metal = (SWELL_EnableMetal(hwnd, 0) > 0);
+#else
+			bool metal = false;
+#endif
+
 			bool updateEntireClientArea = (uR.left <= 0 && uR.top <= 0 && uR.right >= cR.right && uR.bottom >= cR.bottom);
-			if (!updateEntireClientArea)
+			
+			if (metal || !updateEntireClientArea)
 			{
 				int width = compositeCanvas->getWidth();
 				int height = compositeCanvas->getHeight();
 				if (width < cR.right || height < cR.bottom)
-				{
 					BOOL resizeOK = compositeCanvas->resize(width > cR.right ? width : cR.right, height > cR.bottom ? height : cR.bottom);
-				}
-				canvasDC = compositeCanvas->getDC();
 			}
 
 			// Finally, do the compositing!  Iterate through all linked bitmaps.
-			if (updateEntireClientArea || canvasDC)
+			HDC windowDC = GetDC(hwnd);
+			HDC canvasDC = compositeCanvas->getDC();
+			if (windowDC && canvasDC)
 			{
-				HDC windowDC = GetDC(hwnd);
-				if (windowDC)
+				if (metal)
+					BitBlt(canvasDC, uR.left, uR.top, uR.right-uR.left, uR.bottom-uR.top, windowDC, uR.left, uR.top, SRCCOPY);
+
+				for (auto& b : w.mapBitmaps) // Map that contains all the linked bitmaps: b.first is a LICE_IBitmap*
 				{
-					for (auto& b : w.mapBitmaps) // Map that contains all the linked bitmaps: b.first is a LICE_IBitmap*
+					sBlitRects& coor = b.second; // Coordinates: b.second is a struct with src and dst coordinates that specify where the bitmaps should be blitted
+					if (coor.dstw != 0 && coor.dstw != 0) // Making size 0 is common way of quickly hiding bitmap without needing to call Composite_Unlink
 					{
-						sBlitRects& coor = b.second; // Coordinates: b.second is a struct with src and dst coordinates that specify where the bitmaps should be blitted
-						if (coor.dstw != 0 && coor.dstw != 0) // Making size 0 is common way of quickly hiding bitmap without needing to call Composite_Unlink
+						if (mLICEBitmaps.count(b.first)) // Double-check that the bitmap actually still exist?
 						{
-							if (mLICEBitmaps.count(b.first)) // Double-check that the bitmap actually still exist?
+							HDC srcDC = b.first->getDC(); // Not actually necessary if Metal
+							if (srcDC)
 							{
-								HDC srcDC = b.first->getDC();
-								if (srcDC)
+								// WARNING! dstR and overlapR use relative width/height, not absolute right/left
+								RECT dstR = cR;  // Calculate destination rect - updated for current client size. If dstw or dsth is -1, bitmap is stretched over entire width or height of clientRect. If not, use dst coordinates.
+								if (coor.dstw != -1) { dstR.left = coor.dstx; dstR.right = coor.dstw; }
+								if (coor.dsth != -1) { dstR.top = coor.dsty; dstR.bottom = coor.dsth; }
+
+								// Does dstR overlap with uR?
+								if (dstR.left < uR.right && dstR.top < uR.bottom && dstR.top+dstR.bottom > uR.top && dstR.left+dstR.right > uR.left)
 								{
-									// WARNING! dstR and overlapR use relative width/height, not absolute right/left
-									RECT dstR = cR;  // Calculate destination rect - updated for current client size. If dstw or dsth is -1, bitmap is stretched over entire width or height of clientRect. If not, use dst coordinates.
-									if (coor.dstw != -1) { dstR.left = coor.dstx; dstR.right = coor.dstw; }
-									if (coor.dsth != -1) { dstR.top = coor.dsty; dstR.bottom = coor.dsth; }
+									// As explained above, there are FOUR ways in which bitmaps can be blitted:  
+									//		Partial stretched bitmaps will first be stretch-blitted into temporary canvas. 
+									//		If Metal, alpha-blending and stretching must be performed on a temporary bitmap.
+									//		Other bitmaps can be blitted directly onto windowDC.
 
-									RECT overlapR; // How does the dstR overlap with the updateRect uR?  Only the overlapping part must be blitted.
-									overlapR.left = (dstR.left > uR.left) ? dstR.left : uR.left;
-									overlapR.top = (dstR.top > uR.top) ? dstR.top : uR.top;
-									overlapR.right = (dstR.left + dstR.right < uR.right) ? dstR.left + dstR.right - overlapR.left : uR.right - overlapR.left;
-									overlapR.bottom = (dstR.top + dstR.bottom < uR.bottom) ? dstR.top + dstR.bottom - overlapR.top : uR.bottom - overlapR.top;
+									// OPTION 1: 
+									if (metal)
+										LICE_ScaledBlit(compositeCanvas, b.first, dstR.left, dstR.top, dstR.right, dstR.bottom, coor.srcx, coor.srcy, coor.srcw, coor.srch, 1, LICE_BLIT_MODE_COPY | LICE_BLIT_USE_ALPHA);
 
-									// Only need to go ahead if the dstR overlaps with the updateRect uR
-									if (overlapR.right > 0 && overlapR.bottom > 0)
+									// OPTION 2: 
+									else if (updateEntireClientArea)
+										jsAlphaBlend(windowDC, dstR.left, dstR.top, dstR.right, dstR.bottom, srcDC, coor.srcx, coor.srcy, coor.srcw, coor.srch);
+
+									else
 									{
-										// As explained above, there are two ways in which bitmaps can be blitted:  partial stretched bitmaps will first be stretch-blitted into temporary canvas. 
-										//		Other bitmaps can be blitted directly onto windowDC.
-										
-										// In particular, if updating entire area, don't bother with partial overlaps, since the blitting function itself will take care of regions outside dst bitmap:
-										if (updateEntireClientArea)
-											overlapR = dstR;
-										
-										// OPTION 1: Blit direcly to windowDC
-										if (updateEntireClientArea
-											// or dstR is fully within uR, so no need to clip and can StretchBlt directly into windowDC
-											|| (overlapR.right == dstR.right && overlapR.bottom == dstR.bottom)
-											// or, dstR and uR partially overlap, but no stretching: Only blit overlapping part
-											|| (dstR.right == coor.srcw && dstR.bottom == coor.srch))
-										{
-#ifdef _WIN32
-											AlphaBlend(windowDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom, srcDC, coor.srcx + (overlapR.left - dstR.left), coor.srcy + (overlapR.top - dstR.top), coor.srcw + (overlapR.right - dstR.right), coor.srch + (overlapR.bottom - dstR.bottom), BLENDFUNCTION{ AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
-#else
-											StretchBlt(windowDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom, srcDC, coor.srcx + (overlapR.left - dstR.left), coor.srcy + (overlapR.top - dstR.top), coor.srcw + (overlapR.right - dstR.right), coor.srch + (overlapR.bottom - dstR.bottom), SRCCOPY_USEALPHACHAN);
-#endif
-										}
+										RECT overlapR; // How does the dstR overlap with the updateRect uR?  Only the overlapping part must be blitted.
+										overlapR.left = (dstR.left > uR.left) ? dstR.left : uR.left;
+										overlapR.top = (dstR.top > uR.top) ? dstR.top : uR.top;
+										overlapR.right = (dstR.left + dstR.right < uR.right) ? dstR.left + dstR.right - overlapR.left : uR.right - overlapR.left;
+										overlapR.bottom = (dstR.top + dstR.bottom < uR.bottom) ? dstR.top + dstR.bottom - overlapR.top : uR.bottom - overlapR.top;
 
-										// OPTION 2: Stretching and partially overlapping: Two steps: first StretchBlt to temporary canvas, then BitBlt overlapping part into window
+										// OPTION 3: Blit direcly to windowDC
+										if ((overlapR.right == dstR.right && overlapR.bottom == dstR.bottom) // or dstR is fully within uR, so no need to clip and can StretchBlt directly into windowDC
+										|| (dstR.right == coor.srcw && dstR.bottom == coor.srch)) // or, dstR and uR partially overlap, but no stretching: Only blit overlapping part
+											jsAlphaBlend(windowDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom, srcDC, coor.srcx + (overlapR.left - dstR.left), coor.srcy + (overlapR.top - dstR.top), coor.srcw + (overlapR.right - dstR.right), coor.srch + (overlapR.bottom - dstR.bottom));
+
+										// OPTION 4: Stretching and partially overlapping: Two steps: first LICE_ScaledBlt to temporary canvas, then GDI BitBlt overlapping part into window
 										else
 										{
 											LICE_ScaledBlit(compositeCanvas, b.first, dstR.left, dstR.top, dstR.right, dstR.bottom, coor.srcx, coor.srcy, coor.srcw, coor.srch, 1, LICE_BLIT_MODE_COPY);
-#ifdef _WIN32
-											AlphaBlend(windowDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom, canvasDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom, BLENDFUNCTION{ AC_SRC_OVER, 0, 255, AC_SRC_ALPHA });
-#else
-											StretchBlt(windowDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom, canvasDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom, SRCCOPY_USEALPHACHAN);
-#endif
+											jsAlphaBlend(windowDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom, canvasDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom);
 										}
 									}
 								}
 							}
 						}
 					}
-					ReleaseDC(hwnd, windowDC);
 				}
+				if (metal)
+					BitBlt(windowDC, uR.left, uR.top, uR.right-uR.left, uR.bottom-uR.top, canvasDC, uR.left, uR.top, SRCCOPY);
+				ReleaseDC(hwnd, windowDC);
 			}
 		}
 		//if (c) ShowConsoleMsg(temp);
@@ -3902,6 +3917,14 @@ void JS_LICE_DestroyBitmap(LICE_IBitmap* bitmap)
 					else if (strstr(mode, "HSVADJ"))	intMode = LICE_BLIT_MODE_HSVADJ; \
 					if (strstr(mode, "ALPHA"))	intMode |= LICE_BLIT_USE_ALPHA;
 
+/*	
+Standard LICE modes: "COPY" (default if empty string), "MASK", "ADD", "DODGE", "MUL", "OVERLAY" or "HSVADJ", 
+	any of which may be combined with "ALPHA" to enable per-pixel alpha blending.
+In addition to the standard LICE modes, LICE_Blit also offers:
+	* "CHANCOPY_XTOY", with X and Y any of the four channels, A, R, G or B. (CHANCOPY_ATOA is similar to MASK mode.)
+	* "BLUR" 
+	* "ALPHAMUL", which overwrites the destination with a per-pixel alpha-multiplied copy of the source. (Similar to first clearing the destination with 0x00000000 and then blitting with "COPY,ALPHA".)
+*/
 void JS_LICE_Blit(void* destBitmap, int dstx, int dsty, void* sourceBitmap, int srcx, int srcy, int width, int height, double alpha, const char* mode)
 {	
 	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)destBitmap) && Julian::mLICEBitmaps.count((LICE_IBitmap*)sourceBitmap))
