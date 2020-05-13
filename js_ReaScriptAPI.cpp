@@ -248,7 +248,6 @@ v1.010
  * Fix bug in JS_WindowMessage_RestoreOrigProcAndErase.
 v1.200
  * macOS: Enable compositing if Metal graphics is enabled.
- * Update WDL/swell to recent version with working SWELL_EnableMetal.
 */
 
 
