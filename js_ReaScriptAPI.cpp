@@ -5,7 +5,7 @@ using namespace std;
 #define JS_REASCRIPTAPI_VERSION 1.204
 
 #ifndef _WIN32
-#define _WDL_SWELL 1 // So that I don't have to type #ifdef __linux__ and __apple__ everywhere
+#define _WDL_SWELL 1 // So that I don't have to type #ifdef __linux__ and __APPLE__ everywhere
 #define IsWindow(X) ValidatePtr(X, "HWND")
 #define jsAlphaBlend(A, B, C, D, E, F, G, H, I, J) StretchBlt(A, B, C, D, E, F, G, H, I, J, SRCCOPY_USEALPHACHAN)
 #else
@@ -1015,7 +1015,7 @@ void* JS_Window_GetForeground()
 	
 int JS_Window_EnableMetal(void* windowHWND)
 {
-#ifdef __apple__
+#ifdef __APPLE__
 	if (ValidatePtr(windowHWND, "HWND"))
 		return SWELL_EnableMetal((HWND)windowHWND, 0);
 	else
