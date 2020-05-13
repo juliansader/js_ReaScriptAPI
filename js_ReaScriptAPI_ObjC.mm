@@ -130,10 +130,10 @@ bool JS_Window_SetZOrder_ObjC(void* hwnd, void* insertAfterHWND)
    	return false;
 }
 
-int JS_GetMetalMode(void* hwnd)
+int JS_GetMetalMode(HWND hwnd)
 {
-  if (!hwnd || ![(id)hwnd isKindOfClass:[SWELL_hwndChild class]]) return 0xFF;
-
-  SWELL_hwndChild *ch = (SWELL_hwndChild *)hwnd;
-  return ch->m_use_metal;
+	if (!hwnd) return -10;
+	if (![(id)hwnd isKindOfClass:[SWELL_hwndChild class]]) return -11;
+	SWELL_hwndChild *ch = (SWELL_hwndChild *)hwnd;
+  	return ch->m_use_metal;
 }
