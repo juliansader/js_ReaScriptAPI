@@ -69,6 +69,7 @@ bool  JS_Window_SetOpacity(HWND windowHWND, const char* mode, double value);
 void* JS_GetContentViewFromSwellHWND(void* hwnd);
 void* JS_GetNSWindowFromSwellHWND(void* hwnd);
 bool  JS_Window_SetOpacity_ObjC(void* hwnd, double alpha);
+int   JS_GetMetalMode(void* hwnd)
 #endif
 
 void  JS_Window_SetFocus(void* windowHWND);
