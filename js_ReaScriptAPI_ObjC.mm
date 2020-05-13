@@ -1,5 +1,19 @@
+#ifndef SWELL_TARGET_OSX
+#define SWELL_TARGET_OSX 1
+#endif
+
+#ifndef __OBJC__
+#define __OBJC__ 1
+#endif
+
+#ifdef SWELL_NO_METAL
+#error "SWELL_NO_METAL defined"
+#endif
+
 #import <Cocoa/Cocoa.h>
 #import <objc/objc-runtime.h>
+
+#include "./WDL/swell/swell-internal.h"
 
 void* JS_GetContentViewFromSwellHWND(void* hwnd)
 {
@@ -114,7 +128,7 @@ bool JS_Window_SetZOrder_ObjC(void* hwnd, void* insertAfterHWND)
 	}
    	return false;
 }
-/*
+
 int JS_GetMetalMode(void* hwnd)
 {
   if (!hwnd || ![(id)hwnd isKindOfClass:[SWELL_hwndChild class]]) return 0xFF;
@@ -122,4 +136,3 @@ int JS_GetMetalMode(void* hwnd)
   SWELL_hwndChild *ch = (SWELL_hwndChild *)hwnd;
   return ch->m_use_metal;
 }
-* */
