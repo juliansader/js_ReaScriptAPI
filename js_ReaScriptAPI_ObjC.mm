@@ -13,6 +13,7 @@
 #import <Cocoa/Cocoa.h>
 #import <objc/objc-runtime.h>
 
+#include "./WDL/swell/swell-types.h"
 #include "./WDL/swell/swell-internal.h"
 
 void* JS_GetContentViewFromSwellHWND(void* hwnd)
