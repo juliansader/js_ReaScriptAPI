@@ -18,6 +18,13 @@
 #include "./WDL/swell/swell-types.h"
 //#include "./WDL/swell/swell-internal.h"
 
+typedef struct WindowPropRec
+{
+  char *name; // either <64k or a strdup'd name
+  void *data;
+  struct WindowPropRec *_next;
+} WindowPropRec;
+
 @interface SWELL_hwndChild : NSView // <NSDraggingSource>
 {
 @public
