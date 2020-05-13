@@ -1017,7 +1017,7 @@ int JS_Window_EnableMetal(void* windowHWND)
 {
 #ifdef __apple__
 	if (ValidatePtr(windowHWND, "HWND"))
-		return JS_GetMetalMode((HWND)windowHWND); //SWELL_EnableMetal((HWND)windowHWND, 0);
+		return JS_GetMetalMode(windowHWND); //SWELL_EnableMetal((HWND)windowHWND, 0);
 	else
 		return -9;
 #else
