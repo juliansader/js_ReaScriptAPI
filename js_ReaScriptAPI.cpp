@@ -246,8 +246,9 @@ v1.002
 v1.010
  * Streamline Compositing functions, particularly when window is only partially invalidated.
  * Fix bug in JS_WindowMessage_RestoreOrigProcAndErase.
-v1.200
- * macOS: Enable compositing if Metal graphics is enabled.
+v1.210
+ * macOS: JS_Window_EnableMetal returns correct modes.
+ * macOS: Compositing still doesn't work if Metal graphics is enabled.
 */
 
 
