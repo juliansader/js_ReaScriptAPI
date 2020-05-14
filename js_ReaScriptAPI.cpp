@@ -2,7 +2,7 @@
 
 using namespace std;
 
-#define JS_REASCRIPTAPI_VERSION 1.205
+#define JS_REASCRIPTAPI_VERSION 1.210
 
 #ifndef _WIN32
 #define _WDL_SWELL 1 // So that I don't have to type #ifdef __linux__ and __APPLE__ everywhere
