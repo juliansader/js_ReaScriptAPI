@@ -2803,7 +2803,7 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 #ifdef __APPLE__
 			bool metal = (SWELL_EnableMetal(hwnd, 0) > 0);
 #else
-			bool metal = true;
+			bool metal = false;
 #endif
 
 			bool updateEntireClientArea = (uR.left <= 0 && uR.top <= 0 && uR.right >= cR.right && uR.bottom >= cR.bottom);
