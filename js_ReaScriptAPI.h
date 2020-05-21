@@ -15,6 +15,8 @@ bool  JS_String(void* pointer, int offset, int lengthChars, char* bufOutNeedBig,
 void  JS_Int(void* pointer, int offset, int* intOut);
 void  JS_Byte(void* pointer, int offset, int* byteOut);
 void  JS_Double(void* pointer, int offset, double* doubleOut);
+double* JS_ArrayFromAddress(double address);
+void  JS_AddressFromArray(double* array, double* addressOut);
 
 void* JS_Window_Create(const char* title, const char* className, int x, int y, int w, int h, char* styleOptional, void* ownerHWNDOptional);
 int   JS_Dialog_BrowseForSaveFile(const char* windowTitle, const char* initialFolder, const char* initialFile, const char* extensionList, char* fileNameOutNeedBig, int fileNameOutNeedBig_sz);
@@ -174,7 +176,9 @@ bool  JS_LICE_Blit_AlphaMultiply(LICE_IBitmap* destBitmap, int dstx, int dsty, L
 void* JS_LICE_LoadPNG(const char* filename);
 bool  JS_LICE_WritePNG(const char* filename, LICE_IBitmap* bitmap, bool wantAlpha);
 //bool  LICE_WritePNG(const char* filename, LICE_IBitmap* bitmap, bool wantAlpha); // lice.h excludes these functions if LICE_PROVIDED_BY_APP, so must declare this function myself.
-//bool  JS_LICE_WriteJPG(const char *filename, LICE_IBitmap *bmp, int quality, bool force_baseline);
+bool  JS_LICE_WriteJPG(const char* filename, LICE_IBitmap* bitmap, int quality, bool forceBaselineOptional);
+void* JS_LICE_LoadJPG(const char* filename);
+
 bool  JS_LICE_IsFlipped(void* bitmap);
 bool  JS_LICE_Resize(void* bitmap, int width, int height);
 void  JS_LICE_Clear(void* bitmap, int color);
@@ -245,3 +249,4 @@ void Xen_DestroyPreviewSystem();
 #define RECT_IS_EMPTY(X) (X.left == X.right || X.top == X.bottom)
 #define CONTRACT_TO_CLIENTRECT(X, C) if (X.left >= C.right || X.right <= 0 || X.top >= C.bottom || X.bottom <= C.top) X = { 0, 0, 0, 0};  \
 									 else { if (X.left < 0) X.left = 0; if (X.top < 0) X.top = 0; if (X.right > C.right) X.right = C.right; if (X.bottom > C.bottom) X.bottom = C.bottom; }
+#define RECTS_OVERLAP_WH(X, Y) (X.left < Y.right && X.top < Y.bottom && X.top+X.bottom > Y.top && X.left+X.right > Y.left)

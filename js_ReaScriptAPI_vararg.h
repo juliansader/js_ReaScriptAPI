@@ -426,6 +426,17 @@ static void* __vararg_JS_Window_AddressFromHandle(void** arglist, int numparms)
 	return NULL;
 }
 
+static void* __vararg_JS_ArrayFromAddress(void** arglist, int numparms)
+{
+	return (void*)JS_ArrayFromAddress(arglist[0] ? *(double*)arglist[0] : 0.0);
+}
+
+static void* __vararg_JS_AddressFromArray(void** arglist, int numparms)
+{
+	JS_AddressFromArray((double*)arglist[0], (double*)arglist[1]);
+	return NULL;
+}
+
 static void* __vararg_JS_WindowMessage_Post(void** arglist, int numparms)
 {
   return (void*)(intptr_t)JS_WindowMessage_Post((void*)arglist[0], (const char*)arglist[1], arglist[2] ? *(double*)arglist[2] : 0.0, (int)(intptr_t)arglist[3], arglist[4] ? *(double*)arglist[4] : 0.0, (int)(intptr_t)arglist[5]);
@@ -746,10 +757,15 @@ static void* __vararg_JS_LICE_WritePNG(void** arglist, int numparms)
 	return (void*)(intptr_t)JS_LICE_WritePNG((const char*)arglist[0], (LICE_IBitmap*)arglist[1], (bool)arglist[2]);
 }
 
-/*static void* __vararg_JS_LICE_WriteJPG(void** arglist, int numparms)
+static void* __vararg_JS_LICE_LoadJPG(void** arglist, int numparms)
 {
-	return (void*)(intptr_t)JS_LICE_WriteJPG((const char*)arglist[0], (LICE_IBitmap*)arglist[1], (int)(intptr_t)arglist[2], (bool)arglist[2]);
-}*/
+	return (void*)(intptr_t)JS_LICE_LoadJPG((const char*)arglist[0]);
+}
+
+static void* __vararg_JS_LICE_WriteJPG(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_LICE_WriteJPG((const char*)arglist[0], (LICE_IBitmap*)arglist[1], (int)(intptr_t)arglist[2], (numparms>3) ? (bool)arglist[3] : false);
+}
 
 static void* __vararg_JS_LICE_Blit(void** arglist, int numparms)
 {

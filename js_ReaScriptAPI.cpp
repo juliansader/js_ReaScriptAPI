@@ -2,7 +2,7 @@
 
 using namespace std;
 
-#define JS_REASCRIPTAPI_VERSION 1.204
+#define JS_REASCRIPTAPI_VERSION 1.215
 
 #ifndef _WIN32
 #define _WDL_SWELL 1 // So that I don't have to type #ifdef __linux__ and __APPLE__ everywhere
@@ -246,9 +246,15 @@ v1.002
 v1.010
  * Streamline Compositing functions, particularly when window is only partially invalidated.
  * Fix bug in JS_WindowMessage_RestoreOrigProcAndErase.
-v1.200
- * macOS: Enable compositing if Metal graphics is enabled.
+v1.210
+ * macOS: JS_Window_EnableMetal returns correct modes.
+ * macOS: Compositing still doesn't work if Metal graphics is enabled.
+v1.215
+ * Fixed: LICE_WritePNG when image has transparency.
+ * New: LICE_LoadJPG, LICE_WriteJPG.
+ * Updated: If Metal graphics, JS_Composite clips to client area.
 */
+
 
 
 int JS_Zip_Add(char* zipFile, char* inputFiles, int inputFiles_sz)
@@ -1019,9 +1025,9 @@ int JS_Window_EnableMetal(void* windowHWND)
 	if (ValidatePtr(windowHWND, "HWND"))
 		return SWELL_EnableMetal((HWND)windowHWND, 0);
 	else
-		return -9;
+		return 0;
 #else
-	return -8;
+	return 0;
 #endif
 }
 	
@@ -2299,6 +2305,22 @@ void JS_Window_AddressFromHandle(void* handle, double* addressOut)
 	*addressOut = (double)(intptr_t)handle;
 }
 
+double* JS_ArrayFromAddress(double address)
+{
+	// Casting to intptr_t removes fractions and, in case of 32-bit systems, truncates too large addresses.
+	//		This provides easy way to check whether address was valid.
+	intptr_t intAddress = (intptr_t)address;
+	if ((double)intAddress == address)
+		return (double*)intAddress;
+	else
+		return nullptr;
+}
+
+void JS_AddressFromArray(double* array, double* addressOut)
+{
+	*addressOut = (double)(intptr_t)array;
+}
+
 //---------------------------------------------------------------------------------
 // WDL/swell has not implemented IsWindow in Linux., and IsWindow is slow in MacOS.
 // If scripts or extensions try to access a HWND that doesn't exist any more,
@@ -2784,30 +2806,30 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 			#endif
 
 			/*	Before blitting, first check: is entire client area invalidated?
-			If the updateRECT partially overlaps the destinationRECT of a bitmap -- and if the bitmap is stretched/scaled -- it may not be possible to directly blit only the overlapped part into the window.
-				For example, if a 5x5 bitmap is blitted into a 1000x1000 area, but only a small 100x50 area is invalidated (which may happen if a tooltip pops up),
+			If 1) only part of the client area is invalidated, and 2) if the invalidatedRECT only partially overlaps the destinationRECT of a bitmap 
+				-- and 3) if the bitmap is stretched/scaled -- it may not be possible to directly blit only the overlapped part into the window.
+			For example, if a 5x5 bitmap is blitted into a 1000x1000 area, but only a small 100x50 area is invalidated (which may happen if a tooltip pops up),
 				StretchBlt and AlphaBlend, which only accept integer arguments, cannot blit only the affected area.
-			How can this be handled?  On WindowsOS, the updateRECT can be enlarged to cover the entire client area, but on WDL/swell, InvalidateRect cannot be called from within the callback.
-			What this extension does, is to use a two-step solution:
+			How can this be handled?  What this extension does, is to use a two-step solution:
 				1) First, any bitmap that is partially overlapped and also stretched, is ScaledBlitted into a temporary bitmap, Julian::compositeCanvas (with stretching, but without alphablending).
 				2) The overlapping section (*only* this section) is then blitted without stretching (but with alpha blending) onto the window.
-			If the entire client area is not invalidated, must make sure that the temporary canvas is at least as big as the target client area.
+			(When this two-step solution is applied, must must make sure that the temporary canvas is at least as big as the target client area.) 
+
+			Since this two-step solution is slower than directly blitting to the window, the extension only uses it when necessary.
+			In particular, if the entire client area is invalidated, the extension relies on WindowsOS or WDL/swell 
+				to automatically clip blitted images to the client area, since they can do so much faster.   
+
+			UPDATE v1.215:
+			In this version, if __APPLE__ and Metal is enabled, extension will *not* rely on REAPER to clip images to client area, even if entire client area is invalidated.  
+			Therefore, partially offscreen bitmaps will handles with two-step solution described above.
 			 */
-			/* 
-			UPDATE: StretchBlt is not fully implemented for macOS windows that use Metal!
-				* Alpha-blending is not implemented
-				* Scaling is not implemented.
-			If Metal is enabled, the blitting will therefore also use a temporary LICE bitmap: 
-				the target window uR will be blitted (with SRCCOPY) into the temporary bitmap, scaling and alpha-blending will be performed in this bitmap, and the results will be copied back to the window.
-			*/
-#ifdef __APPLE__
-			bool metal = (SWELL_EnableMetal(hwnd, 0) > 0);
-#else
-			bool metal = false;
-#endif
 
 			bool updateEntireClientArea = (uR.left <= 0 && uR.top <= 0 && uR.right >= cR.right && uR.bottom >= cR.bottom);
-			
+#ifdef __APPLE__
+			int metal = (SWELL_EnableMetal(hwnd, 0) > 0);
+#else
+			int metal = false;
+#endif
 			if (metal || !updateEntireClientArea)
 			{
 				int width = compositeCanvas->getWidth();
@@ -2819,11 +2841,9 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 			// Finally, do the compositing!  Iterate through all linked bitmaps.
 			HDC windowDC = GetDC(hwnd);
 			HDC canvasDC = compositeCanvas->getDC();
+			HDC srcDC; // For each source bitmap -- Will be assigned later
 			if (windowDC && canvasDC)
 			{
-				if (metal)
-					BitBlt(canvasDC, uR.left, uR.top, uR.right-uR.left, uR.bottom-uR.top, windowDC, uR.left, uR.top, SRCCOPY);
-
 				for (auto& b : w.mapBitmaps) // Map that contains all the linked bitmaps: b.first is a LICE_IBitmap*
 				{
 					sBlitRects& coor = b.second; // Coordinates: b.second is a struct with src and dst coordinates that specify where the bitmaps should be blitted
@@ -2831,57 +2851,48 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 					{
 						if (mLICEBitmaps.count(b.first)) // Double-check that the bitmap actually still exist?
 						{
-							HDC srcDC = b.first->getDC(); // Not actually necessary if Metal
-							if (srcDC)
+							// Calculate destination rect - updated for current client size. If dstw or dsth is -1, bitmap is stretched over entire width or height of clientRect. If not, use dst coordinates.
+							RECT dstR = { coor.dstx, coor.dsty, coor.dstw, coor.dsth };  // WARNING: dstR and overlapR use relative width/height, not absolute right/left
+							if (coor.dstw == -1) { dstR.left = 0; dstR.right = cR.right; }
+							if (coor.dsth == -1) { dstR.top = 0; dstR.bottom = cR.bottom; }
+
+							// Does dstR overlap with uR?  If not, skip bitmap.  (WARNING: dstR uses width/height, uR uses right/bottom.)
+							if (dstR.left < uR.right && dstR.top < uR.bottom && dstR.top + dstR.bottom > uR.top && dstR.left + dstR.right > uR.left)
 							{
-								// WARNING! dstR and overlapR use relative width/height, not absolute right/left
-								RECT dstR = cR;  // Calculate destination rect - updated for current client size. If dstw or dsth is -1, bitmap is stretched over entire width or height of clientRect. If not, use dst coordinates.
-								if (coor.dstw != -1) { dstR.left = coor.dstx; dstR.right = coor.dstw; }
-								if (coor.dsth != -1) { dstR.top = coor.dsty; dstR.bottom = coor.dsth; }
-
-								// Does dstR overlap with uR?
-								if (dstR.left < uR.right && dstR.top < uR.bottom && dstR.top+dstR.bottom > uR.top && dstR.left+dstR.right > uR.left)
+								// OPTION 1:  Blit direcly to windowDC, let blitting function clip images that are partially offscreen.
+								if (updateEntireClientArea && !metal)
 								{
-									// As explained above, there are FOUR ways in which bitmaps can be blitted:  
-									//		Partial stretched bitmaps will first be stretch-blitted into temporary canvas. 
-									//		If Metal, alpha-blending and stretching must be performed on a temporary bitmap.
-									//		Other bitmaps can be blitted directly onto windowDC.
-
-									// OPTION 1: 
-									if (metal)
-										LICE_ScaledBlit(compositeCanvas, b.first, dstR.left, dstR.top, dstR.right, dstR.bottom, coor.srcx, coor.srcy, coor.srcw, coor.srch, 1, LICE_BLIT_MODE_COPY | LICE_BLIT_USE_ALPHA);
-
-									// OPTION 2: 
-									else if (updateEntireClientArea)
+									if (srcDC = b.first->getDC())
 										jsAlphaBlend(windowDC, dstR.left, dstR.top, dstR.right, dstR.bottom, srcDC, coor.srcx, coor.srcy, coor.srcw, coor.srch);
+								}
 
+								else
+								{
+									RECT overlapR; // How does the dstR overlap with the updateRect uR?  Only the overlapping part must be blitted.
+									overlapR.left = (dstR.left > uR.left) ? dstR.left : uR.left;
+									overlapR.top = (dstR.top > uR.top) ? dstR.top : uR.top;
+									overlapR.right = (dstR.left + dstR.right < uR.right) ? dstR.left + dstR.right - overlapR.left : uR.right - overlapR.left;
+									overlapR.bottom = (dstR.top + dstR.bottom < uR.bottom) ? dstR.top + dstR.bottom - overlapR.top : uR.bottom - overlapR.top;
+
+									// OPTION 2: Blit direcly to windowDC.
+									if ((overlapR.right == dstR.right && overlapR.bottom == dstR.bottom) // dstR is fully within uR, so no need to clip and can StretchBlt directly into windowDC
+									|| (dstR.right == coor.srcw && dstR.bottom == coor.srch)) // or, dstR and uR partially overlap, but no stretching: Only blit overlapping part
+									{
+										if (srcDC = b.first->getDC())
+											jsAlphaBlend(windowDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom, srcDC, coor.srcx + (overlapR.left - dstR.left), coor.srcy + (overlapR.top - dstR.top), coor.srcw + (overlapR.right - dstR.right), coor.srch + (overlapR.bottom - dstR.bottom));
+									}
+
+									// OPTION 3: Stretching and partially overlapping: Two steps: first LICE_ScaledBlt to temporary canvas, then GDI BitBlt overlapping part into window
 									else
 									{
-										RECT overlapR; // How does the dstR overlap with the updateRect uR?  Only the overlapping part must be blitted.
-										overlapR.left = (dstR.left > uR.left) ? dstR.left : uR.left;
-										overlapR.top = (dstR.top > uR.top) ? dstR.top : uR.top;
-										overlapR.right = (dstR.left + dstR.right < uR.right) ? dstR.left + dstR.right - overlapR.left : uR.right - overlapR.left;
-										overlapR.bottom = (dstR.top + dstR.bottom < uR.bottom) ? dstR.top + dstR.bottom - overlapR.top : uR.bottom - overlapR.top;
-
-										// OPTION 3: Blit direcly to windowDC
-										if ((overlapR.right == dstR.right && overlapR.bottom == dstR.bottom) // or dstR is fully within uR, so no need to clip and can StretchBlt directly into windowDC
-										|| (dstR.right == coor.srcw && dstR.bottom == coor.srch)) // or, dstR and uR partially overlap, but no stretching: Only blit overlapping part
-											jsAlphaBlend(windowDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom, srcDC, coor.srcx + (overlapR.left - dstR.left), coor.srcy + (overlapR.top - dstR.top), coor.srcw + (overlapR.right - dstR.right), coor.srch + (overlapR.bottom - dstR.bottom));
-
-										// OPTION 4: Stretching and partially overlapping: Two steps: first LICE_ScaledBlt to temporary canvas, then GDI BitBlt overlapping part into window
-										else
-										{
-											LICE_ScaledBlit(compositeCanvas, b.first, dstR.left, dstR.top, dstR.right, dstR.bottom, coor.srcx, coor.srcy, coor.srcw, coor.srch, 1, LICE_BLIT_MODE_COPY);
-											jsAlphaBlend(windowDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom, canvasDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom);
-										}
+										LICE_ScaledBlit(compositeCanvas, b.first, dstR.left, dstR.top, dstR.right, dstR.bottom, coor.srcx, coor.srcy, coor.srcw, coor.srch, 1, LICE_BLIT_MODE_COPY);
+										jsAlphaBlend(windowDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom, canvasDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom);
 									}
 								}
 							}
 						}
 					}
 				}
-				if (metal)
-					BitBlt(windowDC, uR.left, uR.top, uR.right-uR.left, uR.bottom-uR.top, canvasDC, uR.left, uR.top, SRCCOPY);
 				ReleaseDC(hwnd, windowDC);
 			}
 		}
@@ -3974,7 +3985,7 @@ void* JS_LICE_LoadPNG(const char* filename)
 {
 	LICE_IBitmap* sysbitmap = nullptr;
 	LICE_IBitmap* png = nullptr;
-	sysbitmap = LICE_CreateBitmap(TRUE, 1, 1); // By default, does not return a SysBitmap. In order to force the use of SysBitmaps, use must supply own bitmap.
+	sysbitmap = LICE_CreateBitmap(TRUE, 1, 1); // By default, LICE_LoadPNG does not return a SysBitmap. In order to force the use of SysBitmaps, use must supply own bitmap.
 	if (sysbitmap) {
 		png = LICE_LoadPNG(filename, sysbitmap);
 		if (png != sysbitmap) LICE__Destroy(sysbitmap);
@@ -3990,6 +4001,28 @@ bool JS_LICE_WritePNG(const char* filename, LICE_IBitmap* bitmap, bool wantAlpha
 {
 	return LICE_WritePNG(filename, bitmap, wantAlpha);
 }
+
+void* JS_LICE_LoadJPG(const char* filename)
+{
+	LICE_IBitmap* sysbitmap = nullptr;
+	LICE_IBitmap* jpg = nullptr;
+	sysbitmap = LICE_CreateBitmap(TRUE, 1, 1); // By default, LICE_LoadPNG does not return a SysBitmap. In order to force the use of SysBitmaps, use must supply own bitmap.
+	if (sysbitmap) {
+		jpg = LICE_LoadJPG(filename, sysbitmap);
+		if (jpg != sysbitmap) LICE__Destroy(sysbitmap);
+		if (jpg) {
+			HDC dc = LICE__GetDC(jpg);
+			Julian::mLICEBitmaps.emplace(jpg, dc);
+		}
+	}
+	return jpg;
+}
+
+bool JS_LICE_WriteJPG(const char* filename, LICE_IBitmap* bitmap, int quality, bool forceBaselineOptional)
+{
+	return LICE_WriteJPG(filename, bitmap, quality, forceBaselineOptional);
+}
+
 
 void JS_LICE_Circle(void* bitmap, double cx, double cy, double r, int color, double alpha, const char* mode, bool antialias)
 {

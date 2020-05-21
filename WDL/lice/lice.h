@@ -349,6 +349,8 @@ class LICE_SubBitmap : public LICE_IBitmap // note: you should only keep these a
 // !!	SO THAT CAN BE LINKED WITH EVEN IF LICE_PROVIDED_BY_APP
 
 bool LICE_WritePNG(const char *filename, LICE_IBitmap *bmp, bool wantalpha = true);
+LICE_IBitmap *LICE_LoadJPG(const char *filename, LICE_IBitmap *bmp = NULL);
+bool LICE_WriteJPG(const char *filename, LICE_IBitmap *bmp, int quality=95, bool force_baseline=true);
 
 struct _LICE_ImageLoader_rec
 {
@@ -394,7 +396,7 @@ LICE_IBitmap *LICE_LoadBMPFromResource(HINSTANCE hInst, const char *resid, LICE_
 LICE_IBitmap *LICE_LoadIcon(const char *filename, int reqiconsz=16, LICE_IBitmap *bmp=NULL); // returns a bitmap (bmp if nonzero) on success
 LICE_IBitmap *LICE_LoadIconFromResource(HINSTANCE hInst, const char *resid, int reqiconsz=16, LICE_IBitmap *bmp=NULL); // returns a bitmap (bmp if nonzero) on success
 
-LICE_IBitmap *LICE_LoadJPG(const char *filename, LICE_IBitmap *bmp=NULL);
+//!!!!LICE_IBitmap *LICE_LoadJPG(const char *filename, LICE_IBitmap *bmp=NULL);
 LICE_IBitmap *LICE_LoadJPGFromMemory(const void *data_in, int buflen, LICE_IBitmap *bmp = NULL);
 LICE_IBitmap* LICE_LoadJPGFromResource(HINSTANCE hInst, const char *resid, LICE_IBitmap* bmp = 0);
 
@@ -406,7 +408,8 @@ LICE_IBitmap *LICE_LoadSVG(const char *filename, LICE_IBitmap *bmp=NULL);
 
 // bitmap saving
 //!!!!bool LICE_WritePNG(const char *filename, LICE_IBitmap *bmp, bool wantalpha=true);
-bool LICE_WriteJPG(const char *filename, LICE_IBitmap *bmp, int quality=95, bool force_baseline=true);
+//!!!!LICE_IBitmap *LICE_LoadJPG(const char *filename, LICE_IBitmap *bmp = NULL);
+//!!!!bool LICE_WriteJPG(const char *filename, LICE_IBitmap *bmp, int quality=95, bool force_baseline=true);
 bool LICE_WriteGIF(const char *filename, LICE_IBitmap *bmp, int transparent_alpha=0, bool dither=true); // if alpha<transparent_alpha then transparent. if transparent_alpha<0, then intra-frame checking is used
 
 // animated GIF API. use transparent_alpha=-1 to encode unchanged pixels as transparent
