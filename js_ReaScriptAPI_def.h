@@ -276,7 +276,7 @@ APIdef aAPIdefs[] =
 	
 	// LICE functions not provided by app
 	{ APIFUNC(JS_LICE_WritePNG), "bool", "const char*,LICE_IBitmap*,bool","filename,bitmap,wantAlpha", "", },
-	{ APIFUNC(JS_LICE_WriteJPG), "bool", "const char*,LICE_IBitmap*,int,bool","filename,bitmap,quality,forceBaselineOptional", "Parameters:\n\n * quality is an integer in the range 1..100.\n * forceBaseline is an optional boolean parameter that ensures compatibility with all JPEG viewers by preventing too low quality, \"cubist\" settings.", },
+	{ APIFUNC(JS_LICE_WriteJPG), "bool", "const char*,LICE_IBitmap*,int,bool*","filename,bitmap,quality,forceBaselineOptional", "Parameters:\n\n * quality is an integer in the range 1..100.\n * forceBaseline is an optional boolean parameter that ensures compatibility with all JPEG viewers by preventing too low quality, \"cubist\" settings.", },
 	{ APIFUNC(JS_LICE_LoadJPG), "void*", "const char*", "filename", "Returns a system LICE bitmap containing the JPEG.", },
 	{ APIFUNC(JS_LICE_SetAlphaFromColorMask), "void", "void*,int", "bitmap,colorRGB", "Sets all pixels that match the given color's RGB values to fully transparent, and all other pixels to fully opaque.  (All pixels' RGB values remain unchanged.)", },
 	{ APIFUNC(JS_LICE_AlterBitmapHSV), "void", "void*,double,double,double", "bitmap,hue,saturation,value", "Hue is rolled over, saturation and value are clamped, all 0..1. (Alpha remains unchanged.)", },

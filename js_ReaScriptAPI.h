@@ -176,7 +176,7 @@ bool  JS_LICE_Blit_AlphaMultiply(LICE_IBitmap* destBitmap, int dstx, int dsty, L
 void* JS_LICE_LoadPNG(const char* filename);
 bool  JS_LICE_WritePNG(const char* filename, LICE_IBitmap* bitmap, bool wantAlpha);
 //bool  LICE_WritePNG(const char* filename, LICE_IBitmap* bitmap, bool wantAlpha); // lice.h excludes these functions if LICE_PROVIDED_BY_APP, so must declare this function myself.
-bool  JS_LICE_WriteJPG(const char* filename, LICE_IBitmap* bitmap, int quality, bool forceBaselineOptional);
+bool  JS_LICE_WriteJPG(const char* filename, LICE_IBitmap* bitmap, int quality, bool forceBaseline);
 void* JS_LICE_LoadJPG(const char* filename);
 
 bool  JS_LICE_IsFlipped(void* bitmap);

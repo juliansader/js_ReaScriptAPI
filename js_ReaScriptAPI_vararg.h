@@ -764,7 +764,7 @@ static void* __vararg_JS_LICE_LoadJPG(void** arglist, int numparms)
 
 static void* __vararg_JS_LICE_WriteJPG(void** arglist, int numparms)
 {
-	return (void*)(intptr_t)JS_LICE_WriteJPG((const char*)arglist[0], (LICE_IBitmap*)arglist[1], (int)(intptr_t)arglist[2], (numparms>3) ? (bool)arglist[3] : false);
+	return (void*)(intptr_t)JS_LICE_WriteJPG((const char*)arglist[0], (LICE_IBitmap*)arglist[1], (int)(intptr_t)arglist[2], (numparms>3 && arglist[3]) ? *(bool*)arglist[3] : false);
 }
 
 static void* __vararg_JS_LICE_Blit(void** arglist, int numparms)

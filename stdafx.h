@@ -36,12 +36,6 @@
   #undef SWELL_TARGET_OSX
 #endif
 
-// PNG LIBRARY:
-// swell's version of the png library is unlike the normal version, and hides some functions that are not provided by app
-#ifndef PNG_WRITE_SUPPORTED
-//#error "PNG_WRITE_SUPPORTED should be defined for the entire project (if using command line, add -DPNG_WRITE_SUPPORTED to command)."
-#endif
-
 // WARNING: THIS EXTENSION USES A CUSTOMIZED lice.h, SINCE STANDARD lice.h HIDES SOME FUNCTIONS WHEN LICE_PROVIDED_BY_APP, 
 // EVEN THOUGH THOSE FUNCTIONS ARE NOT ACTUALLY PROVIDED BY REAPER.
 // LICE_PROVIDED_BY_APP is NOT defined for entire project, so that LICE cpp files can access full lice.h

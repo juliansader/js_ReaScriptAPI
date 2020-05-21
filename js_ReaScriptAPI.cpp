@@ -4018,9 +4018,9 @@ void* JS_LICE_LoadJPG(const char* filename)
 	return jpg;
 }
 
-bool JS_LICE_WriteJPG(const char* filename, LICE_IBitmap* bitmap, int quality, bool forceBaselineOptional)
+bool JS_LICE_WriteJPG(const char* filename, LICE_IBitmap* bitmap, int quality, bool forceBaseline)
 {
-	return LICE_WriteJPG(filename, bitmap, quality, forceBaselineOptional);
+	return LICE_WriteJPG(filename, bitmap, quality, forceBaseline);
 }
 
 
