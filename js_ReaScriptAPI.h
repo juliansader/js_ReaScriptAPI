@@ -17,7 +17,7 @@ void  JS_Byte(void* pointer, int offset, int* byteOut);
 void  JS_Double(void* pointer, int offset, double* doubleOut);
 double* JS_ArrayFromAddress(double address);
 void  JS_AddressFromArray(double* array, double* addressOut);
-double* JS_ArrayFromArray(void* reaperarray);
+double* JS_ArrayFromArray(void* reaperarray, double* doublePOut, double** doublePPOut);
 
 void* JS_Window_Create(const char* title, const char* className, int x, int y, int w, int h, char* styleOptional, void* ownerHWNDOptional);
 int   JS_Dialog_BrowseForSaveFile(const char* windowTitle, const char* initialFolder, const char* initialFile, const char* extensionList, char* fileNameOutNeedBig, int fileNameOutNeedBig_sz);

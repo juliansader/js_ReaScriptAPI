@@ -256,8 +256,10 @@ v1.215
 */
 
 
-double* JS_ArrayFromArray(void* reaperarray)
+double* JS_ArrayFromArray(void* reaperarray, double* doublePOut, double** doublePPOut)
 {
+	doublePOut = reinterpret_cast<double*>(reaperarray);
+	doublePPOut = reinterpret_cast<double**>(reaperarray);
 		return (double*)reaperarray;
 }
 
