@@ -256,6 +256,10 @@ v1.215
 */
 
 
+double* JS_ArrayFromArray(void* reaperarray)
+{
+		return (double*)reaperarray;
+}
 
 int JS_Zip_Add(char* zipFile, char* inputFiles, int inputFiles_sz)
 {/*

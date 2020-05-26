@@ -24,6 +24,10 @@ static void* __vararg_JS_Zip_Add(void** arglist, int numparms)
 }
 
 *//////////////////////////////////////////////////////////////////////////////////
+static void* __vararg_JS_ArrayFromArray(void** arglist, int numparms)
+{
+	return (void*)JS_ArrayFromArray(arglist[0]);
+}
 
 static void* __vararg_JS_VKeys_GetState(void** arglist, int numparms)
 {
