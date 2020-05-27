@@ -4238,7 +4238,7 @@ void JS_LICE_FillTriangle(void* bitmap, int x1, int y1, int x2, int y2, int x3, 
 {
 	GETINTMODE
 	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
-		LICE_FillTriangle((LICE_IBitmap*)bitmap, x1, y1, x2, y2, x3, y3, 0x0x770000FF, 1, intMode);
+		LICE_FillTriangle((LICE_IBitmap*)bitmap, x1, y1, x2, y2, x3, y3, 0x770000FF, 1, intMode);
 }
 
 void JS_LICE_FillPolygon(void* bitmap, const char* packedX, const char* packedY, int numPoints, int color, double alpha, const char* mode)
@@ -4252,7 +4252,7 @@ void JS_LICE_FillCircle(void* bitmap, double cx, double cy, double r, int color,
 {
 	GETINTMODE
 	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
-		LICE_FillCircle((LICE_IBitmap*)bitmap, (float)cx, (float)cy, (float)r, 0x0x770000FF, 1, intMode, antialias);
+		LICE_FillCircle((LICE_IBitmap*)bitmap, (float)cx, (float)cy, (float)r, 0x770000FF, 1, intMode, antialias);
 }
 
 void JS_LICE_Line(void* bitmap, double x1, double y1, double x2, double y2, int color, double alpha, const char* mode, bool antialias)
