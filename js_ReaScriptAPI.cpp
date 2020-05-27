@@ -4224,7 +4224,7 @@ void JS_LICE_RoundRect(void* bitmap, double x, double y, double w, double h, int
 {
 	GETINTMODE
 	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
-		LICE_RoundRect((LICE_IBitmap*)bitmap, (float)x, (float)y, (float)w, (float)h, cornerradius, color, (float)alpha, intMode, antialias);
+		LICE_RoundRect((LICE_IBitmap*)bitmap, (float)x, (float)y, (float)w, (float)h, cornerradius, (LICE_pixel)color, (float)alpha, intMode, antialias);
 }
 
 void JS_LICE_GradRect(void* bitmap, int dstx, int dsty, int dstw, int dsth, double ir, double ig, double ib, double ia, double drdx, double dgdx, double dbdx, double dadx, double drdy, double dgdy, double dbdy, double dady, const char* mode)
@@ -4238,21 +4238,21 @@ void JS_LICE_FillTriangle(void* bitmap, int x1, int y1, int x2, int y2, int x3, 
 {
 	GETINTMODE
 	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
-		LICE_FillTriangle((LICE_IBitmap*)bitmap, x1, y1, x2, y2, x3, y3, color, (float)alpha, intMode);
+		LICE_FillTriangle((LICE_IBitmap*)bitmap, x1, y1, x2, y2, x3, y3, (LICE_pixel)color, (float)alpha, intMode);
 }
 
 void JS_LICE_FillPolygon(void* bitmap, const char* packedX, const char* packedY, int numPoints, int color, double alpha, const char* mode)
 {
 	GETINTMODE
 	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
-		LICE_FillConvexPolygon((LICE_IBitmap*)bitmap, (int32_t*)packedX, (int32_t*)packedY, numPoints, color, (float)alpha, intMode);
+		LICE_FillConvexPolygon((LICE_IBitmap*)bitmap, (int32_t*)packedX, (int32_t*)packedY, numPoints, (LICE_pixel)color, (float)alpha, intMode);
 }
 
 void JS_LICE_FillCircle(void* bitmap, double cx, double cy, double r, int color, double alpha, const char* mode, bool antialias)
 {
 	GETINTMODE
 	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
-		LICE_FillCircle((LICE_IBitmap*)bitmap, (float)cx, (float)cy, (float)r, color, (float)alpha, intMode, antialias);
+		LICE_FillCircle((LICE_IBitmap*)bitmap, (float)cx, (float)cy, (float)r, (LICE_pixel)color, (float)alpha, intMode, antialias);
 }
 
 void JS_LICE_Line(void* bitmap, double x1, double y1, double x2, double y2, int color, double alpha, const char* mode, bool antialias)
@@ -4260,6 +4260,14 @@ void JS_LICE_Line(void* bitmap, double x1, double y1, double x2, double y2, int 
 	GETINTMODE
 	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
 		LICE_Line((LICE_IBitmap*)bitmap, (float)x1, (float)y1, (float)x2, (float)y2, (LICE_pixel)color, (float)alpha, intMode, antialias);
+}
+
+//void LICE_ThickFLine(LICE_IBitmap* dest, double x1, double y1, double x2, double y2, LICE_pixel color, float alpha, int mode, int wid); // always AA. wid is not affected by scaling (1 is always normal line, 2 is always 2 physical pixels, etc)
+void JS_LICE_ThickLine(void* bitmap, double x1, double y1, double x2, double y2, int color, double alpha, const char* mode, int width)
+{
+	GETINTMODE
+	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
+		LICE_Line((LICE_IBitmap*)bitmap, (float)x1, (float)y1, (float)x2, (float)y2, (LICE_pixel)color, (float)alpha, intMode, width);
 }
 
 void JS_LICE_Bezier(void* bitmap, double xstart, double ystart, double xctl1, double yctl1, double xctl2, double yctl2, double xend, double yend, double tol, int color, double alpha, const char* mode, bool antialias)

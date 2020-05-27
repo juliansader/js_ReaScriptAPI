@@ -896,6 +896,12 @@ static void* __vararg_JS_LICE_Line(void** arglist, int numparms)
 	return NULL;
 }
 
+static void* __vararg_JS_LICE_ThickLine(void** arglist, int numparms)
+{
+	JS_LICE_ThickLine((void*)arglist[0], arglist[1] ? *(double*)arglist[1] : 0.0, arglist[2] ? *(double*)arglist[2] : 0.0, arglist[3] ? *(double*)arglist[3] : 0.0, arglist[4] ? *(double*)arglist[4] : 0.0, (int)(intptr_t)arglist[5], arglist[6] ? *(double*)arglist[6] : 0.0, (const char*)arglist[7], (int)(intptr_t)arglist[8]);
+	return NULL;
+}
+
 static void* __vararg_JS_LICE_Bezier(void** arglist, int numparms)
 {
 	JS_LICE_Bezier((void*)arglist[0], arglist[1] ? *(double*)arglist[1] : 0.0, arglist[2] ? *(double*)arglist[2] : 0.0, arglist[3] ? *(double*)arglist[3] : 0.0, arglist[4] ? *(double*)arglist[4] : 0.0, arglist[5] ? *(double*)arglist[5] : 0.0, arglist[6] ? *(double*)arglist[6] : 0.0, arglist[7] ? *(double*)arglist[7] : 0.0, arglist[8] ? *(double*)arglist[8] : 0.0, arglist[9] ? *(double*)arglist[9] : 0.0, (int)(intptr_t)arglist[10], arglist[11] ? *(double*)arglist[11] : 0.0, (const char*)arglist[12], (bool)arglist[13]);
