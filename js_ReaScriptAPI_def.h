@@ -57,6 +57,7 @@ struct APIdef
 //  - int, bool, double, const char*
 //  - AnyStructOrClass* (handled as an opaque pointer)
 //
+// NOTE: INPUT STRINGS MUST BE const char*, otherwise REAPER will try to *return* that string
 ///////////////////////////////////////////////////////////////////////////////
 /*
 Julian remarks:
@@ -87,7 +88,9 @@ APIdef aAPIdefs[] =
 	{ APIFUNC(JS_ReaScriptAPI_Version), "void", "double*", "versionOut", "Returns the version of the js_ReaScriptAPI extension.", },
 	{ APIFUNC(JS_Localize), "void", "const char*,const char*,char*,int", "USEnglish,LangPackSection,translationOut,translationOut_sz", "Returns the translation of the given US English text, according to the currently loaded Language Pack.\n\nParameters:\n * LangPackSection: Language Packs are divided into sections such as \"common\" or \"DLG_102\".\n * In Lua, by default, text of up to 1024 chars can be returned. To increase (or reduce) the default buffer size, a string and size can be included as optional 3rd and 4th arguments.\n\nExample: reaper.JS_Localize(\"Actions\", \"common\", \"\", 20)", },
 
-	//{ APIFUNC(JS_Zip_Add), "int", "char*,char*", "zipFile,inputFiles", "", },
+	{ APIFUNC(JS_File_Stat), "int", "const char*,double*,char*,char*,char*,int*,int*,int*,int*,int*,int*,int*", "filePath,sizeOut,accessedTimeOut,modifiedTimeOut,cTimeOut,deviceIDOut,deviceSpecialIDOut,inodeOut,modeOut,numLinksOut,ownerUserIDOut,ownerGroupIDOut", "Returns information about a file.\n\ncTime is not implemented on all systems. If it does return a time, on WindowsOS, it may refer to the time that the file was either created or copied, whereas on Linux and macOS, it may refer to the time of last status change.", },
+	//{ APIFUNC(JS_Zip_AddFile), "int", "const char*,const char*", "zipFile,inputFile", "", },
+
 	{ APIFUNC(JS_Mem_Alloc), "void*", "int", "sizeBytes", "Allocates memory for general use by functions that require memory buffers.", },
 	{ APIFUNC(JS_Mem_Free), "bool", "void*", "mallocPointer", "Frees memory that was previously allocated by JS_Mem_Alloc.", },
 	{ APIFUNC(JS_Mem_FromString), "bool", "void*,int,const char*,int", "mallocPointer,offset,packedString,stringLength", "Copies a packed string into a memory buffer.", },
@@ -97,7 +100,6 @@ APIdef aAPIdefs[] =
 	{ APIFUNC(JS_Double), "void", "void*,int,double*", "pointer,offset,doubleOut", "Returns the 8-byte floating point value at address[offset]. Offset is added as steps of 8 bytes each.", },
 	//{ APIFUNC(JS_ArrayFromAddress), "double*", "double", "address", "" },
 	//{ APIFUNC(JS_AddressFromArray), "void", "double*,double*", "array,addressOut", "" },
-	{ APIFUNC(JS_ArrayFromArray), "double*", "void*,double*,double**", "reaperarray,doublePOut,doublePPOut", "", },
 
 	{ APIFUNC(JS_Dialog_BrowseForSaveFile), "int", "const char*,const char*,const char*,const char*,char*,int", "windowTitle,initialFolder,initialFile,extensionList,fileNameOutNeedBig,fileNameOutNeedBig_sz", "retval is 1 if a file was selected, 0 if the user cancelled the dialog, or negative if an error occurred.\n\nextensionList is as described for JS_Dialog_BrowseForOpenFiles.", },
 	{ APIFUNC(JS_Dialog_BrowseForOpenFiles), "int", "const char*,const char*,const char*,const char*,bool,char*,int", "windowTitle,initialFolder,initialFile,extensionList,allowMultiple,fileNamesOutNeedBig,fileNamesOutNeedBig_sz", "If allowMultiple is true, multiple files may be selected. The returned string is \\0-separated, with the first substring containing the folder path and subsequent substrings containing the file names.\n * On macOS, the first substring may be empty, and each file name will then contain its entire path.\n * This function only allows selection of existing files, and does not allow creation of new files.\n\nextensionList is a string containing pairs of \\0-terminated substrings. The last substring must be terminated by two \\0 characters. Each pair defines one filter pattern:\n * The first substring in each pair describes the filter in user-readable form (for example, \"Lua script files (*.lua)\") and will be displayed in the dialog box.\n * The second substring specifies the filter that the operating system must use to search for the files (for example, \"*.txt\"; the wildcard should not be omitted). To specify multiple extensions for a single display string, use a semicolon to separate the patterns (for example, \"*.lua;*.eel\").\n\nAn example of an extensionList string:\n\"ReaScript files\\0*.lua;*.eel\\0Lua files (.lua)\\0*.lua\\0EEL files (.eel)\\0*.eel\\0\\0\".\n\nOn macOS, file dialogs do not accept empty extensionLists, nor wildcard extensions (such as \"All files\\0*.*\\0\\0\"), so each acceptable extension must be listed explicitly. On Linux and Windows, wildcard extensions are acceptable, and if the extensionList string is empty, the dialog will display a default \"All files (*.*)\" filter.\n\nretval is 1 if one or more files were selected, 0 if the user cancelled the dialog, or negative if an error occurred.\n\nDisplaying \\0-separated strings:\n * REAPER's IDE and ShowConsoleMsg only display strings up to the first \\0 byte. If multiple files were selected, only the first substring containing the path will be displayed. This is not a problem for Lua or EEL, which can access the full string beyond the first \\0 byte as usual.", },
@@ -266,7 +268,6 @@ APIdef aAPIdefs[] =
 	{ APIFUNC(JS_LICE_FillCircle), "void", "void*,double,double,double,int,double,const char*,bool", "bitmap,cx,cy,r,color,alpha,mode,antialias", "LICE modes: \"COPY\" (default if empty string), \"MASK\", \"ADD\", \"DODGE\", \"MUL\", \"OVERLAY\" or \"HSVADJ\", any of which may be combined with \"ALPHA\".\n\nLICE color format: 0xAARRGGBB (AA is only used in ALPHA mode).", },
 
 	{ APIFUNC(JS_LICE_Line), "void", "void*,double,double,double,double,int,double,const char*,bool", "bitmap,x1,y1,x2,y2,color,alpha,mode,antialias", "LICE modes: \"COPY\" (default if empty string), \"MASK\", \"ADD\", \"DODGE\", \"MUL\", \"OVERLAY\" or \"HSVADJ\", any of which may be combined with \"ALPHA\".\n\nLICE color format: 0xAARRGGBB (AA is only used in ALPHA mode).", },
-	{ APIFUNC(JS_LICE_ThickLine), "void", "void*,double,double,double,double,int,double,const char*,int", "bitmap,x1,y1,x2,y2,color,alpha,mode,width", "LICE modes: \"COPY\" (default if empty string), \"MASK\", \"ADD\", \"DODGE\", \"MUL\", \"OVERLAY\" or \"HSVADJ\", any of which may be combined with \"ALPHA\".\n\nLICE color format: 0xAARRGGBB (AA is only used in ALPHA mode).", },
 	{ APIFUNC(JS_LICE_Bezier), "void", "void*,double,double,double,double,double,double,double,double,double,int,double,const char*,bool", "bitmap,xstart,ystart,xctl1,yctl1,xctl2,yctl2,xend,yend,tol,color,alpha,mode,antialias", "LICE modes: \"COPY\" (default if empty string), \"MASK\", \"ADD\", \"DODGE\", \"MUL\", \"OVERLAY\" or \"HSVADJ\", any of which may be combined with \"ALPHA\" to enable per-pixel alpha blending.\n\nLICE color format: 0xAARRGGBB (AA is only used in ALPHA mode).", },
 
 	{ APIFUNC(JS_LICE_Arc), "void", "void*,double,double,double,double,double,int,double,const char*,bool", "bitmap,cx,cy,r,minAngle,maxAngle,color,alpha,mode,antialias", "LICE modes: \"COPY\" (default if empty string), \"MASK\", \"ADD\", \"DODGE\", \"MUL\", \"OVERLAY\" or \"HSVADJ\", any of which may be combined with \"ALPHA\".\n\nLICE color format: 0xAARRGGBB (AA is only used in ALPHA mode).", },
@@ -294,11 +295,16 @@ APIdef aAPIdefs[] =
 	{ APIFUNC(JS_ListView_GetSelectedCount), "int", "void*", "listviewHWND", "", },
 	{ APIFUNC(JS_ListView_EnsureVisible), "void", "void*,int,bool", "listviewHWND,index,partialOK", "", },
 	{ APIFUNC(JS_ListView_GetFocusedItem), "int", "void*,char*,int", "listviewHWND,textOut,textOut_sz", "Returns the index and text of the focused item, if any.", },
+	{ APIFUNC(JS_ListView_GetTopIndex), "int", "void*", "listviewHWND", "", },
 	{ APIFUNC(JS_ListView_EnumSelItems), "int", "void*,int", "listviewHWND,index", "Returns the index of the next selected list item with index greater that the specified number. Returns -1 if no selected items left.", },
 	{ APIFUNC(JS_ListView_GetItem), "void", "void*,int,int,char*,int,int*", "listviewHWND,index,subItem,textOut,textOut_sz,stateOut", "Returns the text and state of specified item.", },
 	{ APIFUNC(JS_ListView_GetItemText), "void", "void*,int,int,char*,int", "listviewHWND,index,subItem,textOut,textOut_sz", "", },
-	{ APIFUNC(JS_ListView_GetItemState), "int", "void*,int", "listviewHWND,index", "", },
+	{ APIFUNC(JS_ListView_GetItemState), "int", "void*,int", "listviewHWND,index", "State is a bitmask:\n1 = selected, 2 = focused. On Windows only, cut-and-paste marked = 4, drag-and-drop highlighted = 8.\n\nWarning: this function uses the Win32 bitmask values, which differ from the values used by WDL/swell.", },
+	{ APIFUNC(JS_ListView_GetItemRect), "bool", "void*,int,int*,int*,int*,int*", "listviewHWND,index,leftOut,topOut,rightOut,bottomOut", "Returns client coordinates of the item.", },
+	{ APIFUNC(JS_ListView_HitTest), "void", "void*,int,int,int*,int*,int*", "listviewHWND,clientX,clientY,indexOut,subItemOut,flagsOut", "", },
 	{ APIFUNC(JS_ListView_ListAllSelItems), "int", "void*,char*,int", "listviewHWND,itemsOutNeedBig,itemsOutNeedBig_sz", "Returns the indices of all selected items as a comma-separated list.\n\n * retval: Number of selected items found; negative or zero if an error occured.", },
+	{ APIFUNC(JS_ListView_SetItemText), "void", "void*,int,int,const char*", "listviewHWND,index,subItem,text", "Currently, this fuction only accepts ASCII text.", },
+	{ APIFUNC(JS_ListView_SetItemState), "void", "void*,int,int,int", "listviewHWND,index,state,mask", "The mask parameter specifies the state bits that must be set, and the state parameter specifies the new values for those bits.\n\n1 = selected, 2 = focused. On Windows only, cut-and-paste marked = 4, drag-and-drop highlighted = 8.\n\nWarning: this function uses the Win32 bitmask values, which differ from the values used by WDL/swell.", },
 
 	{ APIFUNC(Xen_AudioWriter_Create), "AudioWriter*", "const char*,int,int", "filename,numchans,samplerate", "Creates writer for 32 bit floating point WAV", },
 	{ APIFUNC(Xen_AudioWriter_Destroy), "void", "AudioWriter*", "writer", "Destroys writer", },

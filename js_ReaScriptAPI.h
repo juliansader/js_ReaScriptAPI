@@ -6,7 +6,9 @@ void  JS_ReaScriptAPI_Version(double* versionOut);
 
 void  JS_Localize(const char* USEnglish, const char* LangPackSection, char* translationOut, int translationOut_sz);
 
-int   JS_Zip_Add(char* zipFile, char* inputFiles);
+int   JS_Zip_AddFile(const char* zipPath, const char* inputPath, const char* storedPathOptional);
+int	  JS_File_Stat(const char* filePath, double* sizeOut, char* accessedTimeOut, char* modifiedTimeOut, char* cTimeOut, 
+				int* deviceIDOut, int* deviceSpecialIDOut, int* inodeOut, int* modeOut, int* numLinksOut, int* ownerUserIDOut, int* ownerGroupIDOut);
 
 void* JS_Mem_Alloc(int sizeBytes);
 bool  JS_Mem_Free(void* mallocPointer);
@@ -17,7 +19,6 @@ void  JS_Byte(void* pointer, int offset, int* byteOut);
 void  JS_Double(void* pointer, int offset, double* doubleOut);
 double* JS_ArrayFromAddress(double address);
 void  JS_AddressFromArray(double* array, double* addressOut);
-double* JS_ArrayFromArray(void* reaperarray, double* doublePOut, double** doublePPOut);
 
 void* JS_Window_Create(const char* title, const char* className, int x, int y, int w, int h, char* styleOptional, void* ownerHWNDOptional);
 int   JS_Dialog_BrowseForSaveFile(const char* windowTitle, const char* initialFolder, const char* initialFile, const char* extensionList, char* fileNameOutNeedBig, int fileNameOutNeedBig_sz);
@@ -200,7 +201,6 @@ void  JS_LICE_FillPolygon(void* bitmap, const char* packedX, const char* packedY
 void  JS_LICE_FillCircle(void* bitmap, double cx, double cy, double r, int color, double alpha, const char* mode, bool antialias);
 
 void  JS_LICE_Line(void* bitmap, double x1, double y1, double x2, double y2, int color, double alpha, const char* mode, bool antialias);
-void  JS_LICE_ThickLine(void* bitmap, double x1, double y1, double x2, double y2, int color, double alpha, const char* mode, int width);
 void  JS_LICE_Bezier(void* bitmap, double xstart, double ystart, double xctl1, double yctl1, double xctl2, double yctl2, double xend, double yend, double tol, int color, double alpha, const char* mode, bool antialias);
 void  JS_LICE_Arc(void* bitmap, double cx, double cy, double r, double minAngle, double maxAngle, int color, double alpha, const char* mode, bool antialias);
 void  JS_LICE_Circle(void* bitmap, double cx, double cy, double r, int color, double alpha, const char* mode, bool antialias);
@@ -225,12 +225,17 @@ void  JS_Window_AttachResizeGrip(void* windowHWND);
 int   JS_ListView_GetItemCount(HWND listviewHWND);
 int   JS_ListView_GetSelectedCount(HWND listviewHWND);
 int   JS_ListView_GetFocusedItem(HWND listviewHWND, char* textOut, int textOut_sz);
+int	  JS_ListView_GetTopIndex(HWND listviewHWND);
 void  JS_ListView_EnsureVisible(HWND listviewHWND, int index, bool partialOK);
 int   JS_ListView_EnumSelItems(HWND listviewHWND, int index);
 void  JS_ListView_GetItem(HWND listviewHWND, int index, int subItem, char* textOut, int textOut_sz, int* stateOut);
 int   JS_ListView_GetItemState(HWND listviewHWND, int index);
 void  JS_ListView_GetItemText(HWND listviewHWND, int index, int subItem, char* textOut, int textOut_sz);
+bool  JS_ListView_GetItemRect(HWND listviewHWND, int item, int* leftOut, int* topOut, int* rightOut, int* bottomOut);
+void  JS_ListView_HitTest(HWND listviewHWND, int clientX, int clientY, int* indexOut, int* subItemOut, int* flagsOut);
 int   JS_ListView_ListAllSelItems(HWND listviewHWND, char* itemsOutNeedBig, int itemsOutNeedBig_sz);
+void  JS_ListView_SetItemText(HWND listviewHWND, int index, int subItem, const char* text);
+void  JS_ListView_SetItemState(HWND listviewHWND, int index, int state, int mask);
 
 class AudioWriter;
 

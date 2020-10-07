@@ -2,7 +2,7 @@
 
 using namespace std;
 
-#define JS_REASCRIPTAPI_VERSION 1.215
+#define JS_REASCRIPTAPI_VERSION 1.217
 
 #ifndef _WIN32
 #define _WDL_SWELL 1 // So that I don't have to type #ifdef __linux__ and __APPLE__ everywhere
@@ -253,45 +253,153 @@ v1.215
  * Fixed: LICE_WritePNG when image has transparency.
  * New: LICE_LoadJPG, LICE_WriteJPG.
  * Updated: If Metal graphics, JS_Composite clips to client area.
+v1.217
+	* New: ListView_SetItemState, ListView_SetItemText, ListView_GetItemRect, ListView_HitTest, ListView_GetTopItem
+	* New: JS_File_Stat
 */
 
 
-double* JS_ArrayFromArray(void* reaperarray, double* doublePOut, double** doublePPOut)
+int JS_File_Stat(const char* filePath, double* sizeOut, char* accessedTimeOut, char* modifiedTimeOut, char* cTimeOut, 
+	int* deviceIDOut, int* deviceSpecialIDOut, int* inodeOut, int* modeOut, int* numLinksOut, int* ownerUserIDOut, int* ownerGroupIDOut)
 {
-	doublePOut = reinterpret_cast<double*>(reaperarray);
-	doublePPOut = reinterpret_cast<double**>(reaperarray);
-		return (double*)reaperarray;
+#ifdef _WIN32
+	int wideCharLength = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, filePath, -1, NULL, 0);
+	if (!wideCharLength) return -1;
+	WCHAR* widePath = (WCHAR*)alloca(wideCharLength * sizeof(WCHAR) * 2);
+	if (!widePath) return -2;
+	MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, filePath, -1, widePath, wideCharLength * 2);
+
+	struct __stat64 info;
+	int result = _wstat64(widePath, &info);
+	#define js_localtime(X, Y) _localtime64_s(X, Y)
+#else
+	struct stat info;
+	int result = stat(filePath, &info);
+	#define js_localtime(X, Y) localtime_r(Y, X)
+#endif
+
+	struct tm time;
+	js_localtime(&time, &info.st_mtime);
+	strftime(modifiedTimeOut, 20, "%Y.%m.%d %H:%M:%S", &time);
+	js_localtime(&time, &info.st_atime);
+	strftime(accessedTimeOut, 20, "%Y.%m.%d %H:%M:%S", &time);
+	js_localtime(&time, &info.st_ctime);
+	strftime(cTimeOut, 20, "%Y.%m.%d %H:%M:%S", &time);
+	*deviceIDOut = info.st_dev;
+	*deviceSpecialIDOut = info.st_rdev;
+	*inodeOut = info.st_ino;
+	*modeOut = info.st_mode;
+	*numLinksOut = info.st_nlink;
+	*ownerUserIDOut = info.st_uid;
+	*ownerGroupIDOut = info.st_gid;
+	*sizeOut = info.st_size; 
+
+	return result;
 }
 
-int JS_Zip_Add(char* zipFile, char* inputFiles, int inputFiles_sz)
-{/*
+/*
+int JS_Zip_AddFile(const char* zipPath, const char* inputPath, const char* storedPathOptional)
+{
 	using namespace zipper;
-	
-	Zipper zipper(zipFile);
-	if (!zipper) return 0;
-	
-	while (inputFiles && *inputFiles)
+	int OK = -7;
+	if (!(storedPathOptional && *storedPathOptional))
+		storedPathOptional = inputPath;
+	try
 	{
-		#ifdef _WIN32 // convert to WideChar for Unicode support
-		int wideCharLength = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, inputFiles, -1, NULL, 0);
-		if (!wideCharLength) return -2
-		WCHAR* widePath = (WCHAR*) alloca(wideCharLength * sizeof(WCHAR) * 2);
-		if (!widePath) return -2
-		MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, inputFiles, -1, widePath, wideCharLength * 2);
-		std::ifstream file{widePath};
-		#else
-		std::ifstream file{inputFiles};
-		#endif
-		if (!file) return -1;
-		zipper.add(input1, inputFiles);
-		inputFiles = strchr(inputFiles, 0)
-		if (inputFiles) inputFiles += 1;
-	}
+#ifdef _WIN32 // convert to WideChar for Unicode support
+		int wideCharLength = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, zipPath, -1, NULL, 0);
+		if (wideCharLength)
+		{
+			OK = -6;
+			WCHAR* widePath = (WCHAR*)alloca(wideCharLength * sizeof(WCHAR) * 2);
+			if (widePath)
+			{
+				OK = -5;
+				MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, zipPath, -1, widePath, wideCharLength * 2);
+				std::fstream zipStream{ widePath, std::fstream::binary | std::fstream::in | std::fstream::out };
+				if (zipStream)
+				{
+					OK = -4;
+					wideCharLength = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, inputPath, -1, NULL, 0);
+					if (wideCharLength)
+					{
+						OK = -3;
+						widePath = (WCHAR*)alloca(wideCharLength * sizeof(WCHAR) * 2);
+						if (widePath)
+						{
+							OK = -2;
+							MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, inputPath, -1, widePath, wideCharLength * 2);
+							std::ifstream inputStream{ widePath, std::ifstream::binary };
+							if (inputStream)
+							{
+								OK = -1;
 
-	zipper.close();
-	*/
+
+#else
+		{	{ 	std::fstream zipStream{ zipPath, std::fstream::binary };
+				{	{	{	std::ifstream inputStream{ inputPath, std::ifstream::binary };
+							{		
+#endif
+								std::string storedString{ storedPathOptional };
+								//Zipper zipper{ zipStream };
+								//OK = zipper.add(inputStream, storedString) ? 1 : 0;
+
+								//zipper.close();
+								inputStream.close();
+							}
+						}
+					}
+					zipStream.close();
+				}
+			}
+		}
+	}
+	catch (...) {}
+	return OK;
+	
 	return 1;
 }
+*/
+/*
+{
+	using namespace zipper;
+
+	try {
+		Zipper zipper{ zipFile };
+
+		char* curFileCStr = inputFile;
+		int count = 0;
+
+		while (curFileCStr && *curFileCStr && curFileCStr < inputFile + inputFile_sz - 1)
+		{
+		#ifdef _WIN32 // convert to WideChar for Unicode support
+			int wideCharLength = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, curFileCStr, -1, NULL, 0);
+			if (!wideCharLength) return -2;
+			WCHAR* widePath = (WCHAR*)alloca(wideCharLength * sizeof(WCHAR) * 2);
+			if (!widePath) return -2;
+			MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, curFileCStr, -1, widePath, wideCharLength * 2);
+			std::ifstream fileStream{ widePath, std::ifstream::binary };
+		#else
+			std::ifstream fileStream{ curFileCStr, std::ifstream::binary };
+		#endif
+			if (!fileStream) { zipper.close(); return -2; }
+
+			std::string fileName = curFileCStr;
+			bool zipOK = zipper.add(fileStream, fileName);
+			if (!zipOK) { zipper.close(); return -3; }
+			count += 1;
+
+			curFileCStr = (char*)memchr(curFileCStr, 0, inputFilesNeedBig_sz - (curFileCStr - inputFilesNeedBig) - 1);
+			if (curFileCStr) curFileCStr++;
+		}
+
+		zipper.close();
+		return count;
+	}
+	catch (...) {
+		return -1;
+	}
+}*/
 
 void JS_ReaScriptAPI_Version(double* versionOut)
 {
@@ -2847,7 +2955,6 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 			// Finally, do the compositing!  Iterate through all linked bitmaps.
 			HDC windowDC = GetDC(hwnd);
 			HDC canvasDC = compositeCanvas->getDC();
-			HDC srcDC; // For each source bitmap -- Will be assigned later
 			if (windowDC && canvasDC)
 			{
 				for (auto& b : w.mapBitmaps) // Map that contains all the linked bitmaps: b.first is a LICE_IBitmap*
@@ -2868,7 +2975,7 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 								// OPTION 1:  Blit direcly to windowDC, let blitting function clip images that are partially offscreen.
 								if (updateEntireClientArea && !metal)
 								{
-									if (srcDC = b.first->getDC())
+									if (HDC srcDC = b.first->getDC())
 										jsAlphaBlend(windowDC, dstR.left, dstR.top, dstR.right, dstR.bottom, srcDC, coor.srcx, coor.srcy, coor.srcw, coor.srch);
 								}
 
@@ -2884,7 +2991,7 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 									if ((overlapR.right == dstR.right && overlapR.bottom == dstR.bottom) // dstR is fully within uR, so no need to clip and can StretchBlt directly into windowDC
 									|| (dstR.right == coor.srcw && dstR.bottom == coor.srch)) // or, dstR and uR partially overlap, but no stretching: Only blit overlapping part
 									{
-										if (srcDC = b.first->getDC())
+										if (HDC srcDC = b.first->getDC())
 											jsAlphaBlend(windowDC, overlapR.left, overlapR.top, overlapR.right, overlapR.bottom, srcDC, coor.srcx + (overlapR.left - dstR.left), coor.srcy + (overlapR.top - dstR.top), coor.srcw + (overlapR.right - dstR.right), coor.srch + (overlapR.bottom - dstR.bottom));
 									}
 
@@ -4217,14 +4324,14 @@ void JS_LICE_FillRect(void* bitmap, int x, int y, int w, int h, int color, doubl
 {
 	GETINTMODE
 	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
-		LICE_FillRect((LICE_IBitmap*)bitmap, x, y, w, h, 0x770000FF, 1, intMode);
+		LICE_FillRect((LICE_IBitmap*)bitmap, x, y, w, h, (LICE_pixel)color, (float)alpha, intMode);
 }
 
 void JS_LICE_RoundRect(void* bitmap, double x, double y, double w, double h, int cornerradius, int color, double alpha, const char* mode, bool antialias)
 {
 	GETINTMODE
 	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
-		LICE_RoundRect((LICE_IBitmap*)bitmap, (float)x, (float)y, (float)w, (float)h, cornerradius, (LICE_pixel)color, (float)alpha, intMode, antialias);
+		LICE_RoundRect((LICE_IBitmap*)bitmap, (float)x, (float)y, (float)w, (float)h, cornerradius, color, (float)alpha, intMode, antialias);
 }
 
 void JS_LICE_GradRect(void* bitmap, int dstx, int dsty, int dstw, int dsth, double ir, double ig, double ib, double ia, double drdx, double dgdx, double dbdx, double dadx, double drdy, double dgdy, double dbdy, double dady, const char* mode)
@@ -4238,21 +4345,21 @@ void JS_LICE_FillTriangle(void* bitmap, int x1, int y1, int x2, int y2, int x3, 
 {
 	GETINTMODE
 	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
-		LICE_FillTriangle((LICE_IBitmap*)bitmap, x1, y1, x2, y2, x3, y3, 0x770000FF, 1, intMode);
+		LICE_FillTriangle((LICE_IBitmap*)bitmap, x1, y1, x2, y2, x3, y3, color, (float)alpha, intMode);
 }
 
 void JS_LICE_FillPolygon(void* bitmap, const char* packedX, const char* packedY, int numPoints, int color, double alpha, const char* mode)
 {
 	GETINTMODE
 	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
-		LICE_FillConvexPolygon((LICE_IBitmap*)bitmap, (int32_t*)packedX, (int32_t*)packedY, numPoints, (LICE_pixel)color, (float)alpha, intMode);
+		LICE_FillConvexPolygon((LICE_IBitmap*)bitmap, (int32_t*)packedX, (int32_t*)packedY, numPoints, color, (float)alpha, intMode);
 }
 
 void JS_LICE_FillCircle(void* bitmap, double cx, double cy, double r, int color, double alpha, const char* mode, bool antialias)
 {
 	GETINTMODE
 	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
-		LICE_FillCircle((LICE_IBitmap*)bitmap, (float)cx, (float)cy, (float)r, 0x770000FF, 1, intMode, antialias);
+		LICE_FillCircle((LICE_IBitmap*)bitmap, (float)cx, (float)cy, (float)r, color, (float)alpha, intMode, antialias);
 }
 
 void JS_LICE_Line(void* bitmap, double x1, double y1, double x2, double y2, int color, double alpha, const char* mode, bool antialias)
@@ -4260,14 +4367,6 @@ void JS_LICE_Line(void* bitmap, double x1, double y1, double x2, double y2, int 
 	GETINTMODE
 	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
 		LICE_Line((LICE_IBitmap*)bitmap, (float)x1, (float)y1, (float)x2, (float)y2, (LICE_pixel)color, (float)alpha, intMode, antialias);
-}
-
-//void LICE_ThickFLine(LICE_IBitmap* dest, double x1, double y1, double x2, double y2, LICE_pixel color, float alpha, int mode, int wid); // always AA. wid is not affected by scaling (1 is always normal line, 2 is always 2 physical pixels, etc)
-void JS_LICE_ThickLine(void* bitmap, double x1, double y1, double x2, double y2, int color, double alpha, const char* mode, int width)
-{
-	GETINTMODE
-	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
-		LICE_Line((LICE_IBitmap*)bitmap, (float)x1, (float)y1, (float)x2, (float)y2, (LICE_pixel)color, (float)alpha, intMode, width);
 }
 
 void JS_LICE_Bezier(void* bitmap, double xstart, double ystart, double xctl1, double yctl1, double xctl2, double yctl2, double xend, double yend, double tol, int color, double alpha, const char* mode, bool antialias)
@@ -4519,7 +4618,16 @@ int JS_ListView_EnumSelItems(HWND listviewHWND, int index)
 	if (!ValidatePtr((HWND)listviewHWND, "HWND")) return -1;
 #endif
 	// WDL/swell doesn't offer all these flag options, so this function only offers SELECTED:
-	return ListView_GetNextItem(listviewHWND, index, LVNI_SELECTED);
+	int next = ListView_GetNextItem(listviewHWND, index, LVNI_SELECTED);
+	return (next > index) ? next : -1;
+}
+
+int JS_ListView_GetTopIndex(HWND listviewHWND)
+{
+#ifdef _WDL_SWELL
+	if (!ValidatePtr((HWND)listviewHWND, "HWND")) return -1;
+#endif
+	return ListView_GetTopIndex(listviewHWND);
 }
 
 void JS_ListView_GetItem(HWND listviewHWND, int index, int subItem, char* textOut, int textOut_sz, int* stateOut)
@@ -4550,20 +4658,32 @@ int JS_ListView_GetItemState(HWND listviewHWND, int index)
 	if (!ValidatePtr((HWND)listviewHWND, "HWND")) return 0;
 #endif
 	int state = ListView_GetItemState(listviewHWND, index, LVIS_SELECTED | LVIS_FOCUSED);
+
 	// WIN32 and swell define LVIS_SELECTED and LVIS_FOCUSED differently, so if swell, swap values:
-	#ifdef _WDL_SWELL
-	if ((state & LVIS_SELECTED) && !(state & LVIS_FOCUSED))
-	{
-		state |= LVIS_FOCUSED;
-		state &= !LVIS_SELECTED;
-	}
-	else if ((state & LVIS_FOCUSED) && !(state & LVIS_SELECTED))
-	{
-		state &= !LVIS_FOCUSED;
-		state |= LVIS_SELECTED;
-	}
-	#endif
+#ifdef _WDL_SWELL
+	if ((state & 3) == 1 || (state & 3) == 2) state ^= 3;
+#endif
 	return state;
+}
+
+void JS_ListView_SetItemState(HWND listviewHWND, int index, int state, int mask)
+{
+#ifdef _WDL_SWELL
+	if (!ValidatePtr((HWND)listviewHWND, "HWND")) return;
+
+	// WARNING! WIN32 and swell define LVIS_SELECTED and LVIS_FOCUSED differently, so if swell, swap values:
+	if ((state & 3) == 1 || (state & 3) == 2) state ^= 3;
+	if ((mask & 3) == 1 || (mask & 3) == 2) mask ^= 3;
+#endif
+	ListView_SetItemState(listviewHWND, index, state, mask);
+}
+
+void JS_ListView_SetItemText(HWND listviewHWND, int index, int subItem, const char* text)
+{
+#ifdef _WDL_SWELL
+	if (!ValidatePtr((HWND)listviewHWND, "HWND")) return;
+#endif
+	ListView_SetItemText(listviewHWND, index, subItem, (LPSTR)text);
 }
 
 void JS_ListView_GetItemText(HWND listviewHWND, int index, int subItem, char* textOut, int textOut_sz)
@@ -4572,6 +4692,58 @@ void JS_ListView_GetItemText(HWND listviewHWND, int index, int subItem, char* te
 	if (!ValidatePtr((HWND)listviewHWND, "HWND")) {	textOut[0] = 0; return; }
 #endif
 	ListView_GetItemText(listviewHWND, index, subItem, textOut, textOut_sz);
+}
+
+void JS_ListView_HitTest(HWND listviewHWND, int clientX, int clientY, int* indexOut, int* subItemOut, int* flagsOut)
+{
+	if (!IsWindow(listviewHWND)) { *indexOut = -1; return; }
+	LVHITTESTINFO s;
+	s.pt = { clientX, clientY };
+	// macOS uses screen coordinates
+#ifdef __APPLE__
+	ClientToScreen(listviewHWND, &s.pt);
+#endif
+	ListView_HitTest(listviewHWND, &s);
+	// WDL/swell defines the higher flags differently (and better than Win32). Change to Win32 format: 
+#ifdef _WDL_SWELL
+	s.flags = (s.flags & 0xF) | ((s.flags & 0xFFF0) >> 1);
+#endif
+	*indexOut = s.iItem;
+	*subItemOut = s.iSubItem;
+	*flagsOut = s.flags;
+}
+
+bool JS_ListView_GetItemRect(HWND listviewHWND, int item, int* leftOut, int* topOut, int* rightOut, int* bottomOut)
+{
+#ifdef _WDL_SWELL
+	if (!ValidatePtr((HWND)listviewHWND, "HWND")) return false;
+#endif
+	RECT r;
+	bool OK = ListView_GetItemRect(listviewHWND, item, &r, LVIR_BOUNDS);
+	if (OK)
+	{
+		// macOS uses screen coordinates
+#ifdef __APPLE__
+		POINT p{ r.left, r.top };
+		ScreenToClient(listviewHWND, &p);
+		r.left = p.x;
+		r.top = p.y;
+		p = { r.right, r.bottom };
+		ScreenToClient(listviewHWND, &p);
+		r.right = p.x;
+		r.bottom = p.y;
+#endif
+		if (r.bottom < r.top) {
+			int t = r.bottom;
+			r.bottom = r.top;
+			r.top = t;
+		}
+		*leftOut = r.left;
+		*topOut = r.top;
+		*rightOut = r.right;
+		*bottomOut = r.bottom;
+	}
+	return OK;
 }
 
 int JS_ListView_ListAllSelItems(HWND listviewHWND, char* itemsOutNeedBig, int itemsOutNeedBig_sz)

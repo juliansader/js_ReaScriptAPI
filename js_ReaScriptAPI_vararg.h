@@ -16,18 +16,20 @@ static void* __vararg_JS_Localize(void** arglist, int numparms)
 	return NULL;
 }
 
-/*/////////////////////////////////////////////////////////////////////////////////
-
-static void* __vararg_JS_Zip_Add(void** arglist, int numparms)
+//////////////////////////////////////////////////////////////////////////////////
+/*
+static void* __vararg_JS_Zip_AddFile(void** arglist, int numparms)
 {
-	return (void*)(intptr_t)JS_Zip_Add((char*)arglist[0], (char*)arglist[1]);
+	return (void*)(intptr_t)JS_Zip_AddFile((const char*)arglist[0], (const char*)arglist[1], numparms > 2 ? (const char*)arglist[2] : nullptr);
+}
+*/
+static void* __vararg_JS_File_Stat(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_File_Stat((const char*)arglist[0], (double*)arglist[1], (char*)arglist[2], (char*)arglist[3], (char*)arglist[4], (int*)arglist[5], (int*)arglist[6], (int*)arglist[7], (int*)arglist[8], (int*)arglist[9], (int*)arglist[10], (int*)arglist[11]);
 }
 
-*//////////////////////////////////////////////////////////////////////////////////
-static void* __vararg_JS_ArrayFromArray(void** arglist, int numparms)
-{
-	return (void*)JS_ArrayFromArray(arglist[0], (double*)arglist[1], (double**)arglist[2]);
-}
+
+//////////////////////////////////////////////////////////////////////////////////
 
 static void* __vararg_JS_VKeys_GetState(void** arglist, int numparms)
 {
@@ -896,12 +898,6 @@ static void* __vararg_JS_LICE_Line(void** arglist, int numparms)
 	return NULL;
 }
 
-static void* __vararg_JS_LICE_ThickLine(void** arglist, int numparms)
-{
-	JS_LICE_ThickLine((void*)arglist[0], arglist[1] ? *(double*)arglist[1] : 0.0, arglist[2] ? *(double*)arglist[2] : 0.0, arglist[3] ? *(double*)arglist[3] : 0.0, arglist[4] ? *(double*)arglist[4] : 0.0, (int)(intptr_t)arglist[5], arglist[6] ? *(double*)arglist[6] : 0.0, (const char*)arglist[7], (int)(intptr_t)arglist[8]);
-	return NULL;
-}
-
 static void* __vararg_JS_LICE_Bezier(void** arglist, int numparms)
 {
 	JS_LICE_Bezier((void*)arglist[0], arglist[1] ? *(double*)arglist[1] : 0.0, arglist[2] ? *(double*)arglist[2] : 0.0, arglist[3] ? *(double*)arglist[3] : 0.0, arglist[4] ? *(double*)arglist[4] : 0.0, arglist[5] ? *(double*)arglist[5] : 0.0, arglist[6] ? *(double*)arglist[6] : 0.0, arglist[7] ? *(double*)arglist[7] : 0.0, arglist[8] ? *(double*)arglist[8] : 0.0, arglist[9] ? *(double*)arglist[9] : 0.0, (int)(intptr_t)arglist[10], arglist[11] ? *(double*)arglist[11] : 0.0, (const char*)arglist[12], (bool)arglist[13]);
@@ -1014,6 +1010,11 @@ static void* __vararg_JS_ListView_GetItem(void** arglist, int numparms)
 	return NULL;
 }
 
+static void* __vararg_JS_ListView_GetTopIndex(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_ListView_GetTopIndex((HWND)arglist[0]);
+}
+
 static void* __vararg_JS_ListView_GetItemText(void** arglist, int numparms)
 {
 	JS_ListView_GetItemText((HWND)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (char*)arglist[3], (int)(intptr_t)arglist[4]);
@@ -1025,11 +1026,33 @@ static void* __vararg_JS_ListView_GetItemState(void** arglist, int numparms)
 	return (void*)(intptr_t)JS_ListView_GetItemState((HWND)arglist[0], (int)(intptr_t)arglist[1]);
 }
 
+static void* __vararg_JS_ListView_GetItemRect(void** arglist, int numparms)
+{
+	return (void*)JS_ListView_GetItemRect((HWND)arglist[0], (int)(intptr_t)arglist[1], (int*)arglist[2], (int*)arglist[3], (int*)arglist[4], (int*)arglist[5]);
+}
+
+static void* __vararg_JS_ListView_HitTest(void** arglist, int numparms)
+{
+	JS_ListView_HitTest((HWND)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (int*)arglist[3], (int*)arglist[4], (int*)arglist[5]);
+	return nullptr;
+}
+
 static void* __vararg_JS_ListView_ListAllSelItems(void** arglist, int numparms)
 {
 	return (void*)(intptr_t)JS_ListView_ListAllSelItems((HWND)arglist[0], (char*)arglist[1], (int)(intptr_t)arglist[2]);
 }
 
+static void* __vararg_JS_ListView_SetItemText(void** arglist, int numparms)
+{
+	JS_ListView_SetItemText((HWND)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (const char*)arglist[3]);
+	return nullptr;
+}
+
+static void* __vararg_JS_ListView_SetItemState(void** arglist, int numparms)
+{
+	JS_ListView_SetItemState((HWND)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (int)(intptr_t)arglist[3]);
+	return nullptr;
+}
 
 //////////////////////////////////////////////////////////////////////
 

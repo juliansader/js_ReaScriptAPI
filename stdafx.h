@@ -20,6 +20,9 @@
 #include <cstdint>
 #include <memory>
 #include <fstream>
+#include <time.h>
+#include <sys/types.h> 
+#include <sys/stat.h>
 
 //#include "./zipper/unzipper.h"
 //#include "./zipper/zipper.h"
