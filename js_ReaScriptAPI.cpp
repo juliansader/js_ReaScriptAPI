@@ -4639,16 +4639,7 @@ void JS_ListView_GetItem(HWND listviewHWND, int index, int subItem, char* textOu
 	*stateOut = ListView_GetItemState(listviewHWND, index, LVIS_SELECTED | LVIS_FOCUSED);
 	// WIN32 and swell define LVIS_SELECTED and LVIS_FOCUSED differently, so if swell, swap values:
 	#ifdef _WDL_SWELL
-	if (((*stateOut) & LVIS_SELECTED) && !((*stateOut) & LVIS_FOCUSED))
-	{
-		*stateOut |= LVIS_FOCUSED;
-		*stateOut &= !LVIS_SELECTED;
-	}
-	else if (((*stateOut) & LVIS_FOCUSED) && !((*stateOut) & LVIS_SELECTED))
-	{
-		*stateOut &= !LVIS_FOCUSED;
-		*stateOut |= LVIS_SELECTED;
-	}
+	if ((*stateOut & 3) == 1 || (*stateOut & 3) == 2) *stateOut ^= 3;
 	#endif
 }
 
@@ -4699,10 +4690,12 @@ void JS_ListView_HitTest(HWND listviewHWND, int clientX, int clientY, int* index
 	if (!IsWindow(listviewHWND)) { *indexOut = -1; return; }
 	LVHITTESTINFO s;
 	s.pt = { clientX, clientY };
+	/*
 	// macOS uses screen coordinates
 #ifdef __APPLE__
 	ClientToScreen(listviewHWND, &s.pt);
 #endif
+*/
 	ListView_HitTest(listviewHWND, &s);
 	// WDL/swell defines the higher flags differently (and better than Win32). Change to Win32 format: 
 #ifdef _WDL_SWELL
@@ -4722,6 +4715,7 @@ bool JS_ListView_GetItemRect(HWND listviewHWND, int item, int* leftOut, int* top
 	bool OK = ListView_GetItemRect(listviewHWND, item, &r, LVIR_BOUNDS);
 	if (OK)
 	{
+		/*
 		// macOS uses screen coordinates
 #ifdef __APPLE__
 		POINT p{ r.left, r.top };
@@ -4733,6 +4727,7 @@ bool JS_ListView_GetItemRect(HWND listviewHWND, int item, int* leftOut, int* top
 		r.right = p.x;
 		r.bottom = p.y;
 #endif
+*/
 		if (r.bottom < r.top) {
 			int t = r.bottom;
 			r.bottom = r.top;
