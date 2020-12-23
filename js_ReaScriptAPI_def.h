@@ -91,6 +91,11 @@ APIdef aAPIdefs[] =
 	{ APIFUNC(JS_File_Stat), "int", "const char*,double*,char*,char*,char*,int*,int*,int*,int*,int*,int*,int*", "filePath,sizeOut,accessedTimeOut,modifiedTimeOut,cTimeOut,deviceIDOut,deviceSpecialIDOut,inodeOut,modeOut,numLinksOut,ownerUserIDOut,ownerGroupIDOut", "Returns information about a file.\n\ncTime is not implemented on all systems. If it does return a time, the value may differ depending on the OS: on WindowsOS, it may refer to the time that the file was either created or copied, whereas on Linux and macOS, it may refer to the time of last status change.\n\nretval is 0 if successful, negative if not.", },
 	//{ APIFUNC(JS_Zip_AddFile), "int", "const char*,const char*", "zipFile,inputFile", "", },
 
+	{ APIFUNC(JS_Actions_GetShortcutDesc), "bool", "int,int,int,char*,int", "section,cmdID,shortcutidx,descOut,descOut_sz", "Section:\n0 = Main, 100 = Main (alt recording), 32060 = MIDI Editor, 32061 = MIDI Event List Editor, 32062 = MIDI Inline Editor, 32063 = Media Explorer.", },
+	{ APIFUNC(JS_Actions_CountShortcuts), "int", "int,int", "section,cmdID", "Section:\n0 = Main, 100 = Main (alt recording), 32060 = MIDI Editor, 32061 = MIDI Event List Editor, 32062 = MIDI Inline Editor, 32063 = Media Explorer.", },
+	{ APIFUNC(JS_Actions_DeleteShortcut), "bool", "int,int,int", "section,cmdID,shortcutidx", "Section:\n0 = Main, 100 = Main (alt recording), 32060 = MIDI Editor, 32061 = MIDI Event List Editor, 32062 = MIDI Inline Editor, 32063 = Media Explorer.", },
+	{ APIFUNC(JS_Actions_DoShortcutDialog), "bool", "int,int,int", "section,cmdID,shortcutidx", "Section:\n0 = Main, 100 = Main (alt recording), 32060 = MIDI Editor, 32061 = MIDI Event List Editor, 32062 = MIDI Inline Editor, 32063 = Media Explorer.\n\nIf the shortcut index is higher than the current number of shortcuts, it will add a new shortcut.", },
+
 	{ APIFUNC(JS_Mem_Alloc), "void*", "int", "sizeBytes", "Allocates memory for general use by functions that require memory buffers.", },
 	{ APIFUNC(JS_Mem_Free), "bool", "void*", "mallocPointer", "Frees memory that was previously allocated by JS_Mem_Alloc.", },
 	{ APIFUNC(JS_Mem_FromString), "bool", "void*,int,const char*,int", "mallocPointer,offset,packedString,stringLength", "Copies a packed string into a memory buffer.", },
@@ -117,7 +122,7 @@ APIdef aAPIdefs[] =
 
 	{ APIFUNC(JS_Window_FromPoint), "void*", "int,int", "x,y", "Retrieves a HWND to the window that contains the specified point.\n\nNOTES:\n * On Windows and Linux, screen coordinates are relative to *upper* left corner of the primary display, and the positive Y-axis points downward.\n * On macOS, screen coordinates are relative to the *bottom* left corner of the primary display, and the positive Y-axis points upward.", },
 	{ APIFUNC(JS_Window_GetParent), "void*", "void*", "windowHWND", "Retrieves a HWND to the specified window's parent or owner.\nReturns NULL if the window is unowned or if the function otherwise fails.", },
-	{ APIFUNC(JS_Window_SetParent), "void*", "void*,void*", "childHWND,parentHWND", "If successful, returns a handle to the previous parent window.", },
+	{ APIFUNC(JS_Window_SetParent), "void*", "void*,void*", "childHWND,parentHWNDOptional", "If successful, returns a handle to the previous parent window.\n\nOnly on WindowsOS: If parentHWND is not specified, the desktop window becomes the new parent window.", },
 	{ APIFUNC(JS_Window_IsChild), "bool", "void*,void*", "parentHWND,childHWND", "Determines whether a window is a child window or descendant window of a specified parent window.", },
 	{ APIFUNC(JS_Window_GetRelated), "void*", "void*,const char*", "windowHWND,relation", "Retrieves a handle to a window that has the specified relationship (Z-Order or owner) to the specified window.\nrelation: \"LAST\", \"NEXT\", \"PREV\", \"OWNER\" or \"CHILD\".\n(Refer to documentation for Win32 C++ function GetWindow.)", },
 	{ APIFUNC(JS_Window_FindChildByID), "void*", "void*,int", "parentHWND,ID", "Similar to the C++ WIN32 function GetDlgItem, this function finds child windows by ID.\n\n(The ID of a window may be retrieved by JS_Window_GetLongPtr.)", },

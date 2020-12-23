@@ -30,6 +30,29 @@ static void* __vararg_JS_File_Stat(void** arglist, int numparms)
 
 
 //////////////////////////////////////////////////////////////////////////////////
+// Functions related to action shortcuts
+
+static void* __vararg_JS_Actions_GetShortcutDesc(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_Actions_GetShortcutDesc((int)(intptr_t)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (char*)arglist[3], (int)(intptr_t)arglist[4]);
+}
+
+static void* __vararg_JS_Actions_CountShortcuts(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_Actions_CountShortcuts((int)(intptr_t)arglist[0], (int)(intptr_t)arglist[1]);
+}
+
+static void* __vararg_JS_Actions_DeleteShortcut(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_Actions_DeleteShortcut((int)(intptr_t)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2]);
+}
+
+static void* __vararg_JS_Actions_DoShortcutDialog(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_Actions_DoShortcutDialog((int)(intptr_t)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2]);
+}
+
+//////////////////////////////////////////////////////////////////////////////////
 
 static void* __vararg_JS_VKeys_GetState(void** arglist, int numparms)
 {
@@ -204,7 +227,7 @@ static void* __vararg_JS_Window_GetParent(void** arglist, int numparms)
 
 static void* __vararg_JS_Window_SetParent(void** arglist, int numparms)
 {
-  return (void*)JS_Window_SetParent((void*)arglist[0], (void*)arglist[1]);
+  return (void*)JS_Window_SetParent((void*)arglist[0], (numparms > 1) ? (void*)arglist[1] : nullptr);
 }
 
 static void* __vararg_JS_Window_IsChild(void** arglist, int numparms)

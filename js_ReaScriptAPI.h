@@ -10,6 +10,11 @@ int   JS_Zip_AddFile(const char* zipPath, const char* inputPath, const char* sto
 int	  JS_File_Stat(const char* filePath, double* sizeOut, char* accessedTimeOut, char* modifiedTimeOut, char* cTimeOut, 
 				int* deviceIDOut, int* deviceSpecialIDOut, int* inodeOut, int* modeOut, int* numLinksOut, int* ownerUserIDOut, int* ownerGroupIDOut);
 
+bool  JS_Actions_GetShortcutDesc(int section, int cmdID, int shortcutidx, char* descOut, int descOut_sz);
+int   JS_Actions_CountShortcuts(int section, int cmdID);
+bool  JS_Actions_DeleteShortcut(int section, int cmdID, int shortcutidx);
+bool  JS_Actions_DoShortcutDialog(int section, int cmdID, int shortcutidx);
+
 void* JS_Mem_Alloc(int sizeBytes);
 bool  JS_Mem_Free(void* mallocPointer);
 bool  JS_Mem_FromString(void* mallocPointer, int offset, const char* packedString, int stringLength);
@@ -38,7 +43,7 @@ bool  JS_Window_InvalidateRect(HWND windowHWND, int left, int top, int right, in
 void* JS_Window_FromPoint(int x, int y);
 
 void* JS_Window_GetParent(void* windowHWND);
-void* JS_Window_SetParent(void* childHWND, void* parentHWND);
+void* JS_Window_SetParent(void* childHWND, void* parentHWNDOptional);
 void* JS_Window_GetRoot(void* windowHWND);
 bool  JS_Window_IsChild(void* parentHWND, void* childHWND);
 void* JS_Window_GetRelated(void* windowHWND, const char* relation);

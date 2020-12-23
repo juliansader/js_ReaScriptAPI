@@ -2,7 +2,7 @@
 
 using namespace std;
 
-#define JS_REASCRIPTAPI_VERSION 1.217
+#define JS_REASCRIPTAPI_VERSION 1.220
 
 #ifndef _WIN32
 #define _WDL_SWELL 1 // So that I don't have to type #ifdef __linux__ and __APPLE__ everywhere
@@ -254,8 +254,11 @@ v1.215
  * New: LICE_LoadJPG, LICE_WriteJPG.
  * Updated: If Metal graphics, JS_Composite clips to client area.
 v1.217
-	* New: ListView_SetItemState, ListView_SetItemText, ListView_GetItemRect, ListView_HitTest, ListView_GetTopItem
-	* New: JS_File_Stat
+ * New: ListView_SetItemState, ListView_SetItemText, ListView_GetItemRect, ListView_HitTest, ListView_GetTopItem
+ * New: JS_File_Stat
+v1.220
+ * New: Functions for adding/deleting action shortcuts.
+ * Changed: SetParent accepts null parent on WindowsOS.
 */
 
 
@@ -296,6 +299,36 @@ int JS_File_Stat(const char* filePath, double* sizeOut, char* accessedTimeOut, c
 
 	return result;
 }
+
+/////////////////////////////////////////////////////////////////////
+// Functions related to actions shortcuts
+
+bool  JS_Actions_GetShortcutDesc(int section, int cmdID, int shortcutidx, char* descOut, int descOut_sz)
+{
+	auto s = SectionFromUniqueID(section);
+	return (s ? GetActionShortcutDesc(s, cmdID, shortcutidx, descOut, descOut_sz) : false);
+}
+
+int   JS_Actions_CountShortcuts(int section, int cmdID)
+{
+	auto s = SectionFromUniqueID(section);
+	return (s ? CountActionShortcuts(s, cmdID) : -1);
+}
+
+bool  JS_Actions_DeleteShortcut(int section, int cmdID, int shortcutidx)
+{
+	auto s = SectionFromUniqueID(section);
+	return (s ? DeleteActionShortcut(SectionFromUniqueID(section), cmdID, shortcutidx) : false);
+}
+
+bool  JS_Actions_DoShortcutDialog(int section, int cmdID, int shortcutidx)
+{
+	auto s = SectionFromUniqueID(section);
+	return (s ? DoActionShortcutDialog(GetMainHwnd(), SectionFromUniqueID(section), cmdID, shortcutidx) : false);
+}
+
+//////////////////////////////////////////////////////////////////////
+
 
 /*
 int JS_Zip_AddFile(const char* zipPath, const char* inputPath, const char* storedPathOptional)
@@ -1050,12 +1083,12 @@ void* JS_Window_GetParent(void* windowHWND)
 	return GetParent((HWND)windowHWND);
 }
 	
-void* JS_Window_SetParent(void* childHWND, void* parentHWND)
+void* JS_Window_SetParent(void* childHWND, void* parentHWNDOptional)
 {
 	#ifdef _WDL_SWELL
-	if(!(ValidatePtr(childHWND, "HWND") && ValidatePtr(parentHWND, "HWND"))) return nullptr;
+	if(!(ValidatePtr(childHWND, "HWND") && ValidatePtr(parentHWNDOptional, "HWND"))) return nullptr;
 	#endif
-	return SetParent((HWND)childHWND, (HWND)parentHWND);
+	return SetParent((HWND)childHWND, (HWND)parentHWNDOptional);
 }
 
 bool  JS_Window_IsChild(void* parentHWND, void* childHWND)
