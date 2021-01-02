@@ -7,14 +7,14 @@ only_commits:
 skip_commits:
   message: /\[travis\]/
 
-artifacts:
-  - path: reaper_js_ReaScriptAPI32ARM.dylib
+#artifacts:
+#  - path: reaper_js_ReaScriptAPI*.dylib
       
 build_script:
   - clang -c -m32 -fPIC -xc ./WDL/libpng/*.c
   - clang -c -m32 -fPIC -xc ./WDL/jpeglib/*.c
   - clang -c -m32 -fPIC -xc ./WDL/zlib/*.c
-  - clang++ -m32 -fPIC -dynamiclib -undefined dynamic_lookup -std=c++17 -DSWELL_PROVIDED_BY_APP  -I"./WDL/swell/" -I"./WDL/lice" -I"./WDL/libpng" -I"./WDL/jpeglib" -I"./WDL/zlib/" js_ReaScriptAPI.cpp js_ReaScriptAPI_ObjC.mm "./WDL/swell/swell-modstub.mm" "./WDL/lice/lice_png_write.cpp" "./WDL/lice/lice_jpg.cpp" "./WDL/lice/lice_jpg_write.cpp" "./WDL/lice/lice_colorspace.cpp" "./WDL/lice/lice.cpp" *.o -framework AppKit -framework Cocoa -lc++ -stdlib=libc++ -o "reaper_js_ReaScriptAPI32ARM.dylib"
+  - clang++ -fPIC -dynamiclib -undefined dynamic_lookup -std=c++17 -DSWELL_PROVIDED_BY_APP  -I"./WDL/swell/" -I"./WDL/lice" -I"./WDL/libpng" -I"./WDL/jpeglib" -I"./WDL/zlib/" js_ReaScriptAPI.cpp js_ReaScriptAPI_ObjC.mm "./WDL/swell/swell-modstub.mm" "./WDL/lice/lice_png_write.cpp" "./WDL/lice/lice_jpg.cpp" "./WDL/lice/lice_jpg_write.cpp" "./WDL/lice/lice_colorspace.cpp" "./WDL/lice/lice.cpp" *.o -framework AppKit -framework Cocoa -lc++ -stdlib=libc++ -o "reaper_js_ReaScriptAPI64_ARM.dylib"
 
 deploy:
   #release: myproduct-v$(APPVEYOR_BUILD_VERSION)
@@ -22,7 +22,7 @@ deploy:
   provider: GitHub
   auth_token:
     secure: xak+nfVvqW+GAoOuBcLy2isGeQS/mPKtI1nnWsAL3Ajh163kUPIGw2qc8AdQtXV5
-  artifact: reaper_js_ReaScriptAPI32ARM.dylib
+  artifact: reaper_js_ReaScriptAPI64_ARM.dylib
   draft: false
   prerelease: false
   on:
@@ -32,12 +32,12 @@ deploy:
 
 environment:
   matrix:
-    - job_name: macOS x86 64-bit
-      appveyor_build_worker_image: macos-mojave
-      ARCH: x86_64
-    #- job_name: macOS ARM 64-bit
-    #  appveyor_build_worker_image: macos
-    #  ARCH: arm64
+    #- job_name: macOS x86 64-bit
+    #  appveyor_build_worker_image: macos-mojave
+    #  ARCH: x86_64
+    - job_name: macOS ARM 64-bit
+      appveyor_build_worker_image: macos
+      ARCH: arm64
     #- job_name: Linux x86 64-bit
     #  appveyor_build_worker_image: *linux
     #  ARCH: x86_64
