@@ -8,7 +8,7 @@ skip_commits:
   message: /\[travis\]/
 
 artifacts:
-  - path: js_ReaScriptAPI64ARM.dylib
+  - path: reaper_js_ReaScriptAPI32ARM.dylib
       
 build_script:
   - clang -c -m32 -fPIC -xc ./WDL/libpng/*.c
@@ -22,7 +22,7 @@ deploy:
   provider: GitHub
   auth_token:
     secure: xak+nfVvqW+GAoOuBcLy2isGeQS/mPKtI1nnWsAL3Ajh163kUPIGw2qc8AdQtXV5
-  artifact: js_ReaScriptAPI64ARM.dylib
+  artifact: reaper_js_ReaScriptAPI32ARM.dylib
   draft: false
   prerelease: false
   on:
