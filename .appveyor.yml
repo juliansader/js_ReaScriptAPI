@@ -11,14 +11,11 @@ skip_commits:
 #  - path: reaper_js_ReaScriptAPI*.dylib
       
 build_script:
-  - clang -c -m32 -fPIC -xc ./WDL/libpng/*.c
-  - clang -c -m32 -fPIC -xc ./WDL/jpeglib/*.c
-  - clang -c -m32 -fPIC -xc ./WDL/zlib/*.c
-  - clang++ -fPIC -dynamiclib -undefined dynamic_lookup -std=c++17 -DSWELL_PROVIDED_BY_APP  -I"./WDL/swell/" -I"./WDL/lice" -I"./WDL/libpng" -I"./WDL/jpeglib" -I"./WDL/zlib/" js_ReaScriptAPI.cpp js_ReaScriptAPI_ObjC.mm "./WDL/swell/swell-modstub.mm" "./WDL/lice/lice_png_write.cpp" "./WDL/lice/lice_jpg.cpp" "./WDL/lice/lice_jpg_write.cpp" "./WDL/lice/lice_colorspace.cpp" "./WDL/lice/lice.cpp" *.o -framework AppKit -framework Cocoa -lc++ -stdlib=libc++ -o "reaper_js_ReaScriptAPI64_ARM.dylib"
+  - clang -c -fPIC -xc ./WDL/libpng/*.c ; clang -c -fPIC -xc ./WDL/jpeglib/*.c ; clang -c -fPIC -xc ./WDL/zlib/*.c ; clang++ -fPIC -dynamiclib -undefined dynamic_lookup -std=c++17 -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" -I"./WDL/lice" -I"./WDL/jpeglib" -I"./WDL/libpng" -I"./WDL/zlib/" js_ReaScriptAPI.cpp js_ReaScriptAPI_ObjC.mm "./WDL/swell/swell-modstub.mm" "./WDL/lice/lice_png_write.cpp" "./WDL/lice/lice_jpg.cpp" "./WDL/lice/lice_jpg_write.cpp" "./WDL/lice/lice_colorspace.cpp" "./WDL/lice/lice.cpp" *.o -framework AppKit -framework Cocoa -lc++ -stdlib=libc++ -o "reaper_js_ReaScriptAPI64_ARM.dylib"
 
 deploy:
   #release: myproduct-v$(APPVEYOR_BUILD_VERSION)
-  description: 'Appveyor release'
+  description: "{message}"
   provider: GitHub
   auth_token:
     secure: xak+nfVvqW+GAoOuBcLy2isGeQS/mPKtI1nnWsAL3Ajh163kUPIGw2qc8AdQtXV5
