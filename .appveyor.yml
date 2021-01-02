@@ -8,7 +8,7 @@ skip_commits:
   message: /\[travis\]/
 
 #artifacts:
-#  - path: reaper_js_ReaScriptAPI*.dylib
+  - path: reaper_js_ReaScriptAPI64_ARM.dylib
       
 build_script:
   - clang -c -std=c90 -fPIC -xc ./WDL/libpng/*.c ; clang -c -std=c90 -fPIC -xc ./WDL/jpeglib/*.c ; clang -c -std=c90 -fPIC -xc ./WDL/zlib/*.c ; clang++ -fPIC -dynamiclib -undefined dynamic_lookup -std=c++17 -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" -I"./WDL/lice" -I"./WDL/jpeglib" -I"./WDL/libpng" -I"./WDL/zlib/" js_ReaScriptAPI.cpp js_ReaScriptAPI_ObjC.mm "./WDL/swell/swell-modstub.mm" "./WDL/lice/lice_png_write.cpp" "./WDL/lice/lice_jpg.cpp" "./WDL/lice/lice_jpg_write.cpp" "./WDL/lice/lice_colorspace.cpp" "./WDL/lice/lice.cpp" *.o -framework AppKit -framework Cocoa -lc++ -stdlib=libc++ -o "reaper_js_ReaScriptAPI64_ARM.dylib"
