@@ -15,7 +15,7 @@ build_script:
 
 deploy:
   #release: myproduct-v$(APPVEYOR_BUILD_VERSION)
-  description: {message}
+  description: "{{message}}"
   provider: GitHub
   auth_token:
     secure: xak+nfVvqW+GAoOuBcLy2isGeQS/mPKtI1nnWsAL3Ajh163kUPIGw2qc8AdQtXV5
