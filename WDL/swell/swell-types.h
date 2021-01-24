@@ -142,7 +142,9 @@ INT_PTR SWELLAppMain(int msg, INT_PTR parm1, INT_PTR parm2); // to be implemente
 
 
 // basic types
+#ifndef __OBJC__
 typedef signed char BOOL;
+#endif
 typedef unsigned char BYTE;
 typedef unsigned short WORD;
 typedef unsigned int DWORD;
