@@ -2,7 +2,7 @@
 #define _WDL_ASSOCARRAY_H_
 
 #include "heapbuf.h"
-
+#include "mergesort.h"
 
 // on all of these, if valdispose is set, the array will dispose of values as needed.
 // if keydup/keydispose are set, copies of (any) key data will be made/destroyed as necessary
@@ -140,26 +140,27 @@ public:
   void ChangeKey(KEY oldkey, KEY newkey)
   {
     bool ismatch=false;
-    int i = LowerBound(oldkey, &ismatch);
-    if (ismatch)
-    {
-      KeyVal* kv = m_data.Get()+i;
-      if (m_keydispose) m_keydispose(kv->key);
-      if (m_keydup) newkey = m_keydup(newkey);
-      kv->key = newkey;
-      Resort();
-    }
+    int i=LowerBound(oldkey, &ismatch);
+    if (ismatch) ChangeKeyByIndex(i, newkey, true);
   }
 
   void ChangeKeyByIndex(int idx, KEY newkey, bool needsort)
   {
     if (idx >= 0 && idx < m_data.GetSize())
     {
-      KeyVal* kv = m_data.Get()+idx;
-      if (m_keydispose) m_keydispose(kv->key);
-      if (m_keydup) newkey = m_keydup(newkey);
-      kv->key = newkey;
-      if (needsort) Resort();
+      KeyVal* kv=m_data.Get()+idx;
+      if (!needsort)
+      {
+        if (m_keydispose) m_keydispose(kv->key);
+        if (m_keydup) newkey=m_keydup(newkey);
+        kv->key=newkey;
+      }
+      else
+      {
+        VAL val=kv->val;
+        m_data.Delete(idx);
+        Insert(newkey, val);
+      }
     }
   }
 
@@ -173,25 +174,36 @@ public:
     kv->val = val;
   }
 
-  void Resort()
+  void Resort(int (*new_keycmp)(KEY *k1, KEY *k2)=NULL)
+  {
+    if (new_keycmp) m_keycmp = new_keycmp;
+    if (m_data.GetSize() > 1 && m_keycmp)
+    {
+      qsort(m_data.Get(), m_data.GetSize(), sizeof(KeyVal),
+        (int(*)(const void*, const void*))m_keycmp);
+      if (!new_keycmp)
+        RemoveDuplicateKeys();
+    }
+  }
+
+  void ResortStable()
   {
     if (m_data.GetSize() > 1 && m_keycmp)
     {
-      qsort(m_data.Get(),m_data.GetSize(),sizeof(KeyVal),(int(*)(const void *,const void *))m_keycmp);
-
-      // AddUnsorted can add duplicate keys
-      // unfortunately qsort is not guaranteed to preserve order,
-      // ideally this filter would always preserve the last-added key
-      int i;
-      for (i=0; i < m_data.GetSize()-1; ++i)
+      char *tmp=(char*)malloc(m_data.GetSize()*sizeof(KeyVal));
+      if (WDL_NORMALLY(tmp))
       {
-        KeyVal* kv=m_data.Get()+i;
-        KeyVal* nv=kv+1;
-        if (!m_keycmp(&kv->key, &nv->key))
-        {
-          DeleteByIndex(i--);
-        }
+        WDL_mergesort(m_data.Get(), m_data.GetSize(), sizeof(KeyVal),
+          (int(*)(const void*, const void*))m_keycmp, tmp);
+        free(tmp);
       }
+      else
+      {
+        qsort(m_data.Get(), m_data.GetSize(), sizeof(KeyVal),
+          (int(*)(const void*, const void*))m_keycmp);
+      }
+
+      RemoveDuplicateKeys();
     }
   }
 
@@ -251,6 +263,7 @@ public:
   void CopyContentsAsReference(const WDL_AssocArrayImpl &cp)
   {
     DeleteAll(true);
+    m_keycmp = cp.m_keycmp;
     m_keydup = NULL;  // this no longer can own any data
     m_keydispose = NULL;
     m_valdispose = NULL; 
@@ -272,6 +285,31 @@ protected:
   void (*m_keydispose)(KEY);
   void (*m_valdispose)(VAL);
 
+private:
+
+  void RemoveDuplicateKeys() // after resorting
+  {
+    const int sz = m_data.GetSize();
+
+    int cnt = 1;
+    KeyVal *rd = m_data.Get() + 1, *wr = rd;
+    for (int x = 1; x < sz; x ++)
+    {
+      if (m_keycmp(&rd->key, &wr[-1].key))
+      {
+        if (rd != wr) *wr=*rd;
+        wr++;
+        cnt++;
+      }
+      else
+      {
+        if (m_keydispose) m_keydispose(rd->key);
+        if (m_valdispose) m_valdispose(rd->val);
+      }
+      rd++;
+    }
+    if (cnt < sz) m_data.Resize(cnt,false);
+  }
 };
 
 
@@ -375,72 +413,50 @@ public:
   
   ~WDL_LogicalSortStringKeyedArray() { }
 
-private:
-
   static int cmpstr(const char **a, const char **b) { return _cmpstr(*a, *b, true); }
   static int cmpistr(const char **a, const char **b) { return _cmpstr(*a, *b, false); }
+
+private:
 
   static int _cmpstr(const char *s1, const char *s2, bool case_sensitive)
   {
     // this also exists as WDL_strcmp_logical in wdlcstring.h
-    char lastNonZeroChar=0;
-    // last matching character, updated if not 0. this allows us to track whether
-    // we are inside of a number with the same leading digits
 
     for (;;)
     {
-      char c1=*s1++, c2=*s2++;
-      if (!c1) return c1-c2;
-      
-      if (c1!=c2)
+      if (*s1 >= '0' && *s1 <= '9' && *s2 >= '0' && *s2 <= '9')
       {
-        if (c1 >= '0' && c1 <= '9' && c2 >= '0' && c2 <= '9')
+        int lzdiff=0, len1=0, len2=0;
+
+        while (*s1 == '0') { s1++; lzdiff--; }
+        while (*s2 == '0') { s2++; lzdiff++; }
+
+        while (s1[len1] >= '0' && s1[len1] <= '9') len1++;
+        while (s2[len2] >= '0' && s2[len2] <= '9') len2++;
+
+        if (len1 != len2) return len1-len2;
+
+        while (len1--)
         {
-          int lzdiff=0, cnt=0;
-          if (lastNonZeroChar < '1' || lastNonZeroChar > '9')
-          {
-            while (c1 == '0') { c1=*s1++; lzdiff--; }
-            while (c2 == '0') { c2=*s2++; lzdiff++; } // lzdiff = lz2-lz1, more leading 0s = earlier in list
-          }
-
-          for (;;)
-          {
-            if (c1 >= '0' && c1 <= '9')
-            {
-              if (c2 < '0' || c2 > '9') return 1;
-
-              c1=s1[cnt];
-              c2=s2[cnt++];
-            }
-            else
-            {
-              if (c2 >= '0' && c2 <= '9') return -1;
-              break;
-            }
-          }
-
-          s1--;
-          s2--;
-        
-          while (cnt--)
-          {
-            const int d = *s1++ - *s2++;
-            if (d) return d;
-          }
-
-          if (lzdiff) return lzdiff;
+          const int d = *s1++ - *s2++;
+          if (d) return d;
         }
-        else
+
+        if (lzdiff) return lzdiff;
+      }
+      else
+      {
+        char c1 = *s1++, c2 = *s2++;
+        if (c1 != c2)
         {
-          if (!case_sensitive)
-          {
-            if (c1>='a' && c1<='z') c1+='A'-'a';
-            if (c2>='a' && c2<='z') c2+='A'-'a';
-          }
+          if (case_sensitive) return c1-c2;
+
+          if (c1>='a' && c1<='z') c1+='A'-'a';
+          if (c2>='a' && c2<='z') c2+='A'-'a';
           if (c1 != c2) return c1-c2;
         }
+        else if (!c1) return 0;
       }
-      else if (c1 != '0') lastNonZeroChar=c1;
     }
   }
 };

@@ -37,7 +37,7 @@
 
 #include "wdlcstring.h"
 #include "lameencdec.h"
-
+#include "win32_utf8.h"
 
 #ifdef __APPLE__
   #include <Carbon/Carbon.h>
@@ -45,6 +45,15 @@
 #ifndef _WIN32
   #include <dlfcn.h>
 #endif
+
+// note: calling code should include WDL/metadata.h from somewhere to implement these functions
+int PackID3Chunk(WDL_HeapBuf *hb, WDL_StringKeyedArray<char*> *metadata, bool want_ixml_xmp);
+int PackApeChunk(WDL_HeapBuf *hb, WDL_StringKeyedArray<char*> *metadata);
+int PackXMPChunk(WDL_HeapBuf *hb, WDL_StringKeyedArray<char*> *metadata);
+bool ParseUserDefMetadata(const char *id, const char *val,
+  const char **k, const char **v, int *klen, int *vlen);
+bool HasScheme(const char *scheme, WDL_StringKeyedArray<char*> *metadata);
+
 
 typedef enum MPEG_mode_e {
   STEREO = 0,
@@ -85,6 +94,8 @@ static struct {
   int (*set_VBR_max_bitrate_kbps)(lame_t, int);
   size_t (*get_lametag_frame)(lame_t, unsigned char *, size_t);
   const char *(*get_lame_version)();
+  int (*set_findReplayGain)(lame_t, int);
+
 } lame;
 
 #if 1
@@ -135,7 +146,9 @@ static bool tryLoadDLL2(const char *name)
   GETITEM(set_VBR_min_bitrate_kbps)
   GETITEM(set_VBR_max_bitrate_kbps)
   GETITEM(get_lametag_frame)
+  GETITEM(set_findReplayGain)
   GETITEM_NP(get_lame_version)
+
   #undef GETITEM   
   #undef GETITEM_NP
   if (errcnt2)
@@ -238,7 +251,9 @@ int LameEncoder::CheckDLL() // returns 1 for lame API, 2 for Blade, 0 for none
 
 }
 
-LameEncoder::LameEncoder(int srate, int nch, int bitrate, int stereomode, int quality, int vbrmethod, int vbrquality, int vbrmax, int abr)
+LameEncoder::LameEncoder(int srate, int nch, int bitrate, int stereomode, int quality,
+  int vbrmethod, int vbrquality, int vbrmax, int abr, int rpgain,
+  WDL_StringKeyedArray<char*> *metadata)
 {
   m_lamestate=0;
   if (!CheckDLL())
@@ -250,7 +265,7 @@ LameEncoder::LameEncoder(int srate, int nch, int bitrate, int stereomode, int qu
   errorstat=0;
   m_nch=nch;
   m_encoder_nch = stereomode == 3 ? 1 : m_nch;
-
+  m_id3_len=0;
 
   m_lamestate=lame.init();
   if (!m_lamestate)
@@ -268,7 +283,8 @@ LameEncoder::LameEncoder(int srate, int nch, int bitrate, int stereomode, int qu
 
   lame.set_out_samplerate(m_lamestate,outrate);
   lame.set_quality(m_lamestate,(quality>9 ||quality<0) ? 0 : quality);
-  lame.set_mode(m_lamestate,(MPEG_mode) (m_encoder_nch==1?3 :stereomode ));
+  if (m_encoder_nch == 1 || stereomode >= 0)
+    lame.set_mode(m_lamestate,(MPEG_mode) (m_encoder_nch==1?3 :stereomode ));
   lame.set_brate(m_lamestate,bitrate);
   
   //int vbrmethod (-1 no vbr), int vbrquality (nVBRQuality), int vbrmax, int abr
@@ -293,7 +309,21 @@ LameEncoder::LameEncoder(int srate, int nch, int bitrate, int stereomode, int qu
       lame.set_VBR_min_bitrate_kbps(m_lamestate,bitrate);
     }
   }
+  if (rpgain>0 && lame.set_findReplayGain) lame.set_findReplayGain(m_lamestate,1);
+
+  if (metadata && metadata->GetSize())
+  {
+    WDL_HeapBuf hb;
+    if (PackID3Chunk(&hb, metadata, true))
+    {
+      outqueue.Add(hb.Get(), hb.GetSize());
+      m_id3_len=hb.GetSize();
+    }
+    PackApeChunk(&m_apetag, metadata);
+  }
+
   lame.init_params(m_lamestate);
+
   in_size_samples=lame.get_framesize(m_lamestate);
 
   outtmp.Resize(65536);
@@ -314,7 +344,7 @@ void LameEncoder::Encode(float *in, int in_spls, int spacing)
       for (x = 0; x < in_spls; x ++)
       {
         float f=in[pos]+in[pos+1];
-        f*=16383.5f;
+        f*=16384.0f;
         spltmp[0].Add(&f,sizeof(float));
         pos+=adv;
       }
@@ -327,11 +357,11 @@ void LameEncoder::Encode(float *in, int in_spls, int spacing)
       for (x = 0; x < in_spls; x ++)
       {
         float f=in[pos];
-        f*=32767.0f;
+        f*=32768.0f;
         spltmp[0].Add(&f,sizeof(float));
 
         f=in[pos+1];
-        f*=32767.0f;
+        f*=32768.0f;
         spltmp[1].Add(&f,sizeof(float));
 
         pos+=adv;
@@ -344,7 +374,7 @@ void LameEncoder::Encode(float *in, int in_spls, int spacing)
       for (x = 0; x < in_spls; x ++)
       {
         float f=in[pos];
-        f*=32767.0f;
+        f*=32768.0f;
         spltmp[0].Add(&f,sizeof(float));
 
         pos+=spacing;
@@ -397,6 +427,7 @@ static BOOL HasUTF8(const char *_str)
 }
 #endif
 
+
 LameEncoder::~LameEncoder()
 {
   if (m_lamestate)
@@ -405,24 +436,21 @@ LameEncoder::~LameEncoder()
     {
       unsigned char buf[16384];
       size_t a=lame.get_lametag_frame(m_lamestate,buf,sizeof(buf));
-      if (a>0 && a<=sizeof(buf))
+      if ((a>0 && a<=sizeof(buf)) || m_apetag.GetSize())
       {
-        FILE *fp=NULL;
-#ifdef _WIN32
-        if (HasUTF8(m_vbrfile.Get()) && GetVersion()<0x80000000)
-        {
-          WCHAR wf[2048];
-          if (MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,m_vbrfile.Get(),-1,wf,2048))
-          {
-            fp = _wfopen(wf,L"r+b");
-          }
-        }
-#endif
-        if (!fp) fp = fopen(m_vbrfile.Get(),"r+b");
+        FILE *fp = fopenUTF8(m_vbrfile.Get(),"r+b");
         if (fp)
         {
-          fseek(fp,0,SEEK_SET);
-          fwrite(buf,1,a,fp);
+          if (a > 0 && a <= sizeof(buf))
+          {
+            fseek(fp, m_id3_len, SEEK_SET);
+            fwrite(buf,1,a,fp);
+          }
+          if (m_apetag.GetSize())
+          {
+            fseek(fp, 0, SEEK_END);
+            fwrite(m_apetag.Get(), 1, m_apetag.GetSize(), fp);
+          }
           fclose(fp);
         }
       }
@@ -431,4 +459,5 @@ LameEncoder::~LameEncoder()
     m_lamestate=0;
   }
 }
+
 
