@@ -2603,13 +2603,13 @@ bool JS_WindowMessage_Post(void* windowHWND, const char* message, double wParam,
 	}
 	
 	WPARAM fullWP;
-	if (wParamHighWord || ((wParam < 0) && (-(2^15) > wParam))) // WARNING: Negative values (such as mousewheel turns) are not bitwise encoded the same in low WORD vs entire WPARAM. So if small negative, assume that low WORD is intended.
+	if (wParamHighWord || ((wParam < 0) && (-(1<<15) > wParam))) // WARNING: Negative values (such as mousewheel turns) are not bitwise encoded the same in low WORD vs entire WPARAM. So if small negative, assume that low WORD is intended.
 		fullWP = MAKEWPARAM(wParam, wParamHighWord);
 	else
 		fullWP = (WPARAM)(int64_t)wParam;
 		
 	LPARAM fullLP;
-	if (lParamHighWord || ((lParam < 0) && (-(2 ^ 15) > lParam)))
+	if (lParamHighWord || ((lParam < 0) && (-(1<<15) > lParam)))
 		fullLP = MAKELPARAM(lParam, lParamHighWord);
 	else
 		fullLP = (LPARAM)(int64_t)lParam;
@@ -2653,13 +2653,13 @@ int JS_WindowMessage_Send(void* windowHWND, const char* message, double wParam, 
 	}
 
 	WPARAM fullWP;
-	if (wParamHighWord || ((wParam < 0) && (-(2 ^ 15) > wParam))) // WARNING: Negative values (such as mousewheel turns) are not bitwise encoded the same in low WORD vs entire WPARAM. So if small negative, assume that low WORD is intended.
+	if (wParamHighWord || ((wParam < 0) && (-(1<<15) > wParam))) // WARNING: Negative values (such as mousewheel turns) are not bitwise encoded the same in low WORD vs entire WPARAM. So if small negative, assume that low WORD is intended.
 		fullWP = MAKEWPARAM(wParam, wParamHighWord);
 	else
 		fullWP = (WPARAM)(int64_t)wParam;
 
 	LPARAM fullLP;
-	if (lParamHighWord || ((lParam < 0) && (-(2 ^ 15) > lParam)))
+	if (lParamHighWord || ((lParam < 0) && (-(1<<15) > lParam)))
 		fullLP = MAKELPARAM(lParam, lParamHighWord);
 	else
 		fullLP = (LPARAM)(int64_t)lParam;
