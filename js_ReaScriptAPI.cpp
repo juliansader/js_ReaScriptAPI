@@ -1898,8 +1898,8 @@ DWORD JS_ConvertStringToStyle(char* styleString)
 		// To distinguish MAXIMIZEBOX from MAXIMIZE, remove the M's of all MAXIMIZEBOXes.
 		// swell doesn't implement WS_SHOWMAXIMIZED and WS_SHOWMINIMIZED, so will use ShowWindow's options instead.
 		char* box;
-		while (box = strstr(styleString, "MAXIMIZEBOX"))	{ style |= (WS_MAXIMIZEBOX | WS_SYSMENU); *box = 'N'; }
-		while (box = strstr(styleString, "MINIMIZEBOX"))	{ style |= (WS_MINIMIZEBOX | WS_SYSMENU); *box = 'N'; }
+		while ((box = strstr(styleString, "MAXIMIZEBOX")))	{ style |= (WS_MAXIMIZEBOX | WS_SYSMENU); *box = 'N'; }
+		while ((box = strstr(styleString, "MINIMIZEBOX")))	{ style |= (WS_MINIMIZEBOX | WS_SYSMENU); *box = 'N'; }
 		if (strstr(styleString, "MAXIMIZE"))		style |= WS_MAXIMIZE;
 		if (strstr(styleString, "CHILD"))			style |= WS_CHILD;
 		//if (strstr(styleString, "CHILDWINDOW"))	style |= WS_CHILDWINDOW;
