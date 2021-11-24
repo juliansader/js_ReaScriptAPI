@@ -37,8 +37,8 @@ deploy:
     #APPVEYOR_REPO_TAG: true        # deploy on tag push only
 
 
-environment:
-  matrix:
+#environment:
+#  matrix:
     #- job_name: macOS x86 64-bit
     #  appveyor_build_worker_image: macos-mojave
     #  ARCH: x86_64
