@@ -12,7 +12,7 @@ branches:
   only:
     - master
     
-image: macOS
+image: macos-bigsur
 
 artifacts:
   - path: reaper_js_ReaScriptAPI64_ARM.dylib
