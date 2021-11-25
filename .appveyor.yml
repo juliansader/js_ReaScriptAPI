@@ -22,10 +22,10 @@ environment:
   - job_name: linux_64
     appveyor_build_worker_image: ubuntu
     
-  - job_name: macOS_64_
+  - job_name: macOS_64
     appveyor_build_worker_image: macos
 
-  - job_name: macOS_64_ARM_
+  - job_name: macOS_64_ARM
     appveyor_build_worker_image: macos-bigsur
 
 for:
