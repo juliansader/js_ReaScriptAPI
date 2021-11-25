@@ -70,7 +70,7 @@ deploy:
   - provider: GitHub
     auth_token:
       secure: xak+nfVvqW+GAoOuBcLy2isGeQS/mPKtI1nnWsAL3Ajh163kUPIGw2qc8AdQtXV5
-    artifact: reaper_js_ReaScriptAPI64_ARM.dylib
+    artifact: reaper_js_ReaScriptAPI64.dylib
     on:
       job_name: macOS_64
 
