@@ -12,65 +12,81 @@ only_commits:
 branches:
   only:
     - master
-    
-image: 
-  - macos-bigsur
-  - macos
-  - ubuntu
 
 artifacts:
-  - path: reaper_js_ReaScriptAPI64_ARM.dylib
-      
-build_script:
-  #- clang -c -arch arm64  -std=c90 -fPIC -xc ./WDL/libpng/*.c 
-  #- clang -c -arch arm64  -std=c90 -fPIC -xc ./WDL/jpeglib/*.c 
-  #- clang -c -arch arm64  -std=c90 -arch=-fPIC -xc ./WDL/zlib/*.c 
-  #- clang++  -arch arm64  -fPIC -dynamiclib -undefined dynamic_lookup -std=c++17 -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" -I"./WDL/lice" -I"./WDL/jpeglib" -I"./WDL/libpng" -I"./WDL/zlib/" js_ReaScriptAPI.cpp js_ReaScriptAPI_ObjC.mm "./WDL/swell/swell-modstub.mm" "./WDL/lice/lice_png_write.cpp" "./WDL/lice/lice_jpg.cpp" "./WDL/lice/lice_jpg_write.cpp" "./WDL/lice/lice_colorspace.cpp" "./WDL/lice/lice.cpp" *.o -framework AppKit -framework Cocoa -lc++ -stdlib=libc++ -o "reaper_js_ReaScriptAPI64_ARM.dylib"
+  - path: "reaper_js_ReaScriptAPI*.*"
+  
+environment:
+  matrix:
 
-test_script:
-  - file reaper_js_ReaScriptAPI64_ARM.dylib
-  - lipo -archs reaper_js_ReaScriptAPI64_ARM.dylib
+  - job_name: macOS_64
+    appveyor_build_worker_image: macos
+
+  - job_name: macOS_64_ARM
+    appveyor_build_worker_image: macos-bigsur
+
+  - job_name: linux_64
+    appveyor_build_worker_image: ubuntu
+
+for:
+  - matrix: 
+      only: 
+        - job_name: linux_64
+    install:
+      - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+      - sudo apt-get update -q
+      - sudo apt-get install g++-5 libgtk-3-dev gcc-5-multilib g++-5-multilib
+      - fi
+    build_script:
+      - gcc-5 -c -fPIC -xc ./WDL/libpng/*.c
+      - gcc-5 -c -fPIC -xc ./WDL/jpeglib/*.c
+      - gcc-5 -c -fPIC -xc ./WDL/zlib/*.c
+      - g++-5 -fPIC -shared -std=c++14 -Wall -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" -I"./WDL/jpeglib/" -I"./WDL/lice" -I"./WDL/libpng" -I"./WDL/zlib/" js_ReaScriptAPI.cpp "./WDL/swell/swell-modstub-generic.cpp" "./WDL/lice/lice_png_write.cpp" "./WDL/lice/lice_jpg.cpp" "./WDL/lice/lice_jpg_write.cpp" "./WDL/lice/lice_colorspace.cpp" "./WDL/lice/lice.cpp" *.o `pkg-config --cflags --libs gtk+-3.0` -o reaper_js_ReaScriptAPI64.so
+
+
+  - matrix:
+      only:
+        - job_name: macOS_64
+    build_script:
+      - clang -c -arch x86_64 -std=c90 -fPIC -xc ./WDL/libpng/*.c 
+      - clang -c -arch x86_64 -std=c90 -fPIC -xc ./WDL/jpeglib/*.c 
+      - clang -c -arch x86_64 -std=c90 -arch=-fPIC -xc ./WDL/zlib/*.c 
+      - clang++  -arch x86_64 -fPIC -dynamiclib -undefined dynamic_lookup -std=c++17 -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" -I"./WDL/lice" -I"./WDL/jpeglib" -I"./WDL/libpng" -I"./WDL/zlib/" js_ReaScriptAPI.cpp js_ReaScriptAPI_ObjC.mm "./WDL/swell/swell-modstub.mm" "./WDL/lice/lice_png_write.cpp" "./WDL/lice/lice_jpg.cpp" "./WDL/lice/lice_jpg_write.cpp" "./WDL/lice/lice_colorspace.cpp" "./WDL/lice/lice.cpp" *.o -framework AppKit -framework Cocoa -lc++ -stdlib=libc++ -o "reaper_js_ReaScriptAPI64.dylib"
+    test_script:
+      - file reaper_js_ReaScriptAPI64.dylib
+      
+  - matrix:
+      only:
+        - job_name: macOS_64_ARM
+    build_script:
+      - clang -c -arch arm64 -std=c90 -fPIC -xc ./WDL/libpng/*.c 
+      - clang -c -arch arm64 -std=c90 -fPIC -xc ./WDL/jpeglib/*.c 
+      - clang -c -arch arm64 -std=c90 -arch=-fPIC -xc ./WDL/zlib/*.c 
+      - clang++  -arch arm64 -fPIC -dynamiclib -undefined dynamic_lookup -std=c++17 -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" -I"./WDL/lice" -I"./WDL/jpeglib" -I"./WDL/libpng" -I"./WDL/zlib/" js_ReaScriptAPI.cpp js_ReaScriptAPI_ObjC.mm "./WDL/swell/swell-modstub.mm" "./WDL/lice/lice_png_write.cpp" "./WDL/lice/lice_jpg.cpp" "./WDL/lice/lice_jpg_write.cpp" "./WDL/lice/lice_colorspace.cpp" "./WDL/lice/lice.cpp" *.o -framework AppKit -framework Cocoa -lc++ -stdlib=libc++ -o "reaper_js_ReaScriptAPI64_ARM.dylib"
+    test_script:
+      - file reaper_js_ReaScriptAPI64_ARM.dylib
 
 deploy:
-  #release: "{message}"
-  description: "Appveyor"
-  provider: GitHub
-  auth_token:
-    secure: xak+nfVvqW+GAoOuBcLy2isGeQS/mPKtI1nnWsAL3Ajh163kUPIGw2qc8AdQtXV5
-  draft: false
-  prerelease: false
-  on:
-    branch: master                 # release from master branch only
-    #APPVEYOR_REPO_TAG: true        # deploy on tag push only
-  - on: 
-      image: ubuntu
-    artifact: reaper_js_ReaScriptAPI64.so
-  - on:
-      image: macos
-    artifact: reaper_js_ReaScriptAPI64.dylib
-  - on:
-      image: macos-bigsur
+  - provider: GitHub
+    auth_token:
+      secure: xak+nfVvqW+GAoOuBcLy2isGeQS/mPKtI1nnWsAL3Ajh163kUPIGw2qc8AdQtXV5
     artifact: reaper_js_ReaScriptAPI64_ARM.dylib
-    
+    on:
+      branch: master
+      job_name: macOS64
 
+  - provider: GitHub
+    auth_token:
+      secure: xak+nfVvqW+GAoOuBcLy2isGeQS/mPKtI1nnWsAL3Ajh163kUPIGw2qc8AdQtXV5
+    artifact: reaper_js_ReaScriptAPI64_ARM.dylib
+    on:
+      branch: master
+      job_name: macOSARM
 
-#environment:
-#  matrix:
-    #- job_name: macOS x86 64-bit
-    #  appveyor_build_worker_image: macos-mojave
-    #  ARCH: x86_64
-    #- job_name: macOS ARM 64-bit
-    #  appveyor_build_worker_image: macos
-    #  ARCH: arm64
-    #- job_name: Linux x86 64-bit
-    #  appveyor_build_worker_image: *linux
-    #  ARCH: x86_64
-    #- job_name: Linux x86 32-bit
-    #  appveyor_build_worker_image: *linux
-    #  ARCH: i686
-    #- job_name: Linux ARM 64-bit
-    #  appveyor_build_worker_image: *linux
-    #  ARCH: aarch64
-    #- job_name: Linux ARM 32-bit
-    #  appveyor_build_worker_image: *linux
-    #  ARCH: armv7l
+  - provider: GitHub
+    auth_token:
+      secure: xak+nfVvqW+GAoOuBcLy2isGeQS/mPKtI1nnWsAL3Ajh163kUPIGw2qc8AdQtXV5
+    artifact: reaper_js_ReaScriptAPI64.so
+    on:
+      branch: master
+      job_name: linux64
