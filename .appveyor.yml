@@ -72,21 +72,18 @@ deploy:
       secure: xak+nfVvqW+GAoOuBcLy2isGeQS/mPKtI1nnWsAL3Ajh163kUPIGw2qc8AdQtXV5
     artifact: reaper_js_ReaScriptAPI64_ARM.dylib
     on:
-      branch: master
-      job_name: macOS64
+      job_name: macOS_64
 
   - provider: GitHub
     auth_token:
       secure: xak+nfVvqW+GAoOuBcLy2isGeQS/mPKtI1nnWsAL3Ajh163kUPIGw2qc8AdQtXV5
     artifact: reaper_js_ReaScriptAPI64_ARM.dylib
     on:
-      branch: master
-      job_name: macOSARM
+      job_name: macOS_64_ARM
 
   - provider: GitHub
     auth_token:
       secure: xak+nfVvqW+GAoOuBcLy2isGeQS/mPKtI1nnWsAL3Ajh163kUPIGw2qc8AdQtXV5
     artifact: reaper_js_ReaScriptAPI64.so
     on:
-      branch: master
-      job_name: linux64
+      job_name: linux_64
