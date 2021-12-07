@@ -1,4 +1,4 @@
-version: '1.220.{build}'
+version: '1.300.{build}'
 
 # Skip re-build caused by tagged release
 skip_tags: true
