@@ -22,7 +22,7 @@ static void* __vararg_JS_Localize(void** arglist, int numparms)
 
 static void* __vararg_JS_Zip_Open(void** arglist, int numparms)
 {
-	return JS_Zip_Open((const char*)arglist[0], (const char*)arglist[1], numparms > 2 ? (int)arglist[2] : ZIP_DEFAULT_COMPRESSION_LEVEL);
+	return JS_Zip_Open((const char*)arglist[0], (const char*)arglist[1], numparms > 2 ? (int)(intptr_t)arglist[2] : ZIP_DEFAULT_COMPRESSION_LEVEL);
 }
 
 static void* __vararg_JS_Zip_Close(void** arglist, int numparms)
@@ -33,7 +33,7 @@ static void* __vararg_JS_Zip_Close(void** arglist, int numparms)
 
 static void* __vararg_JS_Zip_ErrorString(void** arglist, int numparms)
 {
-	JS_Zip_ErrorString((int)arglist[0], (char*)arglist[1], (int)arglist[2]);
+	JS_Zip_ErrorString((int)(intptr_t)arglist[0], (char*)arglist[1], (int)(intptr_t)arglist[2]);
 	return NULL;
 }
 
@@ -44,7 +44,7 @@ static void* __vararg_JS_Zip_Entry_OpenByName(void** arglist, int numparms)
 
 static void* __vararg_JS_Zip_Entry_OpenByIndex(void** arglist, int numparms)
 {
-	return (void*)(intptr_t)JS_Zip_Entry_OpenByIndex(arglist[0], (int)arglist[1]);
+	return (void*)(intptr_t)JS_Zip_Entry_OpenByIndex(arglist[0], (int)(intptr_t)arglist[1]);
 }
 
 static void* __vararg_JS_Zip_Entry_Close(void** arglist, int numparms)
@@ -59,12 +59,12 @@ static void* __vararg_JS_Zip_CountEntries(void** arglist, int numparms)
 
 static void* __vararg_JS_Zip_Entry_Info(void** arglist, int numparms)
 {
-	return (void*)(intptr_t)JS_Zip_Entry_Info(arglist[0], (char*)arglist[1], (int)arglist[2], (int*)arglist[3], (int*)arglist[4], (double*)arglist[5], (double*)arglist[6]);
+	return (void*)(intptr_t)JS_Zip_Entry_Info(arglist[0], (char*)arglist[1], (int)(intptr_t)arglist[2], (int*)arglist[3], (int*)arglist[4], (double*)arglist[5], (double*)arglist[6]);
 }
 
 static void* __vararg_JS_Zip_Entry_CompressBuffer(void** arglist, int numparms)
 {
-	return (void*)(intptr_t)JS_Zip_Entry_CompressBuffer(arglist[0], (const char*)arglist[1], (int)arglist[2]);
+	return (void*)(intptr_t)JS_Zip_Entry_CompressBuffer(arglist[0], (const char*)arglist[1], (int)(intptr_t)arglist[2]);
 }
 
 static void* __vararg_JS_Zip_Entry_CompressFile(void** arglist, int numparms)
@@ -74,7 +74,7 @@ static void* __vararg_JS_Zip_Entry_CompressFile(void** arglist, int numparms)
 
 static void* __vararg_JS_Zip_Entry_ExtractToBuffer(void** arglist, int numparms)
 {
-	return (void*)(intptr_t)JS_Zip_Entry_ExtractToBuffer(arglist[0], (char*)arglist[1], (int)arglist[2]);
+	return (void*)(intptr_t)JS_Zip_Entry_ExtractToBuffer(arglist[0], (char*)arglist[1], (int)(intptr_t)arglist[2]);
 }
 
 static void* __vararg_JS_Zip_Entry_ExtractToFile(void** arglist, int numparms)
@@ -84,7 +84,7 @@ static void* __vararg_JS_Zip_Entry_ExtractToFile(void** arglist, int numparms)
 
 static void* __vararg_JS_Zip_ListAllEntries(void** arglist, int numparms)
 {
-	return (void*)(intptr_t)JS_Zip_ListAllEntries(arglist[0], (char*)arglist[1], (int)arglist[2]);
+	return (void*)(intptr_t)JS_Zip_ListAllEntries(arglist[0], (char*)arglist[1], (int)(intptr_t)arglist[2]);
 }
 
 static void* __vararg_JS_Zip_Extract(void** arglist, int numparms)
@@ -94,12 +94,12 @@ static void* __vararg_JS_Zip_Extract(void** arglist, int numparms)
 
 static void* __vararg_JS_Zip_DeleteEntries(void** arglist, int numparms)
 {
-	return (void*)(intptr_t)JS_Zip_DeleteEntries(arglist[0], (char*)arglist[1], (int)arglist[2]);
+	return (void*)(intptr_t)JS_Zip_DeleteEntries(arglist[0], (char*)arglist[1], (int)(intptr_t)arglist[2]);
 }
 
 static void* __vararg_JS_Zip_Create(void** arglist, int numparms)
 {
-	return (void*)(intptr_t)JS_Zip_Create((const char*)arglist[0], (const char*)arglist[1], (int)arglist[2]);
+	return (void*)(intptr_t)JS_Zip_Create((const char*)arglist[0], (const char*)arglist[1], (int)(intptr_t)arglist[2]);
 }
 
 ////////////////////////////////////////////////////////////////
@@ -879,12 +879,12 @@ static void* __vararg_JS_LICE_WriteJPG(void** arglist, int numparms)
 
 static void* __vararg_JS_LICE_LoadPNGFromMemory(void** arglist, int numparms)
 {
-	return (void*)(intptr_t)JS_LICE_LoadPNGFromMemory((const char*)arglist[0], (int)arglist[1]);
+	return (void*)(intptr_t)JS_LICE_LoadPNGFromMemory((const char*)arglist[0], (int)(intptr_t)arglist[1]);
 }
 
 static void* __vararg_JS_LICE_LoadJPGFromMemory(void** arglist, int numparms)
 {
-	return (void*)(intptr_t)JS_LICE_LoadJPGFromMemory((const char*)arglist[0], (int)arglist[1]);
+	return (void*)(intptr_t)JS_LICE_LoadJPGFromMemory((const char*)arglist[0], (int)(intptr_t)arglist[1]);
 }
 
 static void* __vararg_JS_LICE_Blit(void** arglist, int numparms)
