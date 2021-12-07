@@ -83,7 +83,6 @@
 	//#define SWELL_TARGET_OSX
 	//#define __OBJC__
 	//#include "./WDL/swell/swell-internal.h" // swell for OSX does NOT define HWND__ struct -- it seems that HWND is simply NSView*.
-	#include <unistd.h> // !!!!! Added for compilation of js_ReaScriptAPI on Appveyor for Apple ARM
 	#define WINAPI
 #endif
 
