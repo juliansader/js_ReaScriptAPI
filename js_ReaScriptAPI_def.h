@@ -89,7 +89,6 @@ APIdef aAPIdefs[] =
 	{ APIFUNC(JS_Localize), "void", "const char*,const char*,char*,int", "USEnglish,LangPackSection,translationOut,translationOut_sz", "Returns the translation of the given US English text, according to the currently loaded Language Pack.\n\nParameters:\n * LangPackSection: Language Packs are divided into sections such as \"common\" or \"DLG_102\".\n * In Lua, by default, text of up to 1024 chars can be returned. To increase (or reduce) the default buffer size, a string and size can be included as optional 3rd and 4th arguments.\n\nExample: reaper.JS_Localize(\"Actions\", \"common\", \"\", 20)", },
 
 	{ APIFUNC(JS_File_Stat), "int", "const char*,double*,char*,char*,char*,int*,int*,int*,int*,int*,int*,int*", "filePath,sizeOut,accessedTimeOut,modifiedTimeOut,cTimeOut,deviceIDOut,deviceSpecialIDOut,inodeOut,modeOut,numLinksOut,ownerUserIDOut,ownerGroupIDOut", "Returns information about a file.\n\ncTime is not implemented on all systems. If it does return a time, the value may differ depending on the OS: on WindowsOS, it may refer to the time that the file was either created or copied, whereas on Linux and macOS, it may refer to the time of last status change.\n\nretval is 0 if successful, negative if not.", },
-	//{ APIFUNC(JS_Zip_AddFile), "int", "const char*,const char*", "zipFile,inputFile", "", },
 
 	{ APIFUNC(JS_Actions_GetShortcutDesc), "bool", "int,int,int,char*,int", "section,cmdID,shortcutidx,descOut,descOut_sz", "Section:\n0 = Main, 100 = Main (alt recording), 32060 = MIDI Editor, 32061 = MIDI Event List Editor, 32062 = MIDI Inline Editor, 32063 = Media Explorer.", },
 	{ APIFUNC(JS_Actions_CountShortcuts), "int", "int,int", "section,cmdID", "Section:\n0 = Main, 100 = Main (alt recording), 32060 = MIDI Editor, 32061 = MIDI Event List Editor, 32062 = MIDI Inline Editor, 32063 = Media Explorer.", },
@@ -262,6 +261,7 @@ APIdef aAPIdefs[] =
 	{ APIFUNC(JS_LICE_SetFontFromGDI), "void", "void*,void*,const char*", "LICEFont,GDIFont,moreFormats", "Converts a GDI font into a LICE font.\n\nThe font can be modified by the following flags, in a comma-separated list:\n\"VERTICAL\", \"BOTTOMUP\", \"NATIVE\", \"BLUR\", \"INVERT\", \"MONO\", \"SHADOW\" or \"OUTLINE\".", },
 	{ APIFUNC(JS_LICE_SetFontColor), "void", "void*,int", "LICEFont,color", "", },
 	{ APIFUNC(JS_LICE_SetFontBkColor), "void", "void*,int", "LICEFont,color", "", },
+	{ APIFUNC(JS_LICE_SetFontFXColor), "void", "void*,int", "LICEFont,color", "", },
 	{ APIFUNC(JS_LICE_DrawText), "int", "void*,void*,const char*,int,int,int,int,int", "bitmap,LICEFont,text,textLen,x1,y1,x2,y2", "", },
 	{ APIFUNC(JS_LICE_DrawChar), "void", "void*,int,int,char,int,double,int", "bitmap,x,y,c,color,alpha,mode)", "", },
 	{ APIFUNC(JS_LICE_MeasureText), "void", "const char*,int*,int*", "text,widthOut,HeightOut", "", },
@@ -283,9 +283,11 @@ APIdef aAPIdefs[] =
 	{ APIFUNC(JS_LICE_PutPixel), "void", "void*,int,int,double,double,const char*", "bitmap,x,y,color,alpha,mode", "LICE modes: \"COPY\" (default if empty string), \"MASK\", \"ADD\", \"DODGE\", \"MUL\", \"OVERLAY\" or \"HSVADJ\", any of which may be combined with \"ALPHA\".\n\nLICE color format: 0xAARRGGBB (AA is only used in ALPHA mode).", },
 	
 	// LICE functions not provided by app
-	{ APIFUNC(JS_LICE_WritePNG), "bool", "const char*,LICE_IBitmap*,bool","filename,bitmap,wantAlpha", "", },
-	{ APIFUNC(JS_LICE_WriteJPG), "bool", "const char*,LICE_IBitmap*,int,bool*","filename,bitmap,quality,forceBaselineOptional", "Parameters:\n\n * quality is an integer in the range 1..100.\n * forceBaseline is an optional boolean parameter that ensures compatibility with all JPEG viewers by preventing too low quality, \"cubist\" settings.", },
+	{ APIFUNC(JS_LICE_WritePNG), "bool", "const char*,void*,bool","filename,bitmap,wantAlpha", "", },
+	{ APIFUNC(JS_LICE_WriteJPG), "bool", "const char*,void*,int,bool*","filename,bitmap,quality,forceBaselineOptional", "Parameters:\n\n * quality is an integer in the range 1..100.\n * forceBaseline is an optional boolean parameter that ensures compatibility with all JPEG viewers by preventing too low quality, \"cubist\" settings.", },
 	{ APIFUNC(JS_LICE_LoadJPG), "void*", "const char*", "filename", "Returns a system LICE bitmap containing the JPEG.", },
+	{ APIFUNC(JS_LICE_LoadPNGFromMemory), "void*", "const char*,int", "buffer,bufsize", "Returns a system LICE bitmap containing the PNG.", },
+	{ APIFUNC(JS_LICE_LoadJPGFromMemory), "void*", "const char*,int", "buffer,bufsize", "Returns a system LICE bitmap containing the JPEG.", },
 	{ APIFUNC(JS_LICE_SetAlphaFromColorMask), "void", "void*,int", "bitmap,colorRGB", "Sets all pixels that match the given color's RGB values to fully transparent, and all other pixels to fully opaque.  (All pixels' RGB values remain unchanged.)", },
 	{ APIFUNC(JS_LICE_AlterBitmapHSV), "void", "void*,double,double,double", "bitmap,hue,saturation,value", "Hue is rolled over, saturation and value are clamped, all 0..1. (Alpha remains unchanged.)", },
 	{ APIFUNC(JS_LICE_AlterRectHSV), "void", "void*,int,int,int,int,double,double,double", "bitmap,x,y,w,h,hue,saturation,value", "Hue is rolled over, saturation and value are clamped, all 0..1. (Alpha remains unchanged.)", },
@@ -310,6 +312,28 @@ APIdef aAPIdefs[] =
 	{ APIFUNC(JS_ListView_ListAllSelItems), "int", "void*,char*,int", "listviewHWND,itemsOutNeedBig,itemsOutNeedBig_sz", "Returns the indices of all selected items as a comma-separated list.\n\n * retval: Number of selected items found; negative or zero if an error occured.", },
 	{ APIFUNC(JS_ListView_SetItemText), "void", "void*,int,int,const char*", "listviewHWND,index,subItem,text", "Currently, this fuction only accepts ASCII text.", },
 	{ APIFUNC(JS_ListView_SetItemState), "void", "void*,int,int,int", "listviewHWND,index,state,mask", "The mask parameter specifies the state bits that must be set, and the state parameter specifies the new values for those bits.\n\n1 = selected, 2 = focused. On Windows only, cut-and-paste marked = 4, drag-and-drop highlighted = 8.\n\nWarning: this function uses the Win32 bitmask values, which differ from the values used by WDL/swell.", },
+
+	{ APIFUNC(JS_TabCtrl_GetItemCount), "int", "void*", "windowHWND", "", },
+	{ APIFUNC(JS_TabCtrl_DeleteItem), "int", "void*,int", "windowHWND,index", "", },
+	{ APIFUNC(JS_TabCtrl_SetCurSel), "int", "void*,int", "windowHWND,index", "", },
+	{ APIFUNC(JS_TabCtrl_GetCurSel), "int", "void*", "windowHWND", "", },
+
+	{ APIFUNC(JS_Zip_Open), "void*", "const char*,const char*,int", "zipFile,mode,compressionLevelOptional", "", },
+	{ APIFUNC(JS_Zip_Close), "void", "void*", "zipHandle", "", },
+	{ APIFUNC(JS_Zip_ErrorString), "void", "int,char*,int", "errorNum,errorStrOut,errorStrOut_sz", "", },
+	{ APIFUNC(JS_Zip_Entry_OpenByName), "int", "void*,const char*", "zipHandle,entryName", "", },
+	{ APIFUNC(JS_Zip_Entry_OpenByIndex), "int", "void*,int", "zipHandle,index", "", },
+	{ APIFUNC(JS_Zip_Entry_Close), "int", "void*", "zipHandle", "", },
+	{ APIFUNC(JS_Zip_Entry_Info), "int", "void*,char*,int,int*,int*,double*,double*", "zipHandle,nameOutNeedBig,nameOutNeedBig_sz,indexOut,isFolderOut,sizeOut,crc32Out", "", },
+	{ APIFUNC(JS_Zip_Entry_CompressBuffer), "int", "void*,const char*,int", "zipHandle,buf,buf_size", "", },
+	{ APIFUNC(JS_Zip_Entry_CompressFile), "int", "void*,const char*", "zipHandle,inputFile", "", },
+	{ APIFUNC(JS_Zip_Entry_ExtractToBuffer), "int", "void*,char*,int", "zipHandle,contentsOutNeedBig,contentsOutNeedBig_sz", "", },
+	{ APIFUNC(JS_Zip_Entry_ExtractToFile), "int", "void*,const char*", "zipHandle,outputFile", "", },
+	{ APIFUNC(JS_Zip_CountEntries), "int", "void*", "zipHandle", "", },
+	{ APIFUNC(JS_Zip_ListAllEntries), "int", "void*,char*,int", "zipHandle,listOutNeedBig,listOutNeedBig_sz", "", },
+	{ APIFUNC(JS_Zip_Extract), "int", "const char*,const char*", "zipFile,outputFolder", "", },
+	{ APIFUNC(JS_Zip_DeleteEntries), "int", "void*,char*,int", "zipHandle,entryNames,entryNamesStrLen", "", },
+	{ APIFUNC(JS_Zip_Create), "int", "const char*,const char*,int", "zipFile,fileNames,fileNamesStrLen", "", },
 
 	{ APIFUNC(Xen_AudioWriter_Create), "AudioWriter*", "const char*,int,int", "filename,numchans,samplerate", "Creates writer for 32 bit floating point WAV", },
 	{ APIFUNC(Xen_AudioWriter_Destroy), "void", "AudioWriter*", "writer", "Destroys writer", },

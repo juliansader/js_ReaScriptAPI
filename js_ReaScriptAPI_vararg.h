@@ -17,12 +17,93 @@ static void* __vararg_JS_Localize(void** arglist, int numparms)
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-/*
-static void* __vararg_JS_Zip_AddFile(void** arglist, int numparms)
+//
+// kuba-- Zip functions
+
+static void* __vararg_JS_Zip_Open(void** arglist, int numparms)
 {
-	return (void*)(intptr_t)JS_Zip_AddFile((const char*)arglist[0], (const char*)arglist[1], numparms > 2 ? (const char*)arglist[2] : nullptr);
+	return JS_Zip_Open((const char*)arglist[0], (const char*)arglist[1], numparms > 2 ? (int)arglist[2] : ZIP_DEFAULT_COMPRESSION_LEVEL);
 }
-*/
+
+static void* __vararg_JS_Zip_Close(void** arglist, int numparms)
+{
+	JS_Zip_Close(arglist[0]);
+	return NULL;
+}
+
+static void* __vararg_JS_Zip_ErrorString(void** arglist, int numparms)
+{
+	JS_Zip_ErrorString((int)arglist[0], (char*)arglist[1], (int)arglist[2]);
+	return NULL;
+}
+
+static void* __vararg_JS_Zip_Entry_OpenByName(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_Zip_Entry_OpenByName(arglist[0], (char*)arglist[1]);
+}
+
+static void* __vararg_JS_Zip_Entry_OpenByIndex(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_Zip_Entry_OpenByIndex(arglist[0], (int)arglist[1]);
+}
+
+static void* __vararg_JS_Zip_Entry_Close(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_Zip_Entry_Close(arglist[0]);
+}
+
+static void* __vararg_JS_Zip_CountEntries(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_Zip_CountEntries(arglist[0]);
+}
+
+static void* __vararg_JS_Zip_Entry_Info(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_Zip_Entry_Info(arglist[0], (char*)arglist[1], (int)arglist[2], (int*)arglist[3], (int*)arglist[4], (double*)arglist[5], (double*)arglist[6]);
+}
+
+static void* __vararg_JS_Zip_Entry_CompressBuffer(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_Zip_Entry_CompressBuffer(arglist[0], (const char*)arglist[1], (int)arglist[2]);
+}
+
+static void* __vararg_JS_Zip_Entry_CompressFile(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_Zip_Entry_CompressFile(arglist[0], (const char*)arglist[1]);
+}
+
+static void* __vararg_JS_Zip_Entry_ExtractToBuffer(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_Zip_Entry_ExtractToBuffer(arglist[0], (char*)arglist[1], (int)arglist[2]);
+}
+
+static void* __vararg_JS_Zip_Entry_ExtractToFile(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_Zip_Entry_ExtractToFile(arglist[0], (const char*)arglist[1]);
+}
+
+static void* __vararg_JS_Zip_ListAllEntries(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_Zip_ListAllEntries(arglist[0], (char*)arglist[1], (int)arglist[2]);
+}
+
+static void* __vararg_JS_Zip_Extract(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_Zip_Extract((const char*)arglist[0], (const char*)arglist[1]);
+}
+
+static void* __vararg_JS_Zip_DeleteEntries(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_Zip_DeleteEntries(arglist[0], (char*)arglist[1], (int)arglist[2]);
+}
+
+static void* __vararg_JS_Zip_Create(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_Zip_Create((const char*)arglist[0], (const char*)arglist[1], (int)arglist[2]);
+}
+
+////////////////////////////////////////////////////////////////
+
 static void* __vararg_JS_File_Stat(void** arglist, int numparms)
 {
 	return (void*)(intptr_t)JS_File_Stat((const char*)arglist[0], (double*)arglist[1], (char*)arglist[2], (char*)arglist[3], (char*)arglist[4], (int*)arglist[5], (int*)arglist[6], (int*)arglist[7], (int*)arglist[8], (int*)arglist[9], (int*)arglist[10], (int*)arglist[11]);
@@ -796,6 +877,16 @@ static void* __vararg_JS_LICE_WriteJPG(void** arglist, int numparms)
 	return (void*)(intptr_t)JS_LICE_WriteJPG((const char*)arglist[0], (LICE_IBitmap*)arglist[1], (int)(intptr_t)arglist[2], (numparms>3 && arglist[3]) ? *(bool*)arglist[3] : false);
 }
 
+static void* __vararg_JS_LICE_LoadPNGFromMemory(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_LICE_LoadPNGFromMemory((const char*)arglist[0], (int)arglist[1]);
+}
+
+static void* __vararg_JS_LICE_LoadJPGFromMemory(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_LICE_LoadJPGFromMemory((const char*)arglist[0], (int)arglist[1]);
+}
+
 static void* __vararg_JS_LICE_Blit(void** arglist, int numparms)
 {
 	JS_LICE_Blit((void*)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (void*)arglist[3], (int)(intptr_t)arglist[4], (int)(intptr_t)arglist[5], (int)(intptr_t)arglist[6], (int)(intptr_t)arglist[7], arglist[8] ? *(double*)arglist[8] : 0.0, (const char*)arglist[9]);
@@ -862,6 +953,12 @@ static void* __vararg_JS_LICE_SetFontColor(void** arglist, int numparms)
 static void* __vararg_JS_LICE_SetFontBkColor(void** arglist, int numparms)
 {
 	JS_LICE_SetFontBkColor((void*)arglist[0], (int)(intptr_t)arglist[1]);
+	return NULL;
+}
+
+static void* __vararg_JS_LICE_SetFontFXColor(void** arglist, int numparms)
+{
+	JS_LICE_SetFontFXColor((void*)arglist[0], (int)(intptr_t)arglist[1]);
 	return NULL;
 }
 
@@ -1075,6 +1172,28 @@ static void* __vararg_JS_ListView_SetItemState(void** arglist, int numparms)
 {
 	JS_ListView_SetItemState((HWND)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (int)(intptr_t)arglist[3]);
 	return nullptr;
+}
+
+//////////////////////////////////////////////////////////////////////
+
+static void* __vararg_JS_TabCtrl_GetItemCount(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_TabCtrl_GetItemCount((HWND)arglist[0]);
+}
+
+static void* __vararg_JS_TabCtrl_DeleteItem(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_TabCtrl_DeleteItem((HWND)arglist[0], (int)(intptr_t)arglist[1]);
+}
+
+static void* __vararg_JS_TabCtrl_SetCurSel(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_TabCtrl_SetCurSel((HWND)arglist[0], (int)(intptr_t)arglist[1]);
+}
+
+static void* __vararg_JS_TabCtrl_GetCurSel(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_TabCtrl_GetCurSel((HWND)arglist[0]);
 }
 
 //////////////////////////////////////////////////////////////////////

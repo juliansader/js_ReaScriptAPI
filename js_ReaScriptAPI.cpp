@@ -2,7 +2,7 @@
 
 using namespace std;
 
-#define JS_REASCRIPTAPI_VERSION 1.220
+#define JS_REASCRIPTAPI_VERSION 1.300
 
 #ifndef _WIN32
 #define _WDL_SWELL 1 // So that I don't have to type #ifdef __linux__ and __APPLE__ everywhere
@@ -147,6 +147,8 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 		for (HGDIOBJ i : Julian::setGDIObjects)
 			DeleteObject(i);
 		Julian::setGDIObjects.clear();
+		for (zip_t* zip : Julian::setZips) //!!!!!
+			zip_close(zip);
 
 		LICE__Destroy(Julian::compositeCanvas);
 
@@ -259,6 +261,10 @@ v1.217
 v1.220
  * New: Functions for adding/deleting action shortcuts.
  * Changed: SetParent accepts null parent on WindowsOS.
+v1.300
+ * New: Zip/Unzip functions.
+ * New: JS_LICE_SetFontFXColor, so that SHADOW can be properly black.
+ * Fixed: JS_ListView_SetItemState documentation.
 */
 
 
@@ -295,7 +301,7 @@ int JS_File_Stat(const char* filePath, double* sizeOut, char* accessedTimeOut, c
 	*numLinksOut = info.st_nlink;
 	*ownerUserIDOut = info.st_uid;
 	*ownerGroupIDOut = info.st_gid;
-	*sizeOut = info.st_size; 
+	*sizeOut = (double)info.st_size; 
 
 	return result;
 }
@@ -1898,8 +1904,8 @@ DWORD JS_ConvertStringToStyle(char* styleString)
 		// To distinguish MAXIMIZEBOX from MAXIMIZE, remove the M's of all MAXIMIZEBOXes.
 		// swell doesn't implement WS_SHOWMAXIMIZED and WS_SHOWMINIMIZED, so will use ShowWindow's options instead.
 		char* box;
-		while ((box = strstr(styleString, "MAXIMIZEBOX")))	{ style |= (WS_MAXIMIZEBOX | WS_SYSMENU); *box = 'N'; }
-		while ((box = strstr(styleString, "MINIMIZEBOX")))	{ style |= (WS_MINIMIZEBOX | WS_SYSMENU); *box = 'N'; }
+		while ((box = strstr(styleString, "MAXIMIZEBOX"))) { style |= (WS_MAXIMIZEBOX | WS_SYSMENU); *box = 'N'; }
+		while ((box = strstr(styleString, "MINIMIZEBOX"))) { style |= (WS_MINIMIZEBOX | WS_SYSMENU); *box = 'N'; }
 		if (strstr(styleString, "MAXIMIZE"))		style |= WS_MAXIMIZE;
 		if (strstr(styleString, "CHILD"))			style |= WS_CHILD;
 		//if (strstr(styleString, "CHILDWINDOW"))	style |= WS_CHILDWINDOW;
@@ -2603,13 +2609,13 @@ bool JS_WindowMessage_Post(void* windowHWND, const char* message, double wParam,
 	}
 	
 	WPARAM fullWP;
-	if (wParamHighWord || ((wParam < 0) && (-(1<<15) > wParam))) // WARNING: Negative values (such as mousewheel turns) are not bitwise encoded the same in low WORD vs entire WPARAM. So if small negative, assume that low WORD is intended.
+	if (wParamHighWord || ((wParam < 0) && (-(1 << 15) > wParam))) // WARNING: Negative values (such as mousewheel turns) are not bitwise encoded the same in low WORD vs entire WPARAM. So if small negative, assume that low WORD is intended.
 		fullWP = MAKEWPARAM(wParam, wParamHighWord);
 	else
 		fullWP = (WPARAM)(int64_t)wParam;
 		
 	LPARAM fullLP;
-	if (lParamHighWord || ((lParam < 0) && (-(1<<15) > lParam)))
+	if (lParamHighWord || ((lParam < 0) && (-(1 << 15) > lParam)))
 		fullLP = MAKELPARAM(lParam, lParamHighWord);
 	else
 		fullLP = (LPARAM)(int64_t)lParam;
@@ -2653,13 +2659,13 @@ int JS_WindowMessage_Send(void* windowHWND, const char* message, double wParam, 
 	}
 
 	WPARAM fullWP;
-	if (wParamHighWord || ((wParam < 0) && (-(1<<15) > wParam))) // WARNING: Negative values (such as mousewheel turns) are not bitwise encoded the same in low WORD vs entire WPARAM. So if small negative, assume that low WORD is intended.
+	if (wParamHighWord || ((wParam < 0) && (-(1 << 15) > wParam))) // WARNING: Negative values (such as mousewheel turns) are not bitwise encoded the same in low WORD vs entire WPARAM. So if small negative, assume that low WORD is intended.
 		fullWP = MAKEWPARAM(wParam, wParamHighWord);
 	else
 		fullWP = (WPARAM)(int64_t)wParam;
 
 	LPARAM fullLP;
-	if (lParamHighWord || ((lParam < 0) && (-(1<<15) > lParam)))
+	if (lParamHighWord || ((lParam < 0) && (-(1 << 15) > lParam)))
 		fullLP = MAKELPARAM(lParam, lParamHighWord);
 	else
 		fullLP = (LPARAM)(int64_t)lParam;
@@ -4143,6 +4149,38 @@ void* JS_LICE_LoadPNG(const char* filename)
 	return png;
 }
 
+void* JS_LICE_LoadPNGFromMemory(const char* buffer, int bufsize)
+{
+	LICE_IBitmap* sysbitmap = nullptr;
+	LICE_IBitmap* png = nullptr;
+	sysbitmap = LICE_CreateBitmap(TRUE, 1, 1); // By default, LICE does not return a SysBitmap. In order to force the use of SysBitmaps, use must supply own bitmap.
+	if (sysbitmap) {
+		png = LICE_LoadPNGFromMemory(buffer, bufsize, sysbitmap);
+		if (png != sysbitmap) LICE__Destroy(sysbitmap);
+		if (png) {
+			HDC dc = LICE__GetDC(png);
+			Julian::mLICEBitmaps.emplace(png, dc);
+		}
+	}
+	return png;
+}
+
+void* JS_LICE_LoadJPGFromMemory(const char* buffer, int bufsize)
+{
+	LICE_IBitmap* sysbitmap = nullptr;
+	LICE_IBitmap* jpg = nullptr;
+	sysbitmap = LICE_CreateBitmap(TRUE, 1, 1); // By default, LICE does not return a SysBitmap. In order to force the use of SysBitmaps, use must supply own bitmap.
+	if (sysbitmap) {
+		jpg = LICE_LoadJPGFromMemory(buffer, bufsize, sysbitmap);
+		if (jpg != sysbitmap) LICE__Destroy(sysbitmap);
+		if (jpg) {
+			HDC dc = LICE__GetDC(jpg);
+			Julian::mLICEBitmaps.emplace(jpg, dc);
+		}
+	}
+	return jpg;
+}
+
 bool JS_LICE_WritePNG(const char* filename, LICE_IBitmap* bitmap, bool wantAlpha)
 {
 	return LICE_WritePNG(filename, bitmap, wantAlpha);
@@ -4286,7 +4324,10 @@ bool JS_LICE_Blit_AlphaMultiply(LICE_IBitmap* destBitmap, int dstx, int dsty, LI
 
 void* JS_LICE_CreateFont()
 {
-	return LICE_CreateFont();
+	LICE_IFont* font = LICE_CreateFont();
+	if (font)
+		Julian::LICEFonts.insert(font);
+	return font;
 }
 
 void JS_LICE_SetFontFromGDI(void* LICEFont, void* GDIFont, const char* moreFormats)
@@ -4314,28 +4355,43 @@ void JS_LICE_SetFontFromGDI(void* LICEFont, void* GDIFont, const char* moreForma
 	if (strstr(moreFormats, "SHAD"))	intMode |= LICE_FONT_FLAG_FX_SHADOW;
 	if (strstr(moreFormats, "OUT"))		intMode |= LICE_FONT_FLAG_FX_OUTLINE;
 
-	LICE__SetFromHFont((LICE_IFont*)LICEFont, (HFONT)GDIFont, intMode);
+	if (Julian::LICEFonts.count((LICE_IFont*)LICEFont) && Julian::setGDIObjects.count((HGDIOBJ)GDIFont))
+		LICE__SetFromHFont((LICE_IFont*)LICEFont, (HFONT)GDIFont, intMode);
 }
 
 void JS_LICE_DestroyFont(void* LICEFont)
 {
-	LICE__DestroyFont((LICE_IFont*)LICEFont);
-}
-
-void JS_LICE_SetFontBkColor(void* LICEFont, int color)
-{
-	LICE__SetBkColor((LICE_IFont*)LICEFont, (LICE_pixel)color);
+	if (Julian::LICEFonts.count((LICE_IFont*)LICEFont))
+	{
+		LICE__DestroyFont((LICE_IFont*)LICEFont);
+		Julian::LICEFonts.erase((LICE_IFont*)LICEFont);
+	}
 }
 
 void JS_LICE_SetFontColor(void* LICEFont, int color)
 {
-	LICE__SetTextColor((LICE_IFont*)LICEFont, (LICE_pixel)color);
+	if (Julian::LICEFonts.count((LICE_IFont*)LICEFont))
+		//LICE__SetTextColor((LICE_IFont*)LICEFont, (LICE_pixel)color);
+		((LICE_IFont*)LICEFont)->SetTextColor((LICE_pixel)color); // Changed these to "->" version for conformity with SetEffectsColor
+}
+
+void JS_LICE_SetFontBkColor(void* LICEFont, int color)
+{
+	if (Julian::LICEFonts.count((LICE_IFont*)LICEFont))
+		//LICE__SetBkColor((LICE_IFont*)LICEFont, (LICE_pixel)color);
+		((LICE_IFont*)LICEFont)->SetBkColor((LICE_pixel)color); // Changed these to "->" version for conformity with SetEffectsColor
+}
+
+void JS_LICE_SetFontFXColor(void* LICEFont, int color)
+{
+	if (Julian::LICEFonts.count((LICE_IFont*)LICEFont))
+		((LICE_IFont*)LICEFont)->SetEffectColor((LICE_pixel)color); // This function isn't provided by REAPER, so must access LICE_IFont directly
 }
 
 int JS_LICE_DrawText(void* bitmap, void* LICEFont, const char* text, int textLen, int x1, int y1, int x2, int y2)
 {
 	RECT r{ x1, y1, x2, y2 };
-	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
+	if (Julian::LICEFonts.count((LICE_IFont*)LICEFont) && Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
 		return LICE__DrawText((LICE_IFont*)LICEFont, (LICE_IBitmap*)bitmap, text, textLen, &r, 0); // I don't know what UINT dtFlags does, so make 0.
 	else
 		return 0;
@@ -4450,12 +4506,14 @@ void JS_LICE_SetAlphaFromColorMask(LICE_IBitmap* bitmap, LICE_pixel color)
 
 void  JS_LICE_AlterBitmapHSV(LICE_IBitmap* bitmap, float hue, float saturation, float value)  // hue is rolled over, saturation and value are clamped, all 0..1
 {
-	LICE_AlterBitmapHSV(bitmap, hue, saturation, value);
+	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
+		LICE_AlterBitmapHSV(bitmap, hue, saturation, value);
 }
 
 void  JS_LICE_AlterRectHSV(LICE_IBitmap* bitmap, int x, int y, int w, int h, float hue, float saturation, float value)  // hue is rolled over, saturation and value are clamped, all 0..1
 {
-	LICE_AlterRectHSV(bitmap, x, y, w, h, hue, saturation, value);
+	if (Julian::mLICEBitmaps.count((LICE_IBitmap*)bitmap))
+		LICE_AlterRectHSV(bitmap, x, y, w, h, hue, saturation, value);
 }
 
 bool JS_LICE_ProcessRect(LICE_IBitmap* bitmap, int x, int y, int w, int h, const char* mode, double operand)
@@ -4843,9 +4901,237 @@ int JS_ListView_ListAllSelItems(HWND listviewHWND, char* itemsOutNeedBig, int it
 ///////////////////////////////////////////////////////////////////////
 
 
+int JS_TabCtrl_GetItemCount(HWND hwnd)
+{
+	return IsWindow(hwnd) ? TabCtrl_GetItemCount(hwnd) : -1;
+}
+
+int JS_TabCtrl_DeleteItem(HWND hwnd, int idx)
+{
+	return IsWindow(hwnd) ? TabCtrl_DeleteItem(hwnd, idx) : -1;
+}
+
+int JS_TabCtrl_SetCurSel(HWND hwnd, int idx)
+{
+	return IsWindow(hwnd) ? TabCtrl_SetCurSel(hwnd, idx) : -1;
+}
+
+int JS_TabCtrl_GetCurSel(HWND hwnd)
+{
+	return IsWindow(hwnd) ? TabCtrl_GetCurSel(hwnd) : -1;
+}
+
 
 
 ///////////////////////////////////////////////////////////////////////
+//
+// kuba zip functions
+
+#define ZIP_EZEROFORMAT -31
+
+void* JS_Zip_Open(const char* zipFile, const char* mode, int compressionLevelOptional = ZIP_DEFAULT_COMPRESSION_LEVEL)
+{
+	zip_t* zip = zip_open(zipFile, compressionLevelOptional, *mode);
+	if (zip) 
+		Julian::setZips.insert(zip);
+	return zip;
+}
+
+void JS_Zip_Close(void* zipHandle)
+{
+	if (Julian::setZips.count((zip_t*)zipHandle))
+	{
+		zip_close((zip_t*)zipHandle);
+		Julian::setZips.erase((zip_t*)zipHandle);
+	}
+}
+
+void JS_Zip_ErrorString(int errorNum, char* errorStrOut, int errorStrOut_sz)
+{
+	if (errorNum == ZIP_EZEROFORMAT)
+		strncpy(errorStrOut, "zero-separated and -terminated list format error\0", errorStrOut_sz - 1);
+	else
+	{
+		const char* e = zip_strerror(errorNum);
+		strncpy(errorStrOut, e, errorStrOut_sz - 1);
+	}
+	errorStrOut[errorStrOut_sz - 1] = 0;
+}
+
+int JS_Zip_Entry_OpenByName(void* zipHandle, const char* entryName)
+{
+	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
+	return zip_entry_open((zip_t*)zipHandle, entryName);
+}
+
+int JS_Zip_Entry_OpenByIndex(void* zipHandle, int index)
+{
+	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
+	return zip_entry_openbyindex((zip_t*)zipHandle, index);
+}
+
+int JS_Zip_Entry_Close(void* zipHandle)
+{
+	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
+	return zip_entry_close((zip_t*)zipHandle);
+}
+
+int JS_Zip_Entry_Info(void* zipHandle, char* nameOutNeedBig, int nameOutNeedBig_sz, int* indexOut, int* isFolderOut, double* sizeOut, double* crc32Out)
+{
+	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
+
+	const char* name = zip_entry_name((zip_t*)zipHandle);
+	int len = strlen(name);
+	if (realloc_cmd_ptr(&nameOutNeedBig, &nameOutNeedBig_sz, len))
+		if (nameOutNeedBig_sz == len)
+			memcpy(nameOutNeedBig, name, len);
+	*indexOut	= zip_entry_index((zip_t*)zipHandle);
+	*isFolderOut = zip_entry_isdir((zip_t*)zipHandle);
+	*sizeOut	= zip_entry_size((zip_t*)zipHandle);
+	*crc32Out	= zip_entry_crc32((zip_t*)zipHandle);
+	return 0;
+}
+
+int JS_Zip_Entry_CompressBuffer(void* zipHandle, const char* buf, int buf_size)
+{
+	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
+	return zip_entry_write((zip_t*)zipHandle, buf, buf_size);
+}
+
+int JS_Zip_Entry_CompressFile(void* zipHandle, const char* inputFile)
+{
+	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
+	return zip_entry_fwrite((zip_t*)zipHandle, inputFile);
+}
+
+int JS_Zip_Entry_ExtractToBuffer(void* zipHandle, char* contentsOutNeedBig, int contentsOutNeedBig_sz)
+{
+	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
+	size_t buff_sz = zip_entry_size((zip_t*)zipHandle);
+	int ok = (realloc_cmd_ptr(&contentsOutNeedBig, &contentsOutNeedBig_sz, buff_sz) ? 1 : ZIP_EMEMNOALLOC);
+	if (ok >= 0)
+	{
+		ok = (contentsOutNeedBig_sz == buff_sz) ? 1 : ZIP_EOOMEM;
+		if (ok >= 0)
+			ok = zip_entry_noallocread((zip_t*)zipHandle, contentsOutNeedBig, contentsOutNeedBig_sz);
+	}
+	return ok;
+	/*
+	void* buff = nullptr;
+	size_t buff_sz = 0;
+	int ok = zip_entry_read((zip_t*)zipHandle, &buff, &buff_sz);
+	if (buff)
+	{
+		if (ok >= 0)
+		{
+			ok = (realloc_cmd_ptr(&contentsOutNeedBig, &contentsOutNeedBig_sz, buff_sz) ? 1 : ZIP_EMEMNOALLOC);
+			if (ok >= 0 )
+			{
+				ok = (contentsOutNeedBig_sz == buff_sz) ? 1 : ZIP_EOOMEM;
+				if (ok >= 0)
+					memcpy(contentsOutNeedBig, (char*)buff, buff_sz);
+			}
+		}
+		free(buff);
+	}
+	return ok;
+	*/
+}
+
+int JS_Zip_Entry_ExtractToFile(void* zipHandle, const char* outputFile)
+{
+	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
+	return zip_entry_fread((zip_t*)zipHandle, outputFile);
+}
+
+int JS_Zip_CountEntries(void* zipHandle)
+{
+	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
+	return zip_entries_total((zip_t*)zipHandle);
+}
+
+int JS_Zip_ListAllEntries(void* zipHandle, char* listOutNeedBig, int listOutNeedBig_sz)
+{
+	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
+
+	int ok = 0;
+	int countEntries = 0;
+
+	std::vector<char> list;
+
+	int n = zip_entries_total((zip_t*)zipHandle);
+	for (int i = 0; i < n; i++)
+	{
+		if ((ok = zip_entry_openbyindex((zip_t*)zipHandle, i)) >= 0)
+		{
+			const char* name = zip_entry_name((zip_t*)zipHandle);
+			if (!name || *name == 0) return ZIP_EINVENTNAME;
+			list.insert(list.end(), name, name + strlen(name));
+			list.push_back(0);
+			zip_entry_close((zip_t*)zipHandle);
+			countEntries++;
+		}
+		else
+			return ok;
+	}
+
+	if (countEntries) list.push_back(0); // Terminate with double \0\0
+	int buffLen = list.size();
+	if (!realloc_cmd_ptr(&listOutNeedBig, &listOutNeedBig_sz, buffLen)) return ZIP_EOOMEM;
+	if (!(listOutNeedBig_sz == buffLen)) return ZIP_EOOMEM;
+	memcpy(listOutNeedBig, list.data(), buffLen);
+
+	return countEntries;
+}
+
+int JS_Zip_Extract_Callback(const char *filename, void *arg)
+{
+	(*(int*)arg)++;
+	return 1;
+}
+
+int JS_Zip_Extract(const char* zipFile, const char* outputFolder)
+{
+	int countFiles = 0;
+	int ok = zip_extract(zipFile, outputFolder, &JS_Zip_Extract_Callback, &countFiles);
+	if (ok < 0) return ok; else return countFiles;
+}
+
+int JS_Zip_DeleteEntries(void* zipHandle, char* entryNames, int entryNamesStrLen)
+{
+	//if (!(entryNamesStrLen >= 2 && entryNames[entryNamesStrLen - 1] == 0 && entryNames[entryNamesStrLen - 2] == 0)) return ZIP_EZEROFORMAT;
+	int countFiles = 0;
+	char* ptr = entryNames;
+	std::vector<char*> v;
+	while (ptr < entryNames+entryNamesStrLen-1 && *ptr != 0)
+	{
+		v.push_back(ptr);
+		ptr += strnlen(ptr, entryNamesStrLen - (ptr - entryNames)) + 1;
+		countFiles++;
+	}
+	return zip_entries_delete((zip_t*)zipHandle, v.data(), countFiles);
+}
+
+int JS_Zip_Create(const char* zipFile, const char* fileNames, int fileNameStrLen)
+{
+	//if (!(fileNameStrLen >= 2 && fileNames[fileNameStrLen-1] == 0 && fileNames[fileNameStrLen-2] == 0)) return ZIP_EZEROFORMAT;
+	int countFiles = 0;
+	const char* ptr = fileNames;
+	std::vector<const char*> v;
+	while (ptr < fileNames+fileNameStrLen-1 && *ptr != 0)
+	{
+		//ShowConsoleMsg(ptr);
+		v.push_back(ptr);
+		ptr += strnlen(ptr, fileNameStrLen-(ptr-fileNames)) + 1;
+		countFiles++;
+	}
+	return zip_create(zipFile, v.data(), countFiles);
+}
+
+
+///////////////////////////////////////////////////////////////////////
+//
+// Xenakios functions
 
 inline int getArraySize(double* arr)
 {
