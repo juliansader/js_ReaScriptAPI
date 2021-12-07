@@ -25,7 +25,6 @@
 #  include <stdlib.h>
 #  include <limits.h>
 #endif
-//#  include <unistd.h> // !!!!! Added for compilation of js_ReaScriptAPI on Appveyor for Apple ARM
 
 #ifndef _POSIX_SOURCE
 #  define _POSIX_SOURCE
@@ -34,6 +33,8 @@
 
 #ifdef _WIN32
 #  include <stddef.h>
+#else
+#  include <unistd.h> // !!!!! Added for compilation of js_ReaScriptAPI on Appveyor for Apple ARM
 #endif
 
 #if defined(__TURBOC__) || defined(_MSC_VER) || defined(_WIN32)
