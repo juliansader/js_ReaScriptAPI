@@ -25,7 +25,7 @@
 #  include <stdlib.h>
 #  include <limits.h>
 #endif
-#  include <unistd.h> // !!!!! Added for compilation of js_ReaScriptAPI on Appveyor for Apple ARM
+//#  include <unistd.h> // !!!!! Added for compilation of js_ReaScriptAPI on Appveyor for Apple ARM
 
 #ifndef _POSIX_SOURCE
 #  define _POSIX_SOURCE
