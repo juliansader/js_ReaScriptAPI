@@ -264,6 +264,7 @@ v1.220
 v1.300
  * New: Zip/Unzip functions.
  * New: JS_LICE_SetFontFXColor, so that SHADOW can be properly black.
+ * New: TabCtrl functions.
  * Fixed: JS_ListView_SetItemState documentation.
 */
 
@@ -4928,10 +4929,13 @@ int JS_TabCtrl_GetCurSel(HWND hwnd)
 // kuba zip functions
 
 #define ZIP_EZEROFORMAT -31
+#define ZIP_EFILEEXISTS -32
 
-void* JS_Zip_Open(const char* zipFile, const char* mode, int compressionLevelOptional = ZIP_DEFAULT_COMPRESSION_LEVEL)
+void* JS_Zip_Open(const char* zipFile, const char* mode, int* compressionLevelOptional)
 {
-	zip_t* zip = zip_open(zipFile, compressionLevelOptional, *mode);
+	if ((*mode=='w' || *mode=='W') && std::experimental::filesystem::exists(zipFile)) return nullptr;
+	int compressionLevel = compressionLevelOptional ? *compressionLevelOptional : ZIP_DEFAULT_COMPRESSION_LEVEL;
+	zip_t* zip = zip_open(zipFile, compressionLevel, *mode);
 	if (zip) 
 		Julian::setZips.insert(zip);
 	return zip;
@@ -4949,7 +4953,9 @@ void JS_Zip_Close(void* zipHandle)
 void JS_Zip_ErrorString(int errorNum, char* errorStrOut, int errorStrOut_sz)
 {
 	if (errorNum == ZIP_EZEROFORMAT)
-		strncpy(errorStrOut, "zero-separated and -terminated list format error\0", errorStrOut_sz - 1);
+		strncpy(errorStrOut, "Format error: zero-separated and double-zero-terminated string\0", errorStrOut_sz - 1);
+	else if (errorNum == ZIP_EFILEEXISTS)
+		strncpy(errorStrOut, "File already exists – delete before creatin new archive\0", errorStrOut_sz - 1);
 	else
 	{
 		const char* e = zip_strerror(errorNum);
@@ -4981,7 +4987,7 @@ int JS_Zip_Entry_Info(void* zipHandle, char* nameOutNeedBig, int nameOutNeedBig_
 	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
 
 	const char* name = zip_entry_name((zip_t*)zipHandle);
-	int len = strlen(name);
+	int len = name ? strlen(name) : 0;
 	if (realloc_cmd_ptr(&nameOutNeedBig, &nameOutNeedBig_sz, len))
 		if (nameOutNeedBig_sz == len)
 			memcpy(nameOutNeedBig, name, len);
@@ -4992,7 +4998,7 @@ int JS_Zip_Entry_Info(void* zipHandle, char* nameOutNeedBig, int nameOutNeedBig_
 	return 0;
 }
 
-int JS_Zip_Entry_CompressBuffer(void* zipHandle, const char* buf, int buf_size)
+int JS_Zip_Entry_CompressMemory(void* zipHandle, const char* buf, int buf_size)
 {
 	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
 	return zip_entry_write((zip_t*)zipHandle, buf, buf_size);
@@ -5004,16 +5010,20 @@ int JS_Zip_Entry_CompressFile(void* zipHandle, const char* inputFile)
 	return zip_entry_fwrite((zip_t*)zipHandle, inputFile);
 }
 
-int JS_Zip_Entry_ExtractToBuffer(void* zipHandle, char* contentsOutNeedBig, int contentsOutNeedBig_sz)
+int JS_Zip_Entry_ExtractToMemory(void* zipHandle, char* contentsOutNeedBig, int contentsOutNeedBig_sz)
 {
 	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
 	size_t buff_sz = zip_entry_size((zip_t*)zipHandle);
-	int ok = (realloc_cmd_ptr(&contentsOutNeedBig, &contentsOutNeedBig_sz, buff_sz) ? 1 : ZIP_EMEMNOALLOC);
+	int ok = buff_sz >= 0 ? 0 : ZIP_ENOENT;
 	if (ok >= 0)
 	{
-		ok = (contentsOutNeedBig_sz == buff_sz) ? 1 : ZIP_EOOMEM;
+		ok = (realloc_cmd_ptr(&contentsOutNeedBig, &contentsOutNeedBig_sz, buff_sz) ? 1 : ZIP_EMEMNOALLOC);
 		if (ok >= 0)
-			ok = zip_entry_noallocread((zip_t*)zipHandle, contentsOutNeedBig, contentsOutNeedBig_sz);
+		{
+			ok = (contentsOutNeedBig_sz == buff_sz) ? 1 : ZIP_EOOMEM;
+			if (ok >= 0)
+				ok = zip_entry_noallocread((zip_t*)zipHandle, contentsOutNeedBig, contentsOutNeedBig_sz);
+		}
 	}
 	return ok;
 	/*
@@ -5053,29 +5063,34 @@ int JS_Zip_CountEntries(void* zipHandle)
 int JS_Zip_ListAllEntries(void* zipHandle, char* listOutNeedBig, int listOutNeedBig_sz)
 {
 	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
-
-	int ok = 0;
-	int countEntries = 0;
+	int curEntry = zip_entry_index((zip_t*)zipHandle);
+	if (curEntry >= 0) zip_entry_close((zip_t*)zipHandle);
 
 	std::vector<char> list;
 
-	int n = zip_entries_total((zip_t*)zipHandle);
-	for (int i = 0; i < n; i++)
-	{
-		if ((ok = zip_entry_openbyindex((zip_t*)zipHandle, i)) >= 0)
-		{
-			const char* name = zip_entry_name((zip_t*)zipHandle);
-			if (!name || *name == 0) return ZIP_EINVENTNAME;
-			list.insert(list.end(), name, name + strlen(name));
-			list.push_back(0);
-			zip_entry_close((zip_t*)zipHandle);
-			countEntries++;
-		}
-		else
-			return ok;
-	}
+	int countEntries = zip_entries_total((zip_t*)zipHandle);
 
-	if (countEntries) list.push_back(0); // Terminate with double \0\0
+	if (countEntries <= 0) 
+		list.push_back(0); // Terminate with double \0\0. If no entries, no \0 will be inserted by the following loop.
+	else
+	{
+		int ok = 0;
+		for (int i = 0; i < countEntries; i++)
+		{
+			if ((ok = zip_entry_openbyindex((zip_t*)zipHandle, i)) >= 0)
+			{
+				const char* name = zip_entry_name((zip_t*)zipHandle);
+				if (!name || *name == 0) return ZIP_EINVENTNAME;
+				list.insert(list.end(), name, name + strlen(name));
+				list.push_back(0);
+				zip_entry_close((zip_t*)zipHandle);
+			}
+			else
+				return ok;
+		}
+	}
+	
+	list.push_back(0); // Terminate with double \0\0
 	int buffLen = list.size();
 	if (!realloc_cmd_ptr(&listOutNeedBig, &listOutNeedBig_sz, buffLen)) return ZIP_EOOMEM;
 	if (!(listOutNeedBig_sz == buffLen)) return ZIP_EOOMEM;
@@ -5120,7 +5135,6 @@ int JS_Zip_Create(const char* zipFile, const char* fileNames, int fileNameStrLen
 	std::vector<const char*> v;
 	while (ptr < fileNames+fileNameStrLen-1 && *ptr != 0)
 	{
-		//ShowConsoleMsg(ptr);
 		v.push_back(ptr);
 		ptr += strnlen(ptr, fileNameStrLen-(ptr-fileNames)) + 1;
 		countFiles++;

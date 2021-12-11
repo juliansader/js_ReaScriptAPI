@@ -6,16 +6,16 @@ void  JS_ReaScriptAPI_Version(double* versionOut);
 
 void  JS_Localize(const char* USEnglish, const char* LangPackSection, char* translationOut, int translationOut_sz);
 
-void* JS_Zip_Open(const char* zipFile, const char* mode, int compressionLevelOptional);
+void* JS_Zip_Open(const char* zipFile, const char* mode, int* compressionLevelOptional);
 void JS_Zip_Close(void* zipHandle);
 void JS_Zip_ErrorString(int errorNum, char* errorStrOut, int errorStrOut_sz);
 int JS_Zip_Entry_OpenByName(void* zipHandle, const char* entryName);
 int JS_Zip_Entry_OpenByIndex(void* zipHandle, int index);
 int JS_Zip_Entry_Close(void* zipHandle);
 int JS_Zip_Entry_Info(void* zipHandle, char* nameOutNeedBig, int nameOutNeedBig_sz, int* indexOut, int* isFolderOut, double* sizeOut, double* crc32Out);
-int JS_Zip_Entry_CompressBuffer(void* zipHandle, const char* buf, int buf_size);
+int JS_Zip_Entry_CompressMemory(void* zipHandle, const char* buf, int buf_size);
 int JS_Zip_Entry_CompressFile(void* zipHandle, const char* inputFile);
-int JS_Zip_Entry_ExtractToBuffer(void* zipHandle, char* contentsOutNeedBig, int contentsOutNeedBig_sz);
+int JS_Zip_Entry_ExtractToMemory(void* zipHandle, char* contentsOutNeedBig, int contentsOutNeedBig_sz);
 int JS_Zip_Entry_ExtractToFile(void* zipHandle, const char* outputFile);
 int JS_Zip_CountEntries(void* zipHandle);
 int JS_Zip_ListAllEntries(void* zipHandle, char* listOutNeedBig, int listOutNeedBig_sz);

@@ -22,7 +22,7 @@ static void* __vararg_JS_Localize(void** arglist, int numparms)
 
 static void* __vararg_JS_Zip_Open(void** arglist, int numparms)
 {
-	return JS_Zip_Open((const char*)arglist[0], (const char*)arglist[1], numparms > 2 ? (int)(intptr_t)arglist[2] : ZIP_DEFAULT_COMPRESSION_LEVEL);
+	return JS_Zip_Open((const char*)arglist[0], (const char*)arglist[1], numparms > 2 ? (int*)arglist[2] : nullptr);
 }
 
 static void* __vararg_JS_Zip_Close(void** arglist, int numparms)
@@ -62,9 +62,9 @@ static void* __vararg_JS_Zip_Entry_Info(void** arglist, int numparms)
 	return (void*)(intptr_t)JS_Zip_Entry_Info(arglist[0], (char*)arglist[1], (int)(intptr_t)arglist[2], (int*)arglist[3], (int*)arglist[4], (double*)arglist[5], (double*)arglist[6]);
 }
 
-static void* __vararg_JS_Zip_Entry_CompressBuffer(void** arglist, int numparms)
+static void* __vararg_JS_Zip_Entry_CompressMemory(void** arglist, int numparms)
 {
-	return (void*)(intptr_t)JS_Zip_Entry_CompressBuffer(arglist[0], (const char*)arglist[1], (int)(intptr_t)arglist[2]);
+	return (void*)(intptr_t)JS_Zip_Entry_CompressMemory(arglist[0], (const char*)arglist[1], (int)(intptr_t)arglist[2]);
 }
 
 static void* __vararg_JS_Zip_Entry_CompressFile(void** arglist, int numparms)
@@ -72,9 +72,9 @@ static void* __vararg_JS_Zip_Entry_CompressFile(void** arglist, int numparms)
 	return (void*)(intptr_t)JS_Zip_Entry_CompressFile(arglist[0], (const char*)arglist[1]);
 }
 
-static void* __vararg_JS_Zip_Entry_ExtractToBuffer(void** arglist, int numparms)
+static void* __vararg_JS_Zip_Entry_ExtractToMemory(void** arglist, int numparms)
 {
-	return (void*)(intptr_t)JS_Zip_Entry_ExtractToBuffer(arglist[0], (char*)arglist[1], (int)(intptr_t)arglist[2]);
+	return (void*)(intptr_t)JS_Zip_Entry_ExtractToMemory(arglist[0], (char*)arglist[1], (int)(intptr_t)arglist[2]);
 }
 
 static void* __vararg_JS_Zip_Entry_ExtractToFile(void** arglist, int numparms)
