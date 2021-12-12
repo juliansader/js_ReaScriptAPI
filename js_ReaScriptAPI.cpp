@@ -147,8 +147,8 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 		for (HGDIOBJ i : Julian::setGDIObjects)
 			DeleteObject(i);
 		Julian::setGDIObjects.clear();
-		for (zip_t* zip : Julian::setZips) //!!!!!
-			zip_close(zip);
+		//!!--!!for (zip_t* zip : Julian::setZips) //!!!!!
+		//!!--!!zip_close(zip);
 
 		LICE__Destroy(Julian::compositeCanvas);
 
@@ -4140,7 +4140,7 @@ void* JS_LICE_LoadPNG(const char* filename)
 	LICE_IBitmap* png = nullptr;
 	sysbitmap = LICE_CreateBitmap(TRUE, 1, 1); // By default, LICE_LoadPNG does not return a SysBitmap. In order to force the use of SysBitmaps, use must supply own bitmap.
 	if (sysbitmap) {
-		png = LICE_LoadPNG(filename, sysbitmap);
+		png = NULL; //!!--!!LICE_LoadPNG(filename, sysbitmap);
 		if (png != sysbitmap) LICE__Destroy(sysbitmap);
 		if (png) {
 			HDC dc = LICE__GetDC(png);
@@ -4156,7 +4156,7 @@ void* JS_LICE_LoadPNGFromMemory(const char* buffer, int bufsize)
 	LICE_IBitmap* png = nullptr;
 	sysbitmap = LICE_CreateBitmap(TRUE, 1, 1); // By default, LICE does not return a SysBitmap. In order to force the use of SysBitmaps, use must supply own bitmap.
 	if (sysbitmap) {
-		png = LICE_LoadPNGFromMemory(buffer, bufsize, sysbitmap);
+		png = NULL; //!!--!!LICE_LoadPNGFromMemory(buffer, bufsize, sysbitmap);
 		if (png != sysbitmap) LICE__Destroy(sysbitmap);
 		if (png) {
 			HDC dc = LICE__GetDC(png);
@@ -4172,7 +4172,7 @@ void* JS_LICE_LoadJPGFromMemory(const char* buffer, int bufsize)
 	LICE_IBitmap* jpg = nullptr;
 	sysbitmap = LICE_CreateBitmap(TRUE, 1, 1); // By default, LICE does not return a SysBitmap. In order to force the use of SysBitmaps, use must supply own bitmap.
 	if (sysbitmap) {
-		jpg = LICE_LoadJPGFromMemory(buffer, bufsize, sysbitmap);
+		jpg = NULL; //!!--!!LICE_LoadJPGFromMemory(buffer, bufsize, sysbitmap);
 		if (jpg != sysbitmap) LICE__Destroy(sysbitmap);
 		if (jpg) {
 			HDC dc = LICE__GetDC(jpg);
@@ -4184,7 +4184,7 @@ void* JS_LICE_LoadJPGFromMemory(const char* buffer, int bufsize)
 
 bool JS_LICE_WritePNG(const char* filename, LICE_IBitmap* bitmap, bool wantAlpha)
 {
-	return LICE_WritePNG(filename, bitmap, wantAlpha);
+	return true; //!!--!!LICE_WritePNG(filename, bitmap, wantAlpha);
 }
 
 void* JS_LICE_LoadJPG(const char* filename)
@@ -4193,7 +4193,7 @@ void* JS_LICE_LoadJPG(const char* filename)
 	LICE_IBitmap* jpg = nullptr;
 	sysbitmap = LICE_CreateBitmap(TRUE, 1, 1); // By default, LICE_LoadPNG does not return a SysBitmap. In order to force the use of SysBitmaps, use must supply own bitmap.
 	if (sysbitmap) {
-		jpg = LICE_LoadJPG(filename, sysbitmap);
+		jpg = NULL; //!!--!!LICE_LoadJPG(filename, sysbitmap);
 		if (jpg != sysbitmap) LICE__Destroy(sysbitmap);
 		if (jpg) {
 			HDC dc = LICE__GetDC(jpg);
@@ -4205,7 +4205,7 @@ void* JS_LICE_LoadJPG(const char* filename)
 
 bool JS_LICE_WriteJPG(const char* filename, LICE_IBitmap* bitmap, int quality, bool forceBaseline)
 {
-	return LICE_WriteJPG(filename, bitmap, quality, forceBaseline);
+	return true; //!!--!!LICE_WriteJPG(filename, bitmap, quality, forceBaseline);
 }
 
 
@@ -4936,10 +4936,10 @@ void* JS_Zip_Open(const char* zipFile, const char* mode, int* compressionLevelOp
 #ifdef _WIN32
 	if ((*mode=='w' || *mode=='W') && std::experimental::filesystem::exists(zipFile)) return nullptr; // for Visual Studio 2015
 #else
-	if ((*mode == 'w' || *mode == 'W') && std::filesystem::exists(zipFile)) return nullptr; // for -std=c++17
+	//if ((*mode == 'w' || *mode == 'W') && std::filesystem::exists(zipFile)) return nullptr; // for -std=c++17
 #endif
 	int compressionLevel = compressionLevelOptional ? *compressionLevelOptional : ZIP_DEFAULT_COMPRESSION_LEVEL;
-	zip_t* zip = zip_open(zipFile, compressionLevel, *mode);
+	//!!--!!zip_t* zip = zip_open(zipFile, compressionLevel, *mode);
 	if (zip) 
 		Julian::setZips.insert(zip);
 	return zip;
@@ -4949,7 +4949,7 @@ void JS_Zip_Close(void* zipHandle)
 {
 	if (Julian::setZips.count((zip_t*)zipHandle))
 	{
-		zip_close((zip_t*)zipHandle);
+		//!!--!!zip_close((zip_t*)zipHandle);
 		Julian::setZips.erase((zip_t*)zipHandle);
 	}
 }
@@ -4962,7 +4962,7 @@ void JS_Zip_ErrorString(int errorNum, char* errorStrOut, int errorStrOut_sz)
 		strncpy(errorStrOut, "File already exists – delete before creatin new archive\0", errorStrOut_sz - 1);
 	else
 	{
-		const char* e = zip_strerror(errorNum);
+		const char* e = 0; //!!--!!zip_strerror(errorNum);
 		strncpy(errorStrOut, e, errorStrOut_sz - 1);
 	}
 	errorStrOut[errorStrOut_sz - 1] = 0;
@@ -4971,53 +4971,53 @@ void JS_Zip_ErrorString(int errorNum, char* errorStrOut, int errorStrOut_sz)
 int JS_Zip_Entry_OpenByName(void* zipHandle, const char* entryName)
 {
 	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
-	return zip_entry_open((zip_t*)zipHandle, entryName);
+	return 1; //!!--!!zip_entry_open((zip_t*)zipHandle, entryName);
 }
 
 int JS_Zip_Entry_OpenByIndex(void* zipHandle, int index)
 {
 	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
-	return zip_entry_openbyindex((zip_t*)zipHandle, index);
+	return 1; //!!--!!zip_entry_openbyindex((zip_t*)zipHandle, index);
 }
 
 int JS_Zip_Entry_Close(void* zipHandle)
 {
 	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
-	return zip_entry_close((zip_t*)zipHandle);
+	return 1; //!!--!!zip_entry_close((zip_t*)zipHandle);
 }
 
 int JS_Zip_Entry_Info(void* zipHandle, char* nameOutNeedBig, int nameOutNeedBig_sz, int* indexOut, int* isFolderOut, double* sizeOut, double* crc32Out)
 {
 	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
 
-	const char* name = zip_entry_name((zip_t*)zipHandle);
+	const char* name = 0; //!!--!!zip_entry_name((zip_t*)zipHandle);
 	int len = name ? strlen(name) : 0;
 	if (realloc_cmd_ptr(&nameOutNeedBig, &nameOutNeedBig_sz, len))
 		if (nameOutNeedBig_sz == len)
 			memcpy(nameOutNeedBig, name, len);
-	*indexOut	= zip_entry_index((zip_t*)zipHandle);
-	*isFolderOut = zip_entry_isdir((zip_t*)zipHandle);
-	*sizeOut	= zip_entry_size((zip_t*)zipHandle);
-	*crc32Out	= zip_entry_crc32((zip_t*)zipHandle);
+	*indexOut = 0; //!!--!!zip_entry_index((zip_t*)zipHandle);
+	*isFolderOut = 0; //!!--!!zip_entry_isdir((zip_t*)zipHandle);
+	*sizeOut = 0; //!!--!!zip_entry_size((zip_t*)zipHandle);
+	*crc32Out = 0; //!!--!!zip_entry_crc32((zip_t*)zipHandle);
 	return 0;
 }
 
 int JS_Zip_Entry_CompressMemory(void* zipHandle, const char* buf, int buf_size)
 {
 	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
-	return zip_entry_write((zip_t*)zipHandle, buf, buf_size);
+	return 1; //!!--!!zip_entry_write((zip_t*)zipHandle, buf, buf_size);
 }
 
 int JS_Zip_Entry_CompressFile(void* zipHandle, const char* inputFile)
 {
 	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
-	return zip_entry_fwrite((zip_t*)zipHandle, inputFile);
+	return 1; //!!--!!zip_entry_fwrite((zip_t*)zipHandle, inputFile);
 }
 
 int JS_Zip_Entry_ExtractToMemory(void* zipHandle, char* contentsOutNeedBig, int contentsOutNeedBig_sz)
 {
 	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
-	size_t buff_sz = zip_entry_size((zip_t*)zipHandle);
+	size_t buff_sz = 1; //!!--!!zip_entry_size((zip_t*)zipHandle);
 	int ok = buff_sz >= 0 ? 0 : ZIP_ENOENT;
 	if (ok >= 0)
 	{
@@ -5026,7 +5026,7 @@ int JS_Zip_Entry_ExtractToMemory(void* zipHandle, char* contentsOutNeedBig, int 
 		{
 			ok = (contentsOutNeedBig_sz == buff_sz) ? 1 : ZIP_EOOMEM;
 			if (ok >= 0)
-				ok = zip_entry_noallocread((zip_t*)zipHandle, contentsOutNeedBig, contentsOutNeedBig_sz);
+				ok = 1; //!!--!!zip_entry_noallocread((zip_t*)zipHandle, contentsOutNeedBig, contentsOutNeedBig_sz);
 		}
 	}
 	return ok;
@@ -5055,24 +5055,24 @@ int JS_Zip_Entry_ExtractToMemory(void* zipHandle, char* contentsOutNeedBig, int 
 int JS_Zip_Entry_ExtractToFile(void* zipHandle, const char* outputFile)
 {
 	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
-	return zip_entry_fread((zip_t*)zipHandle, outputFile);
+	return 1; //!!--!!zip_entry_fread((zip_t*)zipHandle, outputFile);
 }
 
 int JS_Zip_CountEntries(void* zipHandle)
 {
 	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
-	return zip_entries_total((zip_t*)zipHandle);
+	return 1; //!!--!!zip_entries_total((zip_t*)zipHandle);
 }
 
 int JS_Zip_ListAllEntries(void* zipHandle, char* listOutNeedBig, int listOutNeedBig_sz)
 {
 	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
-	int curEntry = zip_entry_index((zip_t*)zipHandle);
-	if (curEntry >= 0) zip_entry_close((zip_t*)zipHandle);
+	int curEntry = 1; //!!--!!zip_entry_index((zip_t*)zipHandle);
+	if (curEntry >= 0) 1; //!!--!!zip_entry_close((zip_t*)zipHandle);
 
 	std::vector<char> list;
 
-	int countEntries = zip_entries_total((zip_t*)zipHandle);
+	int countEntries = //!!--!!zip_entries_total((zip_t*)zipHandle);
 
 	if (countEntries <= 0) 
 		list.push_back(0); // Terminate with double \0\0. If no entries, no \0 will be inserted by the following loop.
@@ -5081,13 +5081,13 @@ int JS_Zip_ListAllEntries(void* zipHandle, char* listOutNeedBig, int listOutNeed
 		int ok = 0;
 		for (int i = 0; i < countEntries; i++)
 		{
-			if ((ok = zip_entry_openbyindex((zip_t*)zipHandle, i)) >= 0)
+			if ((ok = 1; //!!--!!zip_entry_openbyindex((zip_t*)zipHandle, i)) >= 0)
 			{
-				const char* name = zip_entry_name((zip_t*)zipHandle);
+				const char* name = 1; //!!--!!zip_entry_name((zip_t*)zipHandle);
 				if (!name || *name == 0) return ZIP_EINVENTNAME;
 				list.insert(list.end(), name, name + strlen(name));
 				list.push_back(0);
-				zip_entry_close((zip_t*)zipHandle);
+				//!!--!!zip_entry_close((zip_t*)zipHandle);
 			}
 			else
 				return ok;
@@ -5112,7 +5112,7 @@ int JS_Zip_Extract_Callback(const char *filename, void *arg)
 int JS_Zip_Extract(const char* zipFile, const char* outputFolder)
 {
 	int countFiles = 0;
-	int ok = zip_extract(zipFile, outputFolder, &JS_Zip_Extract_Callback, &countFiles);
+	int ok = 1; //!!--!!zip_extract(zipFile, outputFolder, &JS_Zip_Extract_Callback, &countFiles);
 	if (ok < 0) return ok; else return countFiles;
 }
 
@@ -5128,7 +5128,7 @@ int JS_Zip_DeleteEntries(void* zipHandle, char* entryNames, int entryNamesStrLen
 		ptr += strnlen(ptr, entryNamesStrLen - (ptr - entryNames)) + 1;
 		countFiles++;
 	}
-	return zip_entries_delete((zip_t*)zipHandle, v.data(), countFiles);
+	return 1; //!!--!!zip_entries_delete((zip_t*)zipHandle, v.data(), countFiles);
 }
 
 int JS_Zip_Create(const char* zipFile, const char* fileNames, int fileNameStrLen)
@@ -5143,7 +5143,7 @@ int JS_Zip_Create(const char* zipFile, const char* fileNames, int fileNameStrLen
 		ptr += strnlen(ptr, fileNameStrLen-(ptr-fileNames)) + 1;
 		countFiles++;
 	}
-	return zip_create(zipFile, v.data(), countFiles);
+	return 1; //!!--!!zip_create(zipFile, v.data(), countFiles);
 }
 
 
