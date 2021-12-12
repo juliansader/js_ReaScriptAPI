@@ -19,19 +19,19 @@ artifacts:
 environment:
   matrix:
 
-  - job_name: linux_64
-    appveyor_build_worker_image: ubuntu
+  #- job_name: linux_64
+  #  appveyor_build_worker_image: ubuntu
     
   - job_name: macOS_64
     appveyor_build_worker_image: macos
 
-  - job_name: macOS_64_ARM
-    appveyor_build_worker_image: macos-bigsur
+  #- job_name: macOS_64_ARM
+  #  appveyor_build_worker_image: macos-bigsur
 
 for:
   - matrix: 
       only: 
-        - job_name: linux_64_
+        - job_name: linux_64
     install:
       - sudo add-apt-repository --yes ppa:ubuntu-toolchain-r/test
       - sudo apt-get -qq -y update
@@ -61,7 +61,7 @@ for:
       
   - matrix:
       only:
-        - job_name: macOS_64_ARM_
+        - job_name: macOS_64_ARM
     build_script:
       - clang -c -arch arm64 -fPIC -std=c17 -xc ./WDL/libpng/*.c 
       - clang -c -arch arm64 -fPIC -std=c17 -xc ./WDL/jpeglib/*.c 
