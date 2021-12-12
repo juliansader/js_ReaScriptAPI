@@ -4939,7 +4939,7 @@ void* JS_Zip_Open(const char* zipFile, const char* mode, int* compressionLevelOp
 	//if ((*mode == 'w' || *mode == 'W') && std::filesystem::exists(zipFile)) return nullptr; // for -std=c++17
 #endif
 	int compressionLevel = compressionLevelOptional ? *compressionLevelOptional : ZIP_DEFAULT_COMPRESSION_LEVEL;
-	//!!--!!zip_t* zip = zip_open(zipFile, compressionLevel, *mode);
+	zip_t* zip = NULL; //!!--!!zip_open(zipFile, compressionLevel, *mode);
 	if (zip) 
 		Julian::setZips.insert(zip);
 	return zip;
@@ -5072,7 +5072,7 @@ int JS_Zip_ListAllEntries(void* zipHandle, char* listOutNeedBig, int listOutNeed
 
 	std::vector<char> list;
 
-	int countEntries = //!!--!!zip_entries_total((zip_t*)zipHandle);
+	int countEntries = 1; //!!--!!zip_entries_total((zip_t*)zipHandle);
 
 	if (countEntries <= 0) 
 		list.push_back(0); // Terminate with double \0\0. If no entries, no \0 will be inserted by the following loop.
@@ -5081,9 +5081,9 @@ int JS_Zip_ListAllEntries(void* zipHandle, char* listOutNeedBig, int listOutNeed
 		int ok = 0;
 		for (int i = 0; i < countEntries; i++)
 		{
-			if ((ok = 1; //!!--!!zip_entry_openbyindex((zip_t*)zipHandle, i)) >= 0)
+			if ((ok = 1)) //!!--!!zip_entry_openbyindex((zip_t*)zipHandle, i)) >= 0)
 			{
-				const char* name = 1; //!!--!!zip_entry_name((zip_t*)zipHandle);
+				const char* name; //!!--!!zip_entry_name((zip_t*)zipHandle);
 				if (!name || *name == 0) return ZIP_EINVENTNAME;
 				list.insert(list.end(), name, name + strlen(name));
 				list.push_back(0);
