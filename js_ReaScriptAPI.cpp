@@ -5068,7 +5068,7 @@ int JS_Zip_ListAllEntries(void* zipHandle, char* listOutNeedBig, int listOutNeed
 {
 	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
 	int curEntry = 1; //!!--!!zip_entry_index((zip_t*)zipHandle);
-	if (curEntry >= 0) 1; //!!--!!zip_entry_close((zip_t*)zipHandle);
+					  //!!--!!if (curEntry >= 0) zip_entry_close((zip_t*)zipHandle);
 
 	std::vector<char> list;
 
