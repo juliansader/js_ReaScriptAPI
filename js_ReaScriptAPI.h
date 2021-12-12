@@ -6,24 +6,7 @@ void  JS_ReaScriptAPI_Version(double* versionOut);
 
 void  JS_Localize(const char* USEnglish, const char* LangPackSection, char* translationOut, int translationOut_sz);
 
-void* JS_Zip_Open(const char* zipFile, const char* mode, int* compressionLevelOptional);
-void JS_Zip_Close(void* zipHandle);
-void JS_Zip_ErrorString(int errorNum, char* errorStrOut, int errorStrOut_sz);
-int JS_Zip_Entry_OpenByName(void* zipHandle, const char* entryName);
-int JS_Zip_Entry_OpenByIndex(void* zipHandle, int index);
-int JS_Zip_Entry_Close(void* zipHandle);
-int JS_Zip_Entry_Info(void* zipHandle, char* nameOutNeedBig, int nameOutNeedBig_sz, int* indexOut, int* isFolderOut, double* sizeOut, double* crc32Out);
-int JS_Zip_Entry_CompressMemory(void* zipHandle, const char* buf, int buf_size);
-int JS_Zip_Entry_CompressFile(void* zipHandle, const char* inputFile);
-int JS_Zip_Entry_ExtractToMemory(void* zipHandle, char* contentsOutNeedBig, int contentsOutNeedBig_sz);
-int JS_Zip_Entry_ExtractToFile(void* zipHandle, const char* outputFile);
-int JS_Zip_CountEntries(void* zipHandle);
-int JS_Zip_ListAllEntries(void* zipHandle, char* listOutNeedBig, int listOutNeedBig_sz);
-int JS_Zip_Extract(const char* zipFile, const char* outputFolder);
-int JS_Zip_DeleteEntries(void* zipHandle, char* entryNames, int entryNamesStrLen);
-int JS_Zip_Create(const char* zipFile, const char* fileNames, int fileNamesStrLen);
-
-//int   JS_Zip_AddFile(const char* zipPath, const char* inputPath, const char* storedPathOptional);
+int   JS_Zip_AddFile(const char* zipPath, const char* inputPath, const char* storedPathOptional);
 int	  JS_File_Stat(const char* filePath, double* sizeOut, char* accessedTimeOut, char* modifiedTimeOut, char* cTimeOut, 
 				int* deviceIDOut, int* deviceSpecialIDOut, int* inodeOut, int* modeOut, int* numLinksOut, int* ownerUserIDOut, int* ownerGroupIDOut);
 
@@ -202,8 +185,6 @@ bool  JS_LICE_WritePNG(const char* filename, LICE_IBitmap* bitmap, bool wantAlph
 //bool  LICE_WritePNG(const char* filename, LICE_IBitmap* bitmap, bool wantAlpha); // lice.h excludes these functions if LICE_PROVIDED_BY_APP, so must declare this function myself.
 bool  JS_LICE_WriteJPG(const char* filename, LICE_IBitmap* bitmap, int quality, bool forceBaseline);
 void* JS_LICE_LoadJPG(const char* filename);
-void* JS_LICE_LoadPNGFromMemory(const char* buffer, int bufsize);
-void* JS_LICE_LoadJPGFromMemory(const char* buffer, int bufsize);
 
 bool  JS_LICE_IsFlipped(void* bitmap);
 bool  JS_LICE_Resize(void* bitmap, int width, int height);
@@ -212,9 +193,8 @@ void  JS_LICE_Clear(void* bitmap, int color);
 void* JS_LICE_CreateFont();
 void  JS_LICE_DestroyFont(void* LICEFont);
 void  JS_LICE_SetFontFromGDI(void* LICEFont, void* GDIFont, const char* moreFormats);
-void  JS_LICE_SetFontColor(void* LICEFont, int color);
 void  JS_LICE_SetFontBkColor(void* LICEFont, int color);
-void  JS_LICE_SetFontFXColor(void* LICEFont, int color);
+void  JS_LICE_SetFontColor(void* LICEFont, int color);
 int   JS_LICE_DrawText(void* bitmap, void* LICEFont, const char* text, int textLen, int x1, int y1, int x2, int y2);
 void  JS_LICE_DrawChar(void* bitmap, int x, int y, char c, int color, double alpha, const char* mode);
 void  JS_LICE_MeasureText(const char* string, int* widthOut, int* heightOut);
@@ -261,11 +241,6 @@ void  JS_ListView_HitTest(HWND listviewHWND, int clientX, int clientY, int* inde
 int   JS_ListView_ListAllSelItems(HWND listviewHWND, char* itemsOutNeedBig, int itemsOutNeedBig_sz);
 void  JS_ListView_SetItemText(HWND listviewHWND, int index, int subItem, const char* text);
 void  JS_ListView_SetItemState(HWND listviewHWND, int index, int state, int mask);
-
-int JS_TabCtrl_GetItemCount(HWND hwnd);
-int JS_TabCtrl_DeleteItem(HWND hwnd, int idx);
-int JS_TabCtrl_SetCurSel(HWND hwnd, int idx);
-int JS_TabCtrl_GetCurSel(HWND hwnd);
 
 class AudioWriter;
 
