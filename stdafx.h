@@ -30,7 +30,7 @@
 // Make sure that all the REAPER-related #included files compile the correct sections of the files
 #define REAPERAPI_IMPLEMENT
 #ifdef __APPLE__
-  #pragma message ("Defined: APPLE")
+  #pragma message ("Defined: APPLE test")
   #define SWELL_TARGET_OSX
   #undef SWELL_NO_METAL
 #elif __linux__
