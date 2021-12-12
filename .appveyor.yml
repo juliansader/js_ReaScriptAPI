@@ -31,7 +31,7 @@ environment:
 for:
   - matrix: 
       only: 
-        - job_name: linux_64
+        - job_name: linux_64_
     install:
       - sudo add-apt-repository --yes ppa:ubuntu-toolchain-r/test
       - sudo apt-get -qq -y update
@@ -61,7 +61,7 @@ for:
       
   - matrix:
       only:
-        - job_name: macOS_64_ARM
+        - job_name: macOS_64_ARM_
     build_script:
       - clang -c -arch arm64 -fPIC -std=c17 -xc ./WDL/libpng/*.c 
       - clang -c -arch arm64 -fPIC -std=c17 -xc ./WDL/jpeglib/*.c 
