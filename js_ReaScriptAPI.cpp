@@ -4933,7 +4933,7 @@ int JS_TabCtrl_GetCurSel(HWND hwnd)
 
 void* JS_Zip_Open(const char* zipFile, const char* mode, int* compressionLevelOptional)
 {
-	if ((*mode=='w' || *mode=='W') && std::experimental::filesystem::exists(zipFile)) return nullptr; // for C++14
+	//if ((*mode=='w' || *mode=='W') && std::experimental::filesystem::exists(zipFile)) return nullptr; // for C++14
 
 	int compressionLevel = compressionLevelOptional ? *compressionLevelOptional : ZIP_DEFAULT_COMPRESSION_LEVEL;
 	zip_t* zip = zip_open(zipFile, compressionLevel, *mode);
