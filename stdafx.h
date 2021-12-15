@@ -21,12 +21,9 @@
 #include <memory>
 #include <fstream>
 #include <time.h>
-#include <filesystem>
+#include <experimental/filesystem>
 #include <sys/types.h> 
 #include <sys/stat.h>
-
-//#include "./zipper/unzipper.h"
-//#include "./zipper/zipper.h"
 
 // Make sure that all the REAPER-related #included files compile the correct sections of the files
 #define REAPERAPI_IMPLEMENT
