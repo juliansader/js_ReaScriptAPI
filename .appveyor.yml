@@ -23,8 +23,8 @@ environment:
   - job_name: linux_64
     appveyor_build_worker_image: ubuntu1604
     
-  - job_name: macOS_64
-    appveyor_build_worker_image: macos-mojave
+  #- job_name: macOS_64
+  #  appveyor_build_worker_image: macos-mojave
 
   #- job_name: macOS_64_ARM
   #  appveyor_build_worker_image: macos-bigsur
@@ -43,7 +43,7 @@ for:
       - gcc-5 -c -fPIC -std=c11 -xc ./WDL/zlib/*.c
       - gcc-5 -c -fPIC -std=c11 -xc ./kuba/*.c
       - g++-5 -c -fPIC -std=c++14 -DSWELL_PROVIDED_BY_APP "./WDL/swell/swell-modstub-generic.cpp" "./WDL/lice/lice_png.cpp" "./WDL/lice/lice_png_write.cpp" "./WDL/lice/lice_jpg.cpp" "./WDL/lice/lice_jpg_write.cpp" "./WDL/lice/lice_colorspace.cpp" "./WDL/lice/lice.cpp"
-      - g++-5 -fPIC -std=c++14 -shared -Wall -Wl,--no-undefined -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" -I"./WDL/jpeglib/" -I"./WDL/lice/" -I"./WDL/libpng/" -I"./WDL/zlib/" -I"./kuba/" js_ReaScriptAPI.cpp *.o `pkg-config --cflags --libs gtk+-3.0` -o reaper_js_ReaScriptAPI64.so
+      - g++-5 -fPIC -std=c++14 -shared -Wall -Wl,--no-undefined -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" -I"./WDL/jpeglib/" -I"./WDL/lice/" -I"./WDL/libpng/" -I"./WDL/zlib/" -I"./kuba/" js_ReaScriptAPI.cpp *.o `pkg-config --cflags --libs gtk+-3.0` -ldl -o reaper_js_ReaScriptAPI64.so
 
 
   - matrix:
