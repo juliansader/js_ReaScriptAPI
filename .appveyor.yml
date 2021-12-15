@@ -15,7 +15,7 @@ branches:
 
 artifacts:
   - path: "reaper_js_ReaScriptAPI*.*"
-  - name: extensionDLLs
+    name: extensionDLLs
   
 environment:
   matrix:
@@ -73,4 +73,4 @@ deploy:
   - provider: GitHub
     auth_token:
       secure: xak+nfVvqW+GAoOuBcLy2isGeQS/mPKtI1nnWsAL3Ajh163kUPIGw2qc8AdQtXV5
-    artifact: extensionDLLs
+    artifacts: extensionDLLs
