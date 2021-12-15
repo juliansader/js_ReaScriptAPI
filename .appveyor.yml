@@ -41,8 +41,8 @@ for:
       - gcc-9 -c -fPIC -std=c17 -xc ./WDL/jpeglib/*.c
       - gcc-9 -c -fPIC -std=c17 -xc ./WDL/zlib/*.c
       #- gcc-9 -c -fPIC -std=c17 -xc ./kuba/*.c
-      - g++-9 -c -fPIC -std=c++17 -DSWELL_PROVIDED_BY_APP "./WDL/swell/swell-modstub-generic.cpp" "./WDL/lice/lice_png_write.cpp" "./WDL/lice/lice_png.cpp" "./WDL/lice/lice_jpg.cpp" "./WDL/lice/lice_jpg_write.cpp" "./WDL/lice/lice_colorspace.cpp" "./WDL/lice/lice.cpp"
-      - g++-9 -fPIC -shared -std=c++17 -Wall -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" -I"./WDL/jpeglib/" -I"./WDL/lice" -I"./WDL/libpng" -I"./WDL/zlib/" -I"./kuba/" js_ReaScriptAPI.cpp *.o `pkg-config --cflags --libs gtk+-3.0` -o reaper_js_ReaScriptAPI64.so
+      #- g++-9 -c -fPIC -std=c++17 -DSWELL_PROVIDED_BY_APP "./WDL/swell/swell-modstub-generic.cpp" "./WDL/lice/lice_png_write.cpp" "./WDL/lice/lice_png.cpp" "./WDL/lice/lice_jpg.cpp" "./WDL/lice/lice_jpg_write.cpp" "./WDL/lice/lice_colorspace.cpp" "./WDL/lice/lice.cpp"
+      - g++-9 -fPIC -shared -std=c++17 -Wall -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" -I"./WDL/jpeglib/" -I"./WDL/lice" -I"./WDL/libpng" -I"./WDL/zlib/" -I"./kuba/" js_ReaScriptAPI.cpp "./WDL/swell/swell-modstub-generic.cpp" "./WDL/lice/lice_png_write.cpp" "./WDL/lice/lice_png.cpp" "./WDL/lice/lice_jpg.cpp" "./WDL/lice/lice_jpg_write.cpp" "./WDL/lice/lice_colorspace.cpp" "./WDL/lice/lice.cpp" *.o `pkg-config --cflags --libs gtk+-3.0` -o reaper_js_ReaScriptAPI64.so
 
 
   - matrix:
