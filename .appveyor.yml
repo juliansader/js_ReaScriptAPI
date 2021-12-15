@@ -53,12 +53,13 @@ for:
       - clang   -c -arch x86_64 -fPIC -xc ./WDL/jpeglib/*.c 
       - clang   -c -arch x86_64 -fPIC -xc ./WDL/zlib/*.c 
       #- clang   -c -arch x86_64 -fPIC -std=c17 -xc ./kuba/*.c 
-      - clang++ -c -arch x86_64 -std=c++17 -DSWELL_PROVIDED_BY_APP "js_ReaScriptAPI_ObjC.mm" "./WDL/swell/swell-modstub.mm" "./WDL/lice/lice_png_write.cpp" "./WDL/lice/lice_png.cpp" "./WDL/lice/lice_jpg.cpp" "./WDL/lice/lice_jpg_write.cpp" "./WDL/lice/lice_colorspace.cpp" "./WDL/lice/lice.cpp"
-      - clang++ -arch x86_64 -fPIC -dynamiclib -std=c++17 -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" -I"./WDL/lice" -I"./WDL/jpeglib" -I"./WDL/libpng" -I"./WDL/zlib/" js_ReaScriptAPI.cpp *.o -framework AppKit -framework Cocoa -o "reaper_js_ReaScriptAPI64.dylib"
+      - clang++ -c -arch x86_64 -std=c++17 -DSWELL_PROVIDED_BY_APP "./WDL/swell/swell-modstub.mm" "./WDL/lice/lice_png_write.cpp" "./WDL/lice/lice_png.cpp" "./WDL/lice/lice_jpg.cpp" "./WDL/lice/lice_jpg_write.cpp" "./WDL/lice/lice_colorspace.cpp" "./WDL/lice/lice.cpp"
+      - clang++ -arch x86_64 -fPIC -dynamiclib -std=c++17 -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" -I"./WDL/lice" -I"./WDL/jpeglib" -I"./WDL/libpng" -I"./WDL/zlib/" js_ReaScriptAPI.cpp js_ReaScriptAPI_ObjC.mm *.o -framework AppKit -framework Cocoa -o "reaper_js_ReaScriptAPI64.dylib"
       #- clang++  -arch x86_64 -fPIC -dynamiclib -std=c++17 -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" -I"./WDL/lice" -I"./WDL/jpeglib" -I"./WDL/libpng" -I"./WDL/zlib/" -I"./kuba/" js_ReaScriptAPI.cpp js_ReaScriptAPI_ObjC.mm "./WDL/swell/swell-modstub.mm" "./WDL/lice/lice_png_write.cpp" "./WDL/lice/lice_jpg.cpp" "./WDL/lice/lice_jpg_write.cpp" "./WDL/lice/lice_colorspace.cpp" "./WDL/lice/lice.cpp" *.o -framework AppKit -framework Cocoa -lc++ -stdlib=libc++ -o "reaper_js_ReaScriptAPI64.dylib"
       #- clang++ -fPIC -dynamiclib -std=c++17 -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" -I"./WDL/lice" -I"./WDL/jpeglib" -I"./WDL/libpng" -I"./WDL/zlib/"             js_ReaScriptAPI.cpp js_ReaScriptAPI_ObjC.mm "./WDL/swell/swell-modstub.mm" "./WDL/lice/lice_png_write.cpp" "./WDL/lice/lice_jpg.cpp" "./WDL/lice/lice_jpg_write.cpp" "./WDL/lice/lice_colorspace.cpp" "./WDL/lice/lice.cpp" *.o -framework AppKit -framework Cocoa -lc++ -stdlib=libc++ -o "reaper_js_ReaScriptAPI64.dylib"
     test_script:
       - file reaper_js_ReaScriptAPI64.dylib
+      - otool -L reaper_js_ReaScriptAPI64.dylib
       
   - matrix:
       only:
@@ -86,7 +87,7 @@ deploy:
       secure: xak+nfVvqW+GAoOuBcLy2isGeQS/mPKtI1nnWsAL3Ajh163kUPIGw2qc8AdQtXV5
     artifact: reaper_js_ReaScriptAPI64.dylib
     on:
-      job_name: macOS_64
+      job_name: macOS_64_
 
   - provider: GitHub
     auth_token:
