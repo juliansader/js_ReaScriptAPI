@@ -88,7 +88,7 @@ deploy:
       secure: xak+nfVvqW+GAoOuBcLy2isGeQS/mPKtI1nnWsAL3Ajh163kUPIGw2qc8AdQtXV5
     artifact: reaper_js_ReaScriptAPI64.dylib
     on:
-      job_name: macOS_64_
+      job_name: macOS_64
 
   - provider: GitHub
     auth_token:
