@@ -21,6 +21,7 @@
 #include <memory>
 #include <fstream>
 #include <time.h>
+#include <filesystem>
 #include <sys/types.h> 
 #include <sys/stat.h>
 
@@ -93,6 +94,8 @@ int (WINAPI *CoolSB_SetScrollPos)(HWND hwnd, int nBar, int nPos, BOOL fRedraw);
 void(*AttachWindowTopmostButton)(HWND hwnd);
 void(*AttachWindowResizeGrip)(HWND hwnd);
 //BOOL(WINAPI *RemoveXPStyle)(HWND hwnd, int rm); // What does this function do?  Doesn't seem to work.
+
+#include "./kuba/zip.h"
 
 #include "js_ReaScriptAPI.h"
 #include "js_ReaScriptAPI_namespace.h"

@@ -84,10 +84,7 @@ public:
 
 
 private:
-  void BuildLowPass(double filtpos);
-  void inline SincSample(WDL_ResampleSample *outptr, const WDL_ResampleSample *inptr, double fracpos, int nch, const WDL_SincFilterSample *filter, int filtsz);
-  void inline SincSample1(WDL_ResampleSample *outptr, const WDL_ResampleSample *inptr, double fracpos, const WDL_SincFilterSample *filter, int filtsz);
-  void inline SincSample2(WDL_ResampleSample *outptr, const WDL_ResampleSample *inptr, double fracpos, const WDL_SincFilterSample *filter, int filtsz);
+  const WDL_SincFilterSample *BuildLowPass(double filtpos, bool *isIdeal);
 
   double m_sratein WDL_FIXALIGN;
   double m_srateout;
@@ -106,6 +103,7 @@ private:
   int m_filtlatency;
   int m_samples_in_rsinbuf;
   int m_lp_oversize;
+  int m_sinc_ideal_calced; // -1=not yet calced
 
   int m_sincsize;
   int m_filtercnt;

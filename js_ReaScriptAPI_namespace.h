@@ -30,6 +30,8 @@ namespace Julian
 	map<LICE_IBitmap*, HDC> mLICEBitmaps;
 	set<pair<HWND,HDC>> 	GDIHDCs;
 
+	set<LICE_IFont*>		LICEFonts;
+
 	// To avoid having to re-load a cursor from file every time that a script is executed,
 	//		the HCURSURS will be stored in this map.
 	// WDL/swell doesn't provide a cross-platform function to remove cursors from memory,
@@ -58,6 +60,9 @@ namespace Julian
 	std::map<std::string, char*> mapClassNames;
 #endif
 
+	/////////////////////////////////////////////
+	// Zip objects (that may need t o be closed before exit
+	std::set<zip_t*> setZips;
 
 	/////////////////////////////////////////////
 	// GDI Objects

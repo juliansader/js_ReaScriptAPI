@@ -158,8 +158,12 @@ int SWELL_IsRetinaHWND(HWND hwnd)
   if (w)
   {
     NSRect r=NSMakeRect(0,0,1,1);
+#if MAC_OS_X_VERSION_MIN_REQUIRED > MAC_OS_X_VERSION_10_6
+    NSRect str = [w convertRectToBacking:r];
+#else
     NSRect (*tmp)(id receiver, SEL operation, NSRect) = (NSRect (*)(id, SEL, NSRect))objc_msgSend_stret;
     NSRect str = tmp(w,sel_getUid("convertRectToBacking:"),r);
+#endif
 
     if (str.size.width > 1.9) return 1;
   }
@@ -224,9 +228,9 @@ static void *ALIGN_FBUF(void *inbuf)
 HDC SWELL_CreateMemContext(HDC hdc, int w, int h)
 {
   void *buf=calloc(w*4*h+ALIGN_EXTRA,1);
-  if (!buf) return 0;
+  if (WDL_NOT_NORMALLY(!buf)) return 0;
   CGContextRef c=CGBitmapContextCreate(ALIGN_FBUF(buf),w,h,8,w*4, __GetBitmapColorSpace(), kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrder32Host);
-  if (!c)
+  if (WDL_NOT_NORMALLY(!c))
   {
     free(buf);
     return 0;
@@ -488,6 +492,7 @@ HGDIOBJ GetStockObject(int wh)
       return p;
     }
   }
+  WDL_ASSERT(false);
   return 0;
 }
 
@@ -778,7 +783,7 @@ HFONT CreateFont(int lfHeight, int lfWidth, int lfEscapement, int lfOrientation,
 int GetTextFace(HDC ctx, int nCount, LPTSTR lpFaceName)
 {
   HDC__ *ct=(HDC__*)ctx;
-  if (!HDC_VALID(ct) || !nCount || !lpFaceName) return 0;
+  if (!HDC_VALID(ct) || WDL_NOT_NORMALLY(!nCount || !lpFaceName)) return 0;
   
 #ifndef SWELL_NO_CORETEXT
   CTFontRef fr=NULL;
@@ -811,7 +816,7 @@ BOOL GetTextMetrics(HDC ctx, TEXTMETRIC *tm)
     tm->tmHeight=16;
     tm->tmAveCharWidth = 10;
   }
-  if (!HDC_VALID(ct)||!tm) return 0;
+  if (!HDC_VALID(ct)||WDL_NOT_NORMALLY(!tm)) return 0;
 
   bool curfont_valid=HGDIOBJ_VALID(ct->curfont,TYPE_FONT);
 
@@ -1213,6 +1218,48 @@ int GetGlyphIndicesW(HDC ctx, wchar_t *buf, int len, unsigned short *indices, in
 }
 
 
+NSFont *SWELL_GetNSFont(HGDIOBJ__ *obj)
+{
+  if (HGDIOBJ_VALID(obj,TYPE_FONT))
+  {
+    if (obj->ct_FontRef) return (NSFont *)obj->ct_FontRef;
+#ifdef SWELL_ATSUI_TEXT_SUPPORT
+    else if (obj->atsui_font_style)
+    {
+      ATSUFontID fontid = kATSUInvalidFontID;
+      Fixed fsize = 0;
+      Boolean isbold = NO;
+      Boolean isital = NO;
+      Boolean isunder = NO;
+      if (ATSUGetAttribute(obj->atsui_font_style, kATSUFontTag, sizeof(ATSUFontID), &fontid, 0) == noErr &&
+          ATSUGetAttribute(obj->atsui_font_style, kATSUSizeTag, sizeof(Fixed), &fsize, 0) == noErr && fsize &&
+          ATSUGetAttribute(obj->atsui_font_style, kATSUQDBoldfaceTag, sizeof(Boolean), &isbold, 0) == noErr &&
+          ATSUGetAttribute(obj->atsui_font_style, kATSUQDItalicTag, sizeof(Boolean), &isital, 0) == noErr &&
+          ATSUGetAttribute(obj->atsui_font_style, kATSUQDUnderlineTag, sizeof(Boolean), &isunder, 0) == noErr)
+      {
+        char name[255];
+        name[0]=0;
+        ByteCount namelen=0;
+        if (ATSUFindFontName(fontid, kFontFullName, (FontPlatformCode)kFontNoPlatform, kFontNoScriptCode, kFontNoLanguageCode, sizeof(name), name, &namelen, 0) == noErr && name[0] && namelen)
+        {
+          namelen /= 2;
+          int i;
+          for (i = 0; i < namelen; ++i) name[i] = name[2*i];
+          name[namelen]=0;
+
+          // todo bold/ital/underline
+          NSString* str = (NSString*)SWELL_CStringToCFString(name);
+          CGFloat sz = Fix2Long(fsize);
+          NSFont* font = [NSFont fontWithName:str size:sz];
+          [str release];
+          return font;
+        }
+      }
+    }
+#endif
+  }
+  return NULL;
+}
 
 
 void SetBkColor(HDC ctx, int col)
@@ -1250,7 +1297,7 @@ void SetTextColor(HDC ctx, int col)
 
 HICON CreateIconIndirect(ICONINFO* iconinfo)
 {
-  if (!iconinfo || !iconinfo->fIcon) return 0;  
+  if (WDL_NOT_NORMALLY(!iconinfo || !iconinfo->fIcon)) return 0;  
   HGDIOBJ__* i=iconinfo->hbmColor;
   if (!HGDIOBJ_VALID(i,TYPE_BITMAP) || !i->bitmapptr) return 0;
   NSImage* img=i->bitmapptr;
@@ -1353,7 +1400,7 @@ void DrawImageInRect(HDC ctx, HICON img, const RECT *r)
   HGDIOBJ__ *i = (HGDIOBJ__ *)img;
   HDC__ *ct=(HDC__*)ctx;
   if (!HDC_VALID(ct) || !HGDIOBJ_VALID(i,TYPE_BITMAP) || !i->bitmapptr) return;
-  if (!ct->ctx) return;
+  if (WDL_NOT_NORMALLY(!ct->ctx)) return;
   //CGContextDrawImage(ct->ctx,CGRectMake(r->left,r->top,r->right-r->left,r->bottom-r->top),(CGImage*)i->bitmapptr);
   // probably a better way since this ignores the ctx
   [NSGraphicsContext saveGraphicsState];
@@ -1372,12 +1419,12 @@ void DrawImageInRect(HDC ctx, HICON img, const RECT *r)
 BOOL GetObject(HICON icon, int bmsz, void *_bm)
 {
   memset(_bm,0,bmsz);
-  if (bmsz < 2*(int)sizeof(LONG)) return false;
+  if (WDL_NOT_NORMALLY(bmsz < 2*(int)sizeof(LONG))) return false;
   BITMAP *bm=(BITMAP *)_bm;
   HGDIOBJ__ *i = (HGDIOBJ__ *)icon;
   if (!HGDIOBJ_VALID(i,TYPE_BITMAP)) return false;
   NSImage *img = i->bitmapptr;
-  if (!img) return false;
+  if (WDL_NOT_NORMALLY(!img)) return false;
   bm->bmWidth = (int) ([img size].width+0.5);
   bm->bmHeight = (int) ([img size].height+0.5);
   if (bmsz >= (int)sizeof(BITMAP))
@@ -1399,24 +1446,21 @@ void *GetNSImageFromHICON(HICON ico)
   return i->bitmapptr;
 }
 
-#if 0
-static int ColorFromNSColor(NSColor *color, int valifnul)
+static int ColorFromNSColor_Actual(NSColor *color, int valifnul)
 {
   if (!color) return valifnul;
-  float r,g,b;
+  CGFloat r,g,b;
   NSColor *color2=[color colorUsingColorSpaceName:NSCalibratedRGBColorSpace];
-  if (!color2) 
-  {
-    NSLog(@"error converting colorspace from: %@\n",[color colorSpaceName]);
-    return valifnul;
-  }
-  
+  if (!color2) return valifnul;
   [color2 getRed:&r green:&g blue:&b alpha:NULL];
+  if (r<0) r=0; else if (r>1) r=1;
+  if (g<0) g=0; else if (g>1) g=1;
+  if (b<0) b=0; else if (b>1) b=1;
   return RGB((int)(r*255.0),(int)(g*255.0),(int)(b*255.0));
 }
-#else
+
 #define ColorFromNSColor(a,b) (b)
-#endif
+
 int GetSysColor(int idx)
 {
  // NSColors that seem to be valid: textBackgroundColor, selectedTextBackgroundColor, textColor, selectedTextColor
@@ -1425,6 +1469,10 @@ int GetSysColor(int idx)
   {
     case COLOR_WINDOW: return ColorFromNSColor([NSColor controlColor],RGB(192,192,192));
     case COLOR_3DFACE: 
+      if (SWELL_osx_is_dark_mode(1))
+        return ColorFromNSColor_Actual([NSColor windowBackgroundColor],RGB(64,64,64));
+      // fall through
+
     case COLOR_BTNFACE: return ColorFromNSColor([NSColor controlColor],RGB(192,192,192));
     case COLOR_SCROLLBAR: return ColorFromNSColor([NSColor controlColor],RGB(32,32,32));
     case COLOR_3DSHADOW: return ColorFromNSColor([NSColor selectedTextBackgroundColor],RGB(96,96,96));
@@ -1478,6 +1526,8 @@ void StretchBlt(HDC hdcOut, int x, int y, int destw, int desth, HDC hdcIn, int x
   
   if (desth == preclip_h) desth=h;
   else if (h != preclip_h) desth = (h*desth)/preclip_h;
+
+  if (destw < 1 || desth < 1) return;
   
   const bool use_alphachannel = mode == (int)SRCCOPY_USEALPHACHAN;
 
@@ -1488,13 +1538,50 @@ void StretchBlt(HDC hdcOut, int x, int y, int destw, int desth, HDC hdcIn, int x
 
   if (dest->metal_ctx)
   {
-    void SWELL_Metal_Blit(void *tex, unsigned char *buf, int x, int y, int w, int h, int span, bool retina_hint);
+    void SWELL_Metal_Blit(void *tex, const unsigned int *buf, int x, int y, int w, int h, int span, bool retina_hint, bool use_alpha);
 
+    const unsigned int *ptr = (const unsigned int *)p;
     if (w == destw && h == desth)
-      SWELL_Metal_Blit(hdcOut->metal_ctx,p,x,y,w,h,sw,false);
-    else if (WDL_NORMALLY(w == destw*2) && WDL_NORMALLY(h == desth*2))
+      SWELL_Metal_Blit(hdcOut->metal_ctx,ptr,x,y,w,h,sw,false, use_alphachannel);
+    else if (w == destw*2 && h == desth*2)
+      SWELL_Metal_Blit(hdcOut->metal_ctx,ptr,x*2,y*2,w,h,sw,true, use_alphachannel);
+    else
     {
-      SWELL_Metal_Blit(hdcOut->metal_ctx,p,x*2,y*2,w,h,sw,true);
+      // Using StretchBlt() to size contents isn't ideal (in Metal mode or in win32), but if the caller insists
+      const bool retina = w >= destw*2 && h >= desth*2 && SWELL_IsRetinaDC(hdcOut);
+      if (retina)
+      {
+        destw *= 2;
+        desth *= 2;
+        x*=2;
+        y*=2;
+      }
+
+      // resize a copy of image to destw/desth/destsw/destptr
+      static WDL_TypedBuf<unsigned int> tmp;
+      const int destspan = (destw+3)&~3;
+      const unsigned int dx = (w * 65536) / destw, dy = (h * 65536) / desth;
+      unsigned int *destptr = tmp.ResizeOK(destspan*desth, false);
+      if (WDL_NOT_NORMALLY(!destptr)) return;
+
+      unsigned int *wr = destptr;
+      for (int i=0;i<desth; i ++)
+      {
+        unsigned int yp = ((unsigned int)i * dy)>>16;
+        if (WDL_NOT_NORMALLY(yp >= (unsigned int)h)) break;
+        const unsigned int *rd = ptr + yp*sw;
+        int xpos = 0;
+        for (int j=0;j<destw; j ++)
+        {
+          const unsigned int xp = (xpos>>16);
+          if (WDL_NOT_NORMALLY(xp >= (unsigned int)w)) break;
+          wr[j] = rd[xp];
+          xpos += dx;
+        }
+        wr += destspan;
+      }
+
+      SWELL_Metal_Blit(hdcOut->metal_ctx,destptr,x,y, destw, desth, destspan, retina, use_alphachannel);
     }
 
     return;
@@ -1602,6 +1689,7 @@ void *SWELL_GetCtxFrameBuffer(HDC ctx)
 
 HDC GetDC(HWND h)
 {
+  WDL_ASSERT(h);
   if (h && [(id)h isKindOfClass:[NSWindow class]])
   {
     if ([(id)h respondsToSelector:@selector(getSwellPaintInfo:)]) 
@@ -1661,6 +1749,7 @@ HDC GetDC(HWND h)
 
 HDC GetWindowDC(HWND h)
 {
+  WDL_ASSERT(h);
   HDC ret=GetDC(h);
   if (ret)
   {
@@ -1681,6 +1770,7 @@ HDC GetWindowDC(HWND h)
 
 void ReleaseDC(HWND h, HDC hdc)
 {
+  WDL_ASSERT(h);
   if (hdc)
   {
     if ((hdc)->ctx) CGContextRestoreGState((hdc)->ctx);
@@ -1736,7 +1826,7 @@ void ReleaseDC(HWND h, HDC hdc)
 void SWELL_FillDialogBackground(HDC hdc, const RECT *r, int level)
 {
   CGContextRef ctx=(CGContextRef)SWELL_GetCtxGC(hdc);
-  if (ctx)
+  if (WDL_NORMALLY(ctx))
   {
     bool ok = false;
     if (SWELL_GDI_GetOSXVersion()>=0x10d0)
@@ -1744,7 +1834,8 @@ void SWELL_FillDialogBackground(HDC hdc, const RECT *r, int level)
       NSColor *c = [NSColor windowBackgroundColor];
       if ([c respondsToSelector:@selector(CGColor)])
       {
-        CGContextSetFillColorWithColor(ctx, (CGColorRef)[c CGColor]);
+        void *(*send_msg)(id, SEL) = (void *(*)(id, SEL))objc_msgSend;
+        CGContextSetFillColorWithColor(ctx, (CGColorRef)send_msg(c, @selector(CGColor)));
         ok = true;
       }
     }
@@ -1779,7 +1870,7 @@ HBITMAP CreateBitmap(int width, int height, int numplanes, int bitsperpixel, uns
                                                                colorSpaceName:NSDeviceRGBColorSpace
                                                                 bitmapFormat:NSAlphaFirstBitmapFormat 
                                                                  bytesPerRow:0 bitsPerPixel:0];    
-  if (!rep) return 0;
+  if (WDL_NOT_NORMALLY(!rep)) return 0;
   unsigned char* p = [rep bitmapData];
   const int pspan = (int)[rep bytesPerRow]; // might not be the same as width
   
@@ -1826,7 +1917,7 @@ HIMAGELIST ImageList_CreateEx()
 BOOL ImageList_Remove(HIMAGELIST list, int idx)
 {
   WDL_PtrList<HGDIOBJ__>* imglist=(WDL_PtrList<HGDIOBJ__>*)list;
-  if (imglist && idx < imglist->GetSize())
+  if (WDL_NORMALLY(imglist) && idx < imglist->GetSize())
   {
     if (idx < 0) 
     {
@@ -1852,14 +1943,14 @@ BOOL ImageList_Remove(HIMAGELIST list, int idx)
 
 void ImageList_Destroy(HIMAGELIST list)
 {
-  if (!list) return;
+  if (WDL_NOT_NORMALLY(!list)) return;
   ImageList_Remove(list, -1);
   delete (WDL_PtrList<HGDIOBJ__>*)list;
 }
 
 int ImageList_ReplaceIcon(HIMAGELIST list, int offset, HICON image)
 {
-  if (!image || !list) return -1;
+  if (WDL_NOT_NORMALLY(!image || !list)) return -1;
   WDL_PtrList<HGDIOBJ__> *l=(WDL_PtrList<HGDIOBJ__> *)list;
 
   HGDIOBJ__ *imgsrc = (HGDIOBJ__*)image;
@@ -1888,7 +1979,7 @@ int ImageList_ReplaceIcon(HIMAGELIST list, int offset, HICON image)
 
 int ImageList_Add(HIMAGELIST list, HBITMAP image, HBITMAP mask)
 {
-  if (!image || !list) return -1;
+  if (WDL_NOT_NORMALLY(!image || !list)) return -1;
   WDL_PtrList<HGDIOBJ__> *l=(WDL_PtrList<HGDIOBJ__> *)list;
   
   HGDIOBJ__ *imgsrc = (HGDIOBJ__*)image;

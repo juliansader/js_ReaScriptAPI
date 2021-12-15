@@ -344,13 +344,15 @@ class LICE_SubBitmap : public LICE_IBitmap // note: you should only keep these a
   #define lice_isfinite(x) isfinite(x)
 #endif
 
-/////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////!!!!!!!!!!
 // !! COPIED FROM THE ifndef LICE_PROVIDED_BY_APP SECTION BELOW, !!!!
 // !!	SO THAT CAN BE LINKED WITH EVEN IF LICE_PROVIDED_BY_APP
 
 bool LICE_WritePNG(const char *filename, LICE_IBitmap *bmp, bool wantalpha = true);
 LICE_IBitmap *LICE_LoadJPG(const char *filename, LICE_IBitmap *bmp = NULL);
 bool LICE_WriteJPG(const char *filename, LICE_IBitmap *bmp, int quality=95, bool force_baseline=true);
+LICE_IBitmap *LICE_LoadPNGFromMemory(const void *data_in, int buflen, LICE_IBitmap *bmp = NULL);
+LICE_IBitmap *LICE_LoadJPGFromMemory(const void *data_in, int buflen, LICE_IBitmap *bmp = NULL);
 
 struct _LICE_ImageLoader_rec
 {
@@ -367,7 +369,8 @@ void LICE_AlterRectHSV(LICE_IBitmap* src, int x, int y, int w, int h, float d_hu
 void LICE_ProcessRect(LICE_IBitmap *dest, int x, int y, int w, int h, void(*procFunc)(LICE_pixel *p, void *parm), void *parm);
 void LICE_SetAlphaFromColorMask(LICE_IBitmap *dest, LICE_pixel color);
 
-/////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////!!!!!!!!!!!
+
 
 // Reaper exports most LICE functions, so the function declarations below
 // will collide with reaper_plugin.h
@@ -383,8 +386,8 @@ bool LICE_ImageIsSupported(const char *filename);  // must be a filename that en
 
 
 // pass a bmp if you wish to load it into that bitmap. note that if it fails bmp will not be deleted.
-LICE_IBitmap *LICE_LoadPNG(const char *filename, LICE_IBitmap *bmp=NULL); // returns a bitmap (bmp if nonzero) on success
-LICE_IBitmap *LICE_LoadPNGFromMemory(const void *data_in, int buflen, LICE_IBitmap *bmp=NULL);
+//!!!!LICE_IBitmap *LICE_LoadPNG(const char *filename, LICE_IBitmap *bmp=NULL); // returns a bitmap (bmp if nonzero) on success
+//!!!!LICE_IBitmap *LICE_LoadPNGFromMemory(const void *data_in, int buflen, LICE_IBitmap *bmp=NULL);
 LICE_IBitmap *LICE_LoadPNGFromResource(HINSTANCE hInst, const char *resid, LICE_IBitmap *bmp=NULL); // returns a bitmap (bmp if nonzero) on success
 #ifndef _WIN32
 LICE_IBitmap *LICE_LoadPNGFromNamedResource(const char *name, LICE_IBitmap *bmp=NULL); // returns a bitmap (bmp if nonzero) on success
@@ -397,18 +400,17 @@ LICE_IBitmap *LICE_LoadIcon(const char *filename, int reqiconsz=16, LICE_IBitmap
 LICE_IBitmap *LICE_LoadIconFromResource(HINSTANCE hInst, const char *resid, int reqiconsz=16, LICE_IBitmap *bmp=NULL); // returns a bitmap (bmp if nonzero) on success
 
 //!!!!LICE_IBitmap *LICE_LoadJPG(const char *filename, LICE_IBitmap *bmp=NULL);
-LICE_IBitmap *LICE_LoadJPGFromMemory(const void *data_in, int buflen, LICE_IBitmap *bmp = NULL);
+//!!!!LICE_IBitmap *LICE_LoadJPGFromMemory(const void *data_in, int buflen, LICE_IBitmap *bmp = NULL);
 LICE_IBitmap* LICE_LoadJPGFromResource(HINSTANCE hInst, const char *resid, LICE_IBitmap* bmp = 0);
 
 LICE_IBitmap *LICE_LoadGIF(const char *filename, LICE_IBitmap *bmp=NULL, int *nframes=NULL); // if nframes set, will be set to number of images (stacked vertically), otherwise first frame used
 
 LICE_IBitmap *LICE_LoadPCX(const char *filename, LICE_IBitmap *bmp=NULL); // returns a bitmap (bmp if nonzero) on success
 
-LICE_IBitmap *LICE_LoadSVG(const char *filename, LICE_IBitmap *bmp=NULL);
 
 // bitmap saving
 //!!!!bool LICE_WritePNG(const char *filename, LICE_IBitmap *bmp, bool wantalpha=true);
-//!!!!LICE_IBitmap *LICE_LoadJPG(const char *filename, LICE_IBitmap *bmp = NULL);
+
 //!!!!bool LICE_WriteJPG(const char *filename, LICE_IBitmap *bmp, int quality=95, bool force_baseline=true);
 bool LICE_WriteGIF(const char *filename, LICE_IBitmap *bmp, int transparent_alpha=0, bool dither=true); // if alpha<transparent_alpha then transparent. if transparent_alpha<0, then intra-frame checking is used
 
