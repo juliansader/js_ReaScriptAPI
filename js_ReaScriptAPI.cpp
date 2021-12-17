@@ -4928,12 +4928,25 @@ int JS_TabCtrl_GetCurSel(HWND hwnd)
 //
 // kuba zip functions
 
-#define ZIP_EZEROFORMAT -31
-#define ZIP_EFILEEXISTS -32
+#define ZIP_EZEROFORMAT -100
+#define ZIP_EFILEEXISTS -101
 
 void* JS_Zip_Open(const char* zipFile, const char* mode, int* compressionLevelOptional)
 {
-	//if ((*mode=='w' || *mode=='W') && std::experimental::filesystem::exists(zipFile)) return nullptr; // for C++14
+	if (*mode)
+		*mode = tolower(*mode);
+	else
+		return ZIP_EINVMODE;
+	
+	if (*mode=='w') // || *mode=='W')
+	{
+#ifdef __APPLE__
+		struct stat info;
+		if (stat(zipFile, &info) == 0) return nullptr; // macOS Mojave C++14 doesn't yet have experimental::filesystem::exists
+#else
+		if (std::experimental::filesystem::exists(zipFile)) return nullptr; // for C++14
+#endif
+	}
 
 	int compressionLevel = compressionLevelOptional ? *compressionLevelOptional : ZIP_DEFAULT_COMPRESSION_LEVEL;
 	zip_t* zip = zip_open(zipFile, compressionLevel, *mode);
@@ -4980,6 +4993,7 @@ int JS_Zip_Entry_OpenByIndex(void* zipHandle, int index)
 int JS_Zip_Entry_Close(void* zipHandle)
 {
 	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
+	if (zip_entry_index((zip_t*)zipHandle) < 0) return ZIP_ENOENT; // Somehow REAPER crashes if no entry is actually open when trying to close
 	return zip_entry_close((zip_t*)zipHandle);
 }
 
@@ -5027,26 +5041,6 @@ int JS_Zip_Entry_ExtractToMemory(void* zipHandle, char* contentsOutNeedBig, int 
 		}
 	}
 	return ok;
-	/*
-	void* buff = nullptr;
-	size_t buff_sz = 0;
-	int ok = zip_entry_read((zip_t*)zipHandle, &buff, &buff_sz);
-	if (buff)
-	{
-		if (ok >= 0)
-		{
-			ok = (realloc_cmd_ptr(&contentsOutNeedBig, &contentsOutNeedBig_sz, buff_sz) ? 1 : ZIP_EMEMNOALLOC);
-			if (ok >= 0 )
-			{
-				ok = (contentsOutNeedBig_sz == buff_sz) ? 1 : ZIP_EOOMEM;
-				if (ok >= 0)
-					memcpy(contentsOutNeedBig, (char*)buff, buff_sz);
-			}
-		}
-		free(buff);
-	}
-	return ok;
-	*/
 }
 
 int JS_Zip_Entry_ExtractToFile(void* zipHandle, const char* outputFile)
