@@ -4939,11 +4939,11 @@ void* JS_Zip_Open(const char* zipFile, const char* mode, int* compressionLevelOp
 	
 	if (m == 'w')
 	{
-#ifdef __APPLE__
+#ifdef _WIN32
+		if (std::experimental::filesystem::exists(zipFile)) return nullptr; // for C++14
+#else
 		struct stat info;
 		if (stat(zipFile, &info) == 0) return nullptr; // macOS Mojave C++14 doesn't yet have experimental::filesystem::exists
-#else
-		if (std::experimental::filesystem::exists(zipFile)) return nullptr; // for C++14
 #endif
 	}
 
