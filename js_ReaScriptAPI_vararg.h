@@ -96,12 +96,12 @@ static void* __vararg_JS_Zip_DeleteEntries(void** arglist, int numparms)
 {
 	return (void*)(intptr_t)JS_Zip_DeleteEntries(arglist[0], (char*)arglist[1], (int)(intptr_t)arglist[2]);
 }
-
+/*
 static void* __vararg_JS_Zip_Create(void** arglist, int numparms)
 {
 	return (void*)(intptr_t)JS_Zip_Create((const char*)arglist[0], (const char*)arglist[1], (int)(intptr_t)arglist[2]);
 }
-
+*/
 ////////////////////////////////////////////////////////////////
 
 static void* __vararg_JS_File_Stat(void** arglist, int numparms)
@@ -465,12 +465,12 @@ static void* __vararg_JS_Window_SetPosition(void** arglist, int numparms)
 {
 	return (void*)JS_Window_SetPosition((void*)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (int)(intptr_t)arglist[3], (int)(intptr_t)arglist[4], (numparms > 5) ? (char*)arglist[5] : nullptr, (numparms > 6) ? (char*)arglist[6] : nullptr);
 }
-
+/*
 static void* __vararg_JS_GetLevel(void** arglist, int numparms)
 {
 	return (void*)(intptr_t)JS_GetLevel(arglist[0]);
 }
-
+*/
 static void* __vararg_JS_Window_SetZOrder(void** arglist, int numparms)
 {
 	return (void*)(intptr_t)JS_Window_SetZOrder((void*)arglist[0], (const char*)arglist[1], (numparms > 2) ? (void*)arglist[2] : 0);
@@ -535,7 +535,7 @@ static void* __vararg_JS_Window_AddressFromHandle(void** arglist, int numparms)
 	JS_Window_AddressFromHandle(arglist[0], (double*)arglist[1]);
 	return NULL;
 }
-
+/*
 static void* __vararg_JS_ArrayFromAddress(void** arglist, int numparms)
 {
 	return (void*)JS_ArrayFromAddress(arglist[0] ? *(double*)arglist[0] : 0.0);
@@ -546,7 +546,7 @@ static void* __vararg_JS_AddressFromArray(void** arglist, int numparms)
 	JS_AddressFromArray((double*)arglist[0], (double*)arglist[1]);
 	return NULL;
 }
-
+*/
 static void* __vararg_JS_WindowMessage_Post(void** arglist, int numparms)
 {
   return (void*)(intptr_t)JS_WindowMessage_Post((void*)arglist[0], (const char*)arglist[1], arglist[2] ? *(double*)arglist[2] : 0.0, (int)(intptr_t)arglist[3], arglist[4] ? *(double*)arglist[4] : 0.0, (int)(intptr_t)arglist[5]);
@@ -904,13 +904,13 @@ static void* __vararg_JS_LICE_ScaledBlit(void** arglist, int numparms)
 	JS_LICE_ScaledBlit((void*)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (int)(intptr_t)arglist[3], (int)(intptr_t)arglist[4], (void*)arglist[5], arglist[6] ? *(double*)arglist[6] : 0.0, arglist[7] ? *(double*)arglist[7] : 0.0, arglist[8] ? *(double*)arglist[8] : 0.0, arglist[9] ? *(double*)arglist[9] : 0.0, arglist[10] ? *(double*)arglist[10] : 0.0, (const char*)arglist[11]);
 	return NULL;
 }
-
+/*
 static void* __vararg_JS_LICE_Blur(void** arglist, int numparms)
 {
 	JS_LICE_Blur((void*)arglist[0], (int)(intptr_t)arglist[1], (int)(intptr_t)arglist[2], (void*)arglist[3], (int)(intptr_t)arglist[4], (int)(intptr_t)arglist[5], (int)(intptr_t)arglist[6], (int)(intptr_t)arglist[7]);
 	return NULL;
 }
-
+*/
 static void* __vararg_JS_LICE_IsFlipped(void** arglist, int numparms)
 {
 	return (void*)(intptr_t)JS_LICE_IsFlipped((void*)arglist[0]);
