@@ -2878,8 +2878,10 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 		//int c = 0;
 
 		// These two RECTs must guaranteed always reset at each WM_PAINT cycle -- except that mustInvalidRect will be re-assigned if a Timer is set up on WindowsOS.
+		#ifdef _WIN32
 		RECT iR  = w.doneInvalidRect;
 		RECT i2R = w.mustInvalidRect; // Stuff that extension wants to update (stored updateRect from previous, delayed cycles, as well as bitmaps that were updated)
+		#endif
 		w.doneInvalidRect = { 0, 0, 0, 0 };
 		w.mustInvalidRect = { 0, 0, 0, 0 };
 
@@ -2989,7 +2991,7 @@ LRESULT CALLBACK JS_WindowMessage_Intercept_Callback(HWND hwnd, UINT uMsg, WPARA
 				int width = compositeCanvas->getWidth();
 				int height = compositeCanvas->getHeight();
 				if (width < cR.right || height < cR.bottom)
-					BOOL resizeOK = compositeCanvas->resize(width > cR.right ? width : cR.right, height > cR.bottom ? height : cR.bottom);
+					compositeCanvas->resize(width > cR.right ? width : cR.right, height > cR.bottom ? height : cR.bottom); // What should code do if resize not successful?
 			}
 
 			// Finally, do the compositing!  Iterate through all linked bitmaps.
@@ -4933,12 +4935,9 @@ int JS_TabCtrl_GetCurSel(HWND hwnd)
 
 void* JS_Zip_Open(const char* zipFile, const char* mode, int* compressionLevelOptional)
 {
-	if (*mode)
-		*mode = tolower(*mode);
-	else
-		return ZIP_EINVMODE;
+	char m = (mode && *mode) ? tolower(*mode) : 0; // kuba--zip doesn't accept uppercase
 	
-	if (*mode=='w') // || *mode=='W')
+	if (m == 'w')
 	{
 #ifdef __APPLE__
 		struct stat info;
@@ -4949,7 +4948,7 @@ void* JS_Zip_Open(const char* zipFile, const char* mode, int* compressionLevelOp
 	}
 
 	int compressionLevel = compressionLevelOptional ? *compressionLevelOptional : ZIP_DEFAULT_COMPRESSION_LEVEL;
-	zip_t* zip = zip_open(zipFile, compressionLevel, *mode);
+	zip_t* zip = zip_open(zipFile, compressionLevel, m);
 	if (zip) 
 		Julian::setZips.insert(zip);
 	return zip;
