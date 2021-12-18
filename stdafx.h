@@ -21,18 +21,15 @@
 #include <memory>
 #include <fstream>
 #include <time.h>
-#include <experimental/filesystem>
 #include <sys/types.h> 
 #include <sys/stat.h>
 
 // Make sure that all the REAPER-related #included files compile the correct sections of the files
 #define REAPERAPI_IMPLEMENT
 #ifdef __APPLE__
-  #pragma message ("Defined: APPLE")
   #define SWELL_TARGET_OSX
   #undef SWELL_NO_METAL
 #elif __linux__
-  #pragma message ("Defined: linux")
   #define SWELL_TARGET_GDK
   #undef SWELL_TARGET_OSX
 #endif
@@ -67,6 +64,7 @@
 	//#include <windows.h> //is not necessary
 	#include <windowsx.h>
 	#include <Shlobj.h>
+	#include <experimental/filesystem> // Apparently experimental::filesystem:exists() doesn't yet work in C++14 on Linux and macOS.
 	//#include <Shlobj_core.h>
 	#include <wingdi.h>
 	#include ".\WDL\wdlutf8.h" // WDL is not only used for macOS and Linux!  These files provide an interface between REAPER's UTF-8 output and Windows' WCS Unicode format.
