@@ -22,13 +22,12 @@ static void* __vararg_JS_Localize(void** arglist, int numparms)
 
 static void* __vararg_JS_Zip_Open(void** arglist, int numparms)
 {
-	return JS_Zip_Open((const char*)arglist[0], (const char*)arglist[1], numparms > 2 ? (int*)arglist[2] : nullptr);
+	return JS_Zip_Open((const char*)arglist[0], (const char*)arglist[1], (int)(intptr_t)arglist[2], (int*)arglist[3]);
 }
 
 static void* __vararg_JS_Zip_Close(void** arglist, int numparms)
 {
-	JS_Zip_Close(arglist[0]);
-	return NULL;
+	return (void*)(intptr_t)JS_Zip_Close((const char*)arglist[0], numparms > 1 ? arglist[1] : 0);
 }
 
 static void* __vararg_JS_Zip_ErrorString(void** arglist, int numparms)
@@ -538,7 +537,7 @@ static void* __vararg_JS_Window_AddressFromHandle(void** arglist, int numparms)
 /*
 static void* __vararg_JS_ArrayFromAddress(void** arglist, int numparms)
 {
-	return (void*)JS_ArrayFromAddress(arglist[0] ? *(double*)arglist[0] : 0.0);
+	return (void*)JS_ArrayFromAddress((double*)arglist[0]);
 }
 
 static void* __vararg_JS_AddressFromArray(void** arglist, int numparms)

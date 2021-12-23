@@ -147,8 +147,8 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(REAPER_PLUGIN_H
 		for (HGDIOBJ i : Julian::setGDIObjects)
 			DeleteObject(i);
 		Julian::setGDIObjects.clear();
-		for (zip_t* zip : Julian::setZips)
-			zip_close(zip);
+		for (auto& i : Julian::mapZips)
+			zip_close((zip_t*)(intptr_t)i.first);
 
 		LICE__Destroy(Julian::compositeCanvas);
 
@@ -2459,15 +2459,17 @@ void JS_Window_AddressFromHandle(void* handle, double* addressOut)
 	*addressOut = (double)(intptr_t)handle;
 }
 
-double* JS_ArrayFromAddress(double address)
+double* JS_ArrayFromAddress(double* address)
 {
 	// Casting to intptr_t removes fractions and, in case of 32-bit systems, truncates too large addresses.
 	//		This provides easy way to check whether address was valid.
-	intptr_t intAddress = (intptr_t)address;
-	if ((double)intAddress == address)
-		return (double*)intAddress;
-	else
-		return nullptr;
+	if (address)
+	{
+		intptr_t intAddress = (intptr_t)*address;
+		if ((double)intAddress == *address)
+			return (double*)intAddress;
+	}
+	return nullptr;
 }
 
 void JS_AddressFromArray(double* array, double* addressOut)
@@ -4930,45 +4932,19 @@ int JS_TabCtrl_GetCurSel(HWND hwnd)
 //
 // kuba zip functions
 
-#define ZIP_EZEROFORMAT -100
-#define ZIP_EFILEEXISTS -101
-
-void* JS_Zip_Open(const char* zipFile, const char* mode, int* compressionLevelOptional)
-{
-	char m = (mode && *mode) ? tolower(*mode) : 0; // kuba--zip doesn't accept uppercase
-	
-	if (m == 'w')
-	{
-#ifdef _WIN32
-		if (std::experimental::filesystem::exists(zipFile)) return nullptr; // for C++14
-#else
-		struct stat info;
-		if (stat(zipFile, &info) == 0) return nullptr; // macOS Mojave C++14 doesn't yet have experimental::filesystem::exists
-#endif
-	}
-
-	int compressionLevel = compressionLevelOptional ? *compressionLevelOptional : ZIP_DEFAULT_COMPRESSION_LEVEL;
-	zip_t* zip = zip_open(zipFile, compressionLevel, m);
-	if (zip) 
-		Julian::setZips.insert(zip);
-	return zip;
-}
-
-void JS_Zip_Close(void* zipHandle)
-{
-	if (Julian::setZips.count((zip_t*)zipHandle))
-	{
-		zip_close((zip_t*)zipHandle);
-		Julian::setZips.erase((zip_t*)zipHandle);
-	}
-}
+#define ZIP_EZEROFORMAT -40 // Format error in string
+#define ZIP_EFILEEXISTS -41 // File already exists
+#define ZIP_EFILEOPEN	-42 // File already open as zip
+#define ZIP_EENTRYOPEN	-43 // Entry already open
 
 void JS_Zip_ErrorString(int errorNum, char* errorStrOut, int errorStrOut_sz)
 {
 	if (errorNum == ZIP_EZEROFORMAT)
-		strncpy(errorStrOut, "Format error: zero-separated and double-zero-terminated string\0", errorStrOut_sz - 1);
+		strncpy(errorStrOut, "Format error in zero-separated and double-zero-terminated string\0", errorStrOut_sz - 1);
 	else if (errorNum == ZIP_EFILEEXISTS)
-		strncpy(errorStrOut, "File already exists – delete before creatin new archive\0", errorStrOut_sz - 1);
+		strncpy(errorStrOut, "File already exists; delete before creating new archive\0", errorStrOut_sz - 1);
+	else if (errorNum == ZIP_EFILEOPEN)
+		strncpy(errorStrOut, "Archive already open; close before re-opening\0", errorStrOut_sz - 1);
 	else
 	{
 		const char* e = zip_strerror(errorNum);
@@ -4977,56 +4953,191 @@ void JS_Zip_ErrorString(int errorNum, char* errorStrOut, int errorStrOut_sz)
 	errorStrOut[errorStrOut_sz - 1] = 0;
 }
 
+char js_asciitolower(char c) {
+	if ('A' <= c && c <= 'Z')
+		return c - ('Z' - 'z');
+	return c;
+}
+
+void* JS_Zip_Open(const char* zipFile, const char* mode, int compressionLevel, int* retvalOut)
+{
+
+	//int  c = compressionLevelOptional ? *compressionLevelOptional : ZIP_DEFAULT_COMPRESSION_LEVEL;
+
+	// First check if file is already open as archive
+	if (!(zipFile && *zipFile)) { *retvalOut = ZIP_EINVZIPNAME; return nullptr; }
+	std::string zipStr = zipFile;
+	std::replace(zipStr.begin(), zipStr.end(), '\\', '/');
+	#ifdef _WIN32
+	std::transform(zipStr.begin(), zipStr.end(), zipStr.begin(), js_asciitolower); // 
+	#endif
+	for (auto& i : Julian::mapZips)
+		if (i.second.zipStr == zipStr)
+			{ *retvalOut = ZIP_EFILEOPEN; return nullptr; }
+
+	// Set mode. kuba--zip has three modes: r, w and a.  w automatically overwrites existing file, which I find dangerous.
+	// My implementation uses only tw modes: r and w.  If file already exists, w becomes a.
+	char m = (mode && *mode) ? tolower(*mode) : 0; // kuba--zip doesn't accept uppercase
+#ifdef _WIN32 
+	int wideCharLength = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, zipFile, -1, NULL, 0);
+	if (!wideCharLength) { *retvalOut = ZIP_EINVZIPNAME; return nullptr; }
+	WCHAR* widePath = (WCHAR*)alloca(wideCharLength * sizeof(WCHAR) * 2);
+	if (!widePath) { *retvalOut = ZIP_EMEMSET; return nullptr; }
+	MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, zipFile, -1, widePath, wideCharLength * 2);
+
+	struct __stat64 info;
+	bool fileExists = (_wstat64(widePath, &info) == 0); // { *retvalOut = ZIP_EFILEEXISTS; return nullptr; }
+#else
+	struct stat info;
+	bool fileExists = (stat(zipFile, &info) == 0); // { *retvalOut = ZIP_EFILEEXISTS; return nullptr; } // macOS Mojave C++14 doesn't yet have experimental::filesystem::exists
+#endif
+	if (m == 'r')
+	{
+		if (!fileExists) { *retvalOut = ZIP_ENOFILE; return nullptr; }
+	}
+	else if (m == 'w')
+	{
+		if (fileExists) m = 'a'; // If file already exists, append
+	}
+	else
+	{
+		*retvalOut = ZIP_EINVMODE; return nullptr;
+	}
+
+	// All set, try to open archive.
+	zip_t* zip = zip_open(zipFile, compressionLevel, m);
+	if (zip)
+	{
+		Julian::mapZips[zip] = { zipStr, m, -1 };
+		*retvalOut = 0;
+		return zip;
+	}
+	else
+	{ *retvalOut = ZIP_EOPNFILE; return nullptr; }
+}
+
+int JS_Zip_Close(const char* zipFile, void* zipHandleOptional)
+{
+	if (zipHandleOptional)
+	{
+		if (Julian::mapZips.count((zip_t*)zipHandleOptional))
+		{
+			if (Julian::mapZips[(zip_t*)zipHandleOptional].mode != 'r')
+			{
+				const char* name = zip_entry_name((zip_t*)zipHandleOptional);
+				if (name && *name)
+					zip_entry_close((zip_t*)zipHandleOptional);
+			}
+			zip_close((zip_t*)zipHandleOptional);
+			Julian::mapZips.erase((zip_t*)zipHandleOptional);
+			return 0;
+		}
+	}
+	else if (zipFile && *zipFile)
+	{
+		std::string zipStr = zipFile;
+		std::replace(zipStr.begin(), zipStr.end(), '\\', '/');
+#ifdef _WIN32
+		std::transform(zipStr.begin(), zipStr.end(), zipStr.begin(), js_asciitolower); // 
+#endif
+		for (auto& i : Julian::mapZips)
+		{
+			if (i.second.zipStr == zipStr)
+			{
+				if (i.second.mode != 'r')
+				{
+					const char* name = zip_entry_name(i.first);
+					if (name && *name)
+						zip_entry_close(i.first);
+				}
+				zip_close(i.first);
+				Julian::mapZips.erase(i.first);
+				return 0;
+			}
+		}
+	}
+	return ZIP_ENOFILE;
+}
+
 int JS_Zip_Entry_OpenByName(void* zipHandle, const char* entryName)
 {
-	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
+	if (!Julian::mapZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
 	return zip_entry_open((zip_t*)zipHandle, entryName);
 }
 
 int JS_Zip_Entry_OpenByIndex(void* zipHandle, int index)
 {
-	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
+	if (!Julian::mapZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
+	if (Julian::mapZips[(zip_t*)zipHandle].mode != 'r') return ZIP_EINVMODE;
 	return zip_entry_openbyindex((zip_t*)zipHandle, index);
 }
 
 int JS_Zip_Entry_Close(void* zipHandle)
 {
-	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
-	if (zip_entry_index((zip_t*)zipHandle) < 0) return ZIP_ENOENT; // Somehow REAPER crashes if no entry is actually open when trying to close
-	return zip_entry_close((zip_t*)zipHandle);
+	if (!Julian::mapZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
+	//if (zip_entry_index((zip_t*)zipHandle) < 0) return ZIP_ENOENT; // This function sometimes returns 0 instead of negative, even if no entry is open.
+	const char* name = zip_entry_name((zip_t*)zipHandle); // Somehow REAPER crashes if no entry is actually open when trying to close
+	if (name && *name)
+		return zip_entry_close((zip_t*)zipHandle);
+	else
+		return ZIP_ENOENT;
 }
 
 int JS_Zip_Entry_Info(void* zipHandle, char* nameOutNeedBig, int nameOutNeedBig_sz, int* indexOut, int* isFolderOut, double* sizeOut, double* crc32Out)
 {
-	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
-
-	const char* name = zip_entry_name((zip_t*)zipHandle);
-	int len = name ? strlen(name) : 0;
-	if (realloc_cmd_ptr(&nameOutNeedBig, &nameOutNeedBig_sz, len))
-		if (nameOutNeedBig_sz == len)
-			memcpy(nameOutNeedBig, name, len);
-	*indexOut = zip_entry_index((zip_t*)zipHandle);
-	*isFolderOut = zip_entry_isdir((zip_t*)zipHandle);
-	*sizeOut = zip_entry_size((zip_t*)zipHandle);
-	*crc32Out = zip_entry_crc32((zip_t*)zipHandle);
-	return 0;
+	*nameOutNeedBig = 0;
+	*indexOut = -1;
+	*isFolderOut = -1;
+	*sizeOut = -1;
+	*crc32Out = -1;
+	if (Julian::mapZips.count((zip_t*)zipHandle))
+	{
+		const char* name = zip_entry_name((zip_t*)zipHandle);
+		if (name && *name)
+		{
+			int len = strlen(name); //name ? strlen(name) : 0;
+			if (realloc_cmd_ptr(&nameOutNeedBig, &nameOutNeedBig_sz, len))
+			{
+				if (nameOutNeedBig_sz == len)
+				{
+					memcpy(nameOutNeedBig, name, len);
+					*indexOut = zip_entry_index((zip_t*)zipHandle);
+					*isFolderOut = zip_entry_isdir((zip_t*)zipHandle);
+					*sizeOut = zip_entry_size((zip_t*)zipHandle);
+					*crc32Out = zip_entry_crc32((zip_t*)zipHandle);
+					return 0;
+				}
+				else
+					return ZIP_EMEMSET;
+			}
+			else
+				return ZIP_EMEMSET;
+		}
+		else
+			return ZIP_ENOENT;
+	}
+	else
+		return ZIP_ENOINIT;
 }
 
 int JS_Zip_Entry_CompressMemory(void* zipHandle, const char* buf, int buf_size)
 {
-	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
+	if (!Julian::mapZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
+	if (Julian::mapZips[(zip_t*)zipHandle].mode == 'r') return ZIP_EINVMODE;
 	return zip_entry_write((zip_t*)zipHandle, buf, buf_size);
 }
 
 int JS_Zip_Entry_CompressFile(void* zipHandle, const char* inputFile)
 {
-	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
+	if (!Julian::mapZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
+	if (Julian::mapZips[(zip_t*)zipHandle].mode == 'r') return ZIP_EINVMODE;
 	return zip_entry_fwrite((zip_t*)zipHandle, inputFile);
 }
 
 int JS_Zip_Entry_ExtractToMemory(void* zipHandle, char* contentsOutNeedBig, int contentsOutNeedBig_sz)
 {
-	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
+	if (!Julian::mapZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
+	if (Julian::mapZips[(zip_t*)zipHandle].mode != 'r') return ZIP_EINVMODE;
 	size_t buff_sz = zip_entry_size((zip_t*)zipHandle);
 	int ok = buff_sz >= 0 ? 0 : ZIP_ENOENT;
 	if (ok >= 0)
@@ -5044,21 +5155,24 @@ int JS_Zip_Entry_ExtractToMemory(void* zipHandle, char* contentsOutNeedBig, int 
 
 int JS_Zip_Entry_ExtractToFile(void* zipHandle, const char* outputFile)
 {
-	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
+	if (!Julian::mapZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
+	if (Julian::mapZips[(zip_t*)zipHandle].mode != 'r') return ZIP_EINVMODE;
 	return zip_entry_fread((zip_t*)zipHandle, outputFile);
 }
 
 int JS_Zip_CountEntries(void* zipHandle)
 {
-	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
+	if (!Julian::mapZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
 	return zip_entries_total((zip_t*)zipHandle);
 }
 
 int JS_Zip_ListAllEntries(void* zipHandle, char* listOutNeedBig, int listOutNeedBig_sz)
 {
-	if (!Julian::setZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
-	int curEntry = zip_entry_index((zip_t*)zipHandle);
-	if (curEntry >= 0) zip_entry_close((zip_t*)zipHandle);
+	if (!Julian::mapZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
+	if (Julian::mapZips[(zip_t*)zipHandle].mode != 'r') return ZIP_EINVMODE;
+	const char* name = zip_entry_name((zip_t*)zipHandle);
+	if (name && *name)
+		zip_entry_close((zip_t*)zipHandle);
 
 	std::vector<char> list;
 
@@ -5101,6 +5215,16 @@ int JS_Zip_Extract_Callback(const char *filename, void *arg)
 
 int JS_Zip_Extract(const char* zipFile, const char* outputFolder)
 {
+	// I'm not sure if this function may be called if archive is already open.  Be save by checking.
+	std::string zipStr = zipFile;
+	std::replace(zipStr.begin(), zipStr.end(), '\\', '/');
+#ifdef _WIN32
+	std::transform(zipStr.begin(), zipStr.end(), zipStr.begin(), js_asciitolower); // 
+#endif
+	for (auto& i : Julian::mapZips)
+		if (i.second.zipStr == zipStr)
+			return ZIP_EFILEOPEN;
+
 	int countFiles = 0;
 	int ok = zip_extract(zipFile, outputFolder, &JS_Zip_Extract_Callback, &countFiles);
 	if (ok < 0) return ok; else return countFiles;
@@ -5109,6 +5233,8 @@ int JS_Zip_Extract(const char* zipFile, const char* outputFolder)
 int JS_Zip_DeleteEntries(void* zipHandle, char* entryNames, int entryNamesStrLen)
 {
 	//if (!(entryNamesStrLen >= 2 && entryNames[entryNamesStrLen - 1] == 0 && entryNames[entryNamesStrLen - 2] == 0)) return ZIP_EZEROFORMAT;
+	if (!Julian::mapZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
+	if (Julian::mapZips[(zip_t*)zipHandle].mode == 'r') return ZIP_EINVMODE;
 	int countFiles = 0;
 	char* ptr = entryNames;
 	std::vector<char*> v;

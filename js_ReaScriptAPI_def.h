@@ -51,7 +51,7 @@ struct APIdef
 //  - if a lone basicType *, use varNameOut or varNameIn or
 //    varNameInOptional (if last parameter(s))
 // At the moment (REAPER v5pre6) the supported parameter types are:
-//  - int, int*, bool, bool*, double, double*, char*, const char*
+//  - int, int*, bool, bool*, double, double*, char*, const char* // WARNING: see notes about double below.
 //  - AnyStructOrClass* (handled as an opaque pointer)
 // At the moment (REAPER v5pre6) the supported return types are:
 //  - int, bool, double, const char*
@@ -79,7 +79,8 @@ In the case of int, bool and void* parameters and return values, these values ar
 In the case of doubles, the sizeof(double) is larger than sizeof(void*), so cannot be stored in a void* parameter.  
 		Instead, the void* argument is a pointer to the actual double value: *(double*)arglist[1]
 		Similarly, a double return value should be stored in the *
-		If you want to return a double value, don't return it as the C++ function's return value. Instead, include a "double* myVariableOut" in the arguments,
+		So the defs in this header should register a function as {"double", "double", "parm"} , but the actual function is double* myFunc(double* parm).
+		If a "double*" is registered, it is a pointer to a reaper.array (which is an array of doubles).
 */
 
 APIdef aAPIdefs[] =
@@ -102,7 +103,7 @@ APIdef aAPIdefs[] =
 	{ APIFUNC(JS_Int), "void", "void*,int,int*", "pointer,offset,intOut", "Returns the 4-byte signed integer at address[offset]. Offset is added as steps of 4 bytes each.", },
 	{ APIFUNC(JS_Byte), "void", "void*,int,int*", "pointer,offset,byteOut", "Returns the unsigned byte at address[offset]. Offset is added as steps of 1 byte each.", },
 	{ APIFUNC(JS_Double), "void", "void*,int,double*", "pointer,offset,doubleOut", "Returns the 8-byte floating point value at address[offset]. Offset is added as steps of 8 bytes each.", },
-	//{ APIFUNC(JS_ArrayFromAddress), "double*", "double", "address", "" },
+	//{ APIFUNC(JS_ArrayFromAddress), "double*", "double*", "address", "" },
 	//{ APIFUNC(JS_AddressFromArray), "void", "double*,double*", "array,addressOut", "" },
 
 	{ APIFUNC(JS_Dialog_BrowseForSaveFile), "int", "const char*,const char*,const char*,const char*,char*,int", "windowTitle,initialFolder,initialFile,extensionList,fileNameOutNeedBig,fileNameOutNeedBig_sz", "retval is 1 if a file was selected, 0 if the user cancelled the dialog, or negative if an error occurred.\n\nextensionList is as described for JS_Dialog_BrowseForOpenFiles.", },
@@ -261,7 +262,6 @@ APIdef aAPIdefs[] =
 	{ APIFUNC(JS_LICE_SetFontFromGDI), "void", "void*,void*,const char*", "LICEFont,GDIFont,moreFormats", "Converts a GDI font into a LICE font.\n\nThe font can be modified by the following flags, in a comma-separated list:\n\"VERTICAL\", \"BOTTOMUP\", \"NATIVE\", \"BLUR\", \"INVERT\", \"MONO\", \"SHADOW\" or \"OUTLINE\".", },
 	{ APIFUNC(JS_LICE_SetFontColor), "void", "void*,int", "LICEFont,color", "", },
 	{ APIFUNC(JS_LICE_SetFontBkColor), "void", "void*,int", "LICEFont,color", "Sets the color of the font background.", },
-	{ APIFUNC(JS_LICE_SetFontFXColor), "void", "void*,int", "LICEFont,color", "Sets the color of font FX such as shadow.", },
 	{ APIFUNC(JS_LICE_DrawText), "int", "void*,void*,const char*,int,int,int,int,int", "bitmap,LICEFont,text,textLen,x1,y1,x2,y2", "", },
 	{ APIFUNC(JS_LICE_DrawChar), "void", "void*,int,int,char,int,double,int", "bitmap,x,y,c,color,alpha,mode)", "", },
 	{ APIFUNC(JS_LICE_MeasureText), "void", "const char*,int*,int*", "text,widthOut,HeightOut", "", },
@@ -292,6 +292,7 @@ APIdef aAPIdefs[] =
 	{ APIFUNC(JS_LICE_AlterBitmapHSV), "void", "void*,double,double,double", "bitmap,hue,saturation,value", "Hue is rolled over, saturation and value are clamped, all 0..1. (Alpha remains unchanged.)", },
 	{ APIFUNC(JS_LICE_AlterRectHSV), "void", "void*,int,int,int,int,double,double,double", "bitmap,x,y,w,h,hue,saturation,value", "Hue is rolled over, saturation and value are clamped, all 0..1. (Alpha remains unchanged.)", },
 	{ APIFUNC(JS_LICE_ProcessRect), "bool", "void*,int,int,int,int,const char*,double", "bitmap,x,y,w,h,mode,operand", "Applies bitwise operations to each pixel in the target rectangle.\n\noperand: a color in 0xAARRGGBB format.\n\nmodes:\n * \"XOR\", \"OR\" or \"AND\".\n * \"SET_XYZ\", with XYZ any combination of A, R, G, and B: copies the specified channels from operand to the bitmap. (Useful for setting the alpha values of a bitmap.)\n * \"ALPHAMUL\": Performs alpha pre-multiplication on each pixel in the rect. operand is ignored in this mode. (On WindowsOS, GDI_Blit does not perform alpha multiplication on the fly, and a separate alpha pre-multiplication step is therefore required.)\n\nNOTE:\nLICE_Blit and LICE_ScaledBlit are also useful for processing bitmap colors. For example, to multiply all channel values by 1.5:\nreaper.JS_LICE_Blit(bitmap, x, y, bitmap, x, y, w, h, 0.5, \"ADD\").", },
+	{ APIFUNC(JS_LICE_SetFontFXColor), "void", "void*,int", "LICEFont,color", "Sets the color of font FX such as shadow.", },
 
 	// Undocumented functions
 	{ APIFUNC(JS_Window_AttachTopmostPin), "void", "void*", "windowHWND", "Attaches a \"pin on top\" button to the window frame. The button should remember its state when closing and re-opening the window.\n\nWARNING: This function does not yet work on Linux.", },
@@ -306,7 +307,7 @@ APIdef aAPIdefs[] =
 	{ APIFUNC(JS_ListView_EnumSelItems), "int", "void*,int", "listviewHWND,index", "Returns the index of the next selected list item with index greater that the specified number. Returns -1 if no selected items left.", },
 	{ APIFUNC(JS_ListView_GetItem), "void", "void*,int,int,char*,int,int*", "listviewHWND,index,subItem,textOut,textOut_sz,stateOut", "Returns the text and state of specified item.", },
 	{ APIFUNC(JS_ListView_GetItemText), "void", "void*,int,int,char*,int", "listviewHWND,index,subItem,textOut,textOut_sz", "", },
-	{ APIFUNC(JS_ListView_GetItemState), "int", "void*,int", "listviewHWND,index", "State is a bitmask:\n1 = ficused, 2 = selected. On Windows only, cut-and-paste marked = 4, drag-and-drop highlighted = 8.\n\nWarning: this function uses the Win32 bitmask values, which differ from the values used by WDL/swell.", },
+	{ APIFUNC(JS_ListView_GetItemState), "int", "void*,int", "listviewHWND,index", "State is a bitmask:\n1 = focused, 2 = selected. On Windows only, cut-and-paste marked = 4, drag-and-drop highlighted = 8.\n\nWarning: this function uses the Win32 bitmask values, which differ from the values used by WDL/swell.", },
 	{ APIFUNC(JS_ListView_GetItemRect), "bool", "void*,int,int*,int*,int*,int*", "listviewHWND,index,leftOut,topOut,rightOut,bottomOut", "Returns client coordinates of the item.", },
 	{ APIFUNC(JS_ListView_HitTest), "void", "void*,int,int,int*,int*,int*", "listviewHWND,clientX,clientY,indexOut,subItemOut,flagsOut", "", },
 	{ APIFUNC(JS_ListView_ListAllSelItems), "int", "void*,char*,int", "listviewHWND,itemsOutNeedBig,itemsOutNeedBig_sz", "Returns the indices of all selected items as a comma-separated list.\n\n * retval: Number of selected items found; negative or zero if an error occured.", },
@@ -318,9 +319,9 @@ APIdef aAPIdefs[] =
 	{ APIFUNC(JS_TabCtrl_SetCurSel), "int", "void*,int", "windowHWND,index", "", },
 	{ APIFUNC(JS_TabCtrl_GetCurSel), "int", "void*", "windowHWND", "", },
 
-	{ APIFUNC(JS_Zip_Open), "void*", "const char*,const char*,int*", "zipFile,mode,compressionLevelOptional", "Opens a zip archive using the given mode, which can be either \"READ\", \"WRITE\" or \"APPEND\" (or simply 'r', 'w' or 'a').\n\n * 'r': opens a file for reading/extracting (the file must exists).\n * w': creates an empty file for writing (the file must not exist).\n * 'a': appends to an existing archive.\n\ncompressionLevel is an optional parameter for 'w' and 'a' modes, and ranges from 0 (fastest, no compression) to 9 (slowest, best compression), with a default of 6.\n\nReturns a handle to the Zip archive, or NULL if error.\n\nNOTES:\n * The Zip API functions support Unicode file names and entry names.\n * The original zip specification did not support Unicode, amd some applications still use this outdated specification by default, or try to use the local code page. This may lead to incompatibility and incorrect retrieval of file or entry names.", },
-	{ APIFUNC(JS_Zip_Close), "void", "void*", "zipHandle", "Closes the zip archive. Finalizes entries and releases resources.", },
-	{ APIFUNC(JS_Zip_ErrorString), "void", "int,char*,int", "errorNum,errorStrOut,errorStrOut_sz", "Returns a descriptive string for the given error code:\n -1 : not initialized \n -2 : invalid entry name \n -3 : entry not found \n -4 : invalid zip mode \n -5 : invalid compression level \n -6 : no zip 64 support\n -7 : memset error \n -8 : cannot write data to\n -9 : cannot initialize tdefl compressor\n -10 : invalid index \n -11 : header not found \n -12 : cannot flush tdefl buffer\n -13 : cannot create entry header\n -14 : cannot write entry header\n -15 : cannot write to central\n -16 : cannot open file \n -17 : invalid entry type \n -18 : extracting data using no\n -19 : file not found \n -20 : no permission \n -21 : out of memory \n -22 : invalid zip archive name\n -23 : make dir error \n -24 : symlink error \n -25 : close archive error \n -26 : capacity size too small\n -27 : fseek error \n -28 : fread error \n -29 : fwrite error\n -30 : N/A \n -31 : format error in 0-separated and 00-terminated string \n -32 : file already exists; delete before creating new archive", },
+	{ APIFUNC(JS_Zip_Open), "void*", "const char*,const char*,int,int*", "zipFile,mode,compressionLevel,retvalOut", "Opens a zip archive using the given mode, which can be either \"READ\" or \"WRITE\" (or simply 'r' or 'w').\n\n * READ: Opens an existing archive for reading/extracting.\n * WRITE: Opens an archive for writing (or deletion). If the file doesn't exist, an empty archive will created.\n\ncompressionLevel is only relevant for WRITE mode, and ranges from 0 (fastest, no compression) to 9 (slowest, best compression), with a default of 6.\n\nIf successful, returns 0 and a handle to the Zip archive. If failed, returns a negative error code.\n\nNOTES:\n * The Zip API functions support Unicode file names and entry names.\n * The original zip specification did not support Unicode. Some applications still use this outdated specification by default, or try to use the local code page. This may lead to incompatibility and incorrect retrieval of file or entry names.", },
+	{ APIFUNC(JS_Zip_Close), "int", "const char*,void*", "zipFile,zipHandleOptional", "Closes the zip archive, using either the file name or the zip handle. Finalizes entries and releases resources.", },
+	{ APIFUNC(JS_Zip_ErrorString), "void", "int,char*,int", "errorNum,errorStrOut,errorStrOut_sz", "Returns a descriptive string for the given error code:\n -1 : not initialized \n -2 : invalid entry name \n -3 : entry not found \n -4 : invalid zip mode \n -5 : invalid compression level \n -6 : no zip 64 support\n -7 : memset error \n -8 : cannot write data to\n -9 : cannot initialize tdefl compressor\n -10 : invalid index \n -11 : header not found \n -12 : cannot flush tdefl buffer\n -13 : cannot create entry header\n -14 : cannot write entry header\n -15 : cannot write to central\n -16 : cannot open file \n -17 : invalid entry type \n -18 : extracting data using no\n -19 : file not found \n -20 : no permission \n -21 : out of memory \n -22 : invalid zip archive name\n -23 : make dir error \n -24 : symlink error \n -25 : close archive error \n -26 : capacity size too small\n -27 : fseek error \n -28 : fread error \n -29 : fwrite error\n -40 : string format error\n -41 : file already exists\n -42 :  Archive already open", },
 	{ APIFUNC(JS_Zip_Entry_OpenByName), "int", "void*,const char*", "zipHandle,entryName", "Opens an entry by name in the zip archive.\n\nFor zip archive opened in 'w' or 'a' mode the function will append a new entry. In readonly mode the function tries to locate an existing entry.\n\nReturns 0 on success, negative number (< 0) on error.", },
 	{ APIFUNC(JS_Zip_Entry_OpenByIndex), "int", "void*,int", "zipHandle,index", "Opens a new entry by index in the zip archive.\n\nThis function is only valid if zip archive was opened in 'r' (readonly) mode.\n\nReturns 0 on success, negative number on error.", },
 	{ APIFUNC(JS_Zip_Entry_Close), "int", "void*", "zipHandle", "Closes a zip entry, flushes buffer and releases resources.\n\nReturns 0 on success, negative number (< 0) on error.", },

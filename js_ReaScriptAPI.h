@@ -6,8 +6,8 @@ void  JS_ReaScriptAPI_Version(double* versionOut);
 
 void  JS_Localize(const char* USEnglish, const char* LangPackSection, char* translationOut, int translationOut_sz);
 
-void* JS_Zip_Open(const char* zipFile, const char* mode, int* compressionLevelOptional);
-void JS_Zip_Close(void* zipHandle);
+void* JS_Zip_Open(const char* zipFile, const char* mode, int compressionLevel, int* retvalOut);
+int JS_Zip_Close(const char* zipFile, void* zipHandleOptional);
 void JS_Zip_ErrorString(int errorNum, char* errorStrOut, int errorStrOut_sz);
 int JS_Zip_Entry_OpenByName(void* zipHandle, const char* entryName);
 int JS_Zip_Entry_OpenByIndex(void* zipHandle, int index);
@@ -39,7 +39,7 @@ bool  JS_String(void* pointer, int offset, int lengthChars, char* bufOutNeedBig,
 void  JS_Int(void* pointer, int offset, int* intOut);
 void  JS_Byte(void* pointer, int offset, int* byteOut);
 void  JS_Double(void* pointer, int offset, double* doubleOut);
-double* JS_ArrayFromAddress(double address);
+double* JS_ArrayFromAddress(double* address);
 void  JS_AddressFromArray(double* array, double* addressOut);
 
 void* JS_Window_Create(const char* title, const char* className, int x, int y, int w, int h, char* styleOptional, void* ownerHWNDOptional);

@@ -61,8 +61,10 @@ namespace Julian
 #endif
 
 	/////////////////////////////////////////////
-	// Zip objects (that may need t o be closed before exit
-	std::set<zip_t*> setZips;
+	// Zip objects (that may need to be closed before exit
+	struct zipInfo { std::string zipStr; char mode; int entry; };
+	std::map<zip_t*, zipInfo> mapZips;
+	//double tmpDouble = 0;
 
 	/////////////////////////////////////////////
 	// GDI Objects
