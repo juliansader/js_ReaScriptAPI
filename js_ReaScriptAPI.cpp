@@ -4953,9 +4953,13 @@ void JS_Zip_ErrorString(int errorNum, char* errorStrOut, int errorStrOut_sz)
 	errorStrOut[errorStrOut_sz - 1] = 0;
 }
 
-char js_asciitolower(char c) {
+char js_StandardizeZipPath(char c) {
+#ifdef _WIN32
 	if ('A' <= c && c <= 'Z')
-		return c - ('Z' - 'z');
+		return c - ('Z' - 'z'); // Windows isn't case sensitive, so make everything lower case. This doesn't catch non-ASCII uppercase letters (such as Ë), but better than nothing.
+#endif
+	if (c == '\\')
+		return '/';
 	return c;
 }
 
@@ -4965,12 +4969,13 @@ void* JS_Zip_Open(const char* zipFile, const char* mode, int compressionLevel, i
 	//int  c = compressionLevelOptional ? *compressionLevelOptional : ZIP_DEFAULT_COMPRESSION_LEVEL;
 
 	// First check if file is already open as archive
+	// Standardize file path.
 	if (!(zipFile && *zipFile)) { *retvalOut = ZIP_EINVZIPNAME; return nullptr; }
 	std::string zipStr = zipFile;
-	std::replace(zipStr.begin(), zipStr.end(), '\\', '/');
-	#ifdef _WIN32
-	std::transform(zipStr.begin(), zipStr.end(), zipStr.begin(), js_asciitolower); // 
-	#endif
+	//std::replace(zipStr.begin(), zipStr.end(), '\\', '/'); // Ugh, Linux C++14 doesn't have these function.  So try range loop.
+	//std::transform(zipStr.begin(), zipStr.end(), zipStr.begin(), js_StandardizeZipPath);
+	for (char& c : zipStr)
+		c = js_StandardizeZipPath(c);
 	for (auto& i : Julian::mapZips)
 		if (i.second.zipStr == zipStr)
 			{ *retvalOut = ZIP_EFILEOPEN; return nullptr; }
@@ -5036,10 +5041,8 @@ int JS_Zip_Close(const char* zipFile, void* zipHandleOptional)
 	else if (zipFile && *zipFile)
 	{
 		std::string zipStr = zipFile;
-		std::replace(zipStr.begin(), zipStr.end(), '\\', '/');
-#ifdef _WIN32
-		std::transform(zipStr.begin(), zipStr.end(), zipStr.begin(), js_asciitolower); // 
-#endif
+		for (char& c : zipStr)
+			c = js_StandardizeZipPath(c);
 		for (auto& i : Julian::mapZips)
 		{
 			if (i.second.zipStr == zipStr)
@@ -5142,7 +5145,7 @@ int JS_Zip_Entry_ExtractToMemory(void* zipHandle, char* contentsOutNeedBig, int 
 	int ok = buff_sz >= 0 ? 0 : ZIP_ENOENT;
 	if (ok >= 0)
 	{
-		ok = (realloc_cmd_ptr(&contentsOutNeedBig, &contentsOutNeedBig_sz, buff_sz) ? 1 : ZIP_EMEMNOALLOC);
+		ok = (realloc_cmd_ptr(&contentsOutNeedBig, &contentsOutNeedBig_sz, (int)buff_sz) ? 1 : ZIP_EMEMNOALLOC);
 		if (ok >= 0)
 		{
 			ok = (contentsOutNeedBig_sz == buff_sz) ? 1 : ZIP_EOOMEM;
@@ -5163,7 +5166,7 @@ int JS_Zip_Entry_ExtractToFile(void* zipHandle, const char* outputFile)
 int JS_Zip_CountEntries(void* zipHandle)
 {
 	if (!Julian::mapZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
-	return zip_entries_total((zip_t*)zipHandle);
+	return (int)zip_entries_total((zip_t*)zipHandle);
 }
 
 int JS_Zip_ListAllEntries(void* zipHandle, char* listOutNeedBig, int listOutNeedBig_sz)
@@ -5217,10 +5220,8 @@ int JS_Zip_Extract(const char* zipFile, const char* outputFolder)
 {
 	// I'm not sure if this function may be called if archive is already open.  Be save by checking.
 	std::string zipStr = zipFile;
-	std::replace(zipStr.begin(), zipStr.end(), '\\', '/');
-#ifdef _WIN32
-	std::transform(zipStr.begin(), zipStr.end(), zipStr.begin(), js_asciitolower); // 
-#endif
+	for (char& c : zipStr)
+		c = js_StandardizeZipPath(c);
 	for (auto& i : Julian::mapZips)
 		if (i.second.zipStr == zipStr)
 			return ZIP_EFILEOPEN;
