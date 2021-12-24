@@ -4941,6 +4941,9 @@ void JS_Zip_ErrorString(int errorNum, char* errorStrOut, int errorStrOut_sz)
 {
 	switch (errorNum)
 	{
+	case 0:
+		strncpy(errorStrOut, "Success\0", errorStrOut_sz - 1);
+		break;	
 	case ZIP_EZEROFORMAT:
 		strncpy(errorStrOut, "Format error in string\0", errorStrOut_sz - 1);
 		break;
@@ -4999,27 +5002,23 @@ void js_StandardizeZipPath(std::string& zipStr)
 
 void* JS_Zip_Open(const char* zipFile, const char* mode, int compressionLevel, int* retvalOut)
 {
-	// First check if file is already open as archive
-	// Standardize file path.
+	// zip_open doesn't return error codes, so my function must do lots of tests itself...
+	
 	if (!(zipFile && *zipFile)) { *retvalOut = ZIP_EINVZIPNAME; return nullptr; }
-	std::string zipStr = zipFile;
-	//std::replace(zipStr.begin(), zipStr.end(), '\\', '/'); // Ugh, Linux C++14 doesn't have these function.  So try range loop.
-	//std::transform(zipStr.begin(), zipStr.end(), zipStr.begin(), js_StandardizeZipPath);
-	js_StandardizeZipPath(zipStr);
-	for (auto& i : Julian::mapZips)
-		if (i.second.zipStr == zipStr)
-			{ *retvalOut = ZIP_EFILEOPEN; return nullptr; }
-
-	// Set mode. kuba--zip has three modes: r, w and a.  w automatically overwrites existing file, which I find dangerous.
-	// My implementation uses only tw modes: r and w.  If file already exists, w becomes a.
-	char m = (mode && *mode) ? tolower(*mode) : 0; // kuba--zip doesn't accept uppercase
+	if (!(mode && *mode)) { *retvalOut = ZIP_EINVMODE; return nullptr; }
+	// kuba--zip has three modes: r, w and a.  w automatically overwrites existing file, which I find dangerous.
+	// My implementation uses only two modes: r and w.  If file already exists, w becomes a.
+	char m = tolower(*mode); // kuba--zip doesn't accept uppercase
+	if (!(m == 'w' || m == 'r')) { *retvalOut = ZIP_EINVMODE; return nullptr; }
+	
+	// Check if file exists. 
 #ifdef _WIN32 
 	int wideCharLength = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, zipFile, -1, NULL, 0);
 	if (!wideCharLength) { *retvalOut = ZIP_EINVZIPNAME; return nullptr; }
 	WCHAR* widePath = (WCHAR*)alloca(wideCharLength * sizeof(WCHAR) * 2);
 	if (!widePath) { *retvalOut = ZIP_EMEMSET; return nullptr; }
 	MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, zipFile, -1, widePath, wideCharLength * 2);
-
+	
 	struct __stat64 info;
 	bool fileExists = (_wstat64(widePath, &info) == 0); // { *retvalOut = ZIP_EFILEEXISTS; return nullptr; }
 #else
@@ -5028,23 +5027,42 @@ void* JS_Zip_Open(const char* zipFile, const char* mode, int compressionLevel, i
 #endif
 	// Three options: file exists, some error, or file simply doesn't exist.
 	if (!fileExists && errno != ENOENT) // Error.  Not simply that file doesn't exist.
-		{ *retvalOut = -1000-errno; return nullptr; }
-
-	if (m == 'r')
-	{
-		if (!fileExists) { *retvalOut = ZIP_ENOFILE; return nullptr; }
+	{ 
+		*retvalOut = -1000-errno; return nullptr; 
 	}
-	else if (m == 'w')
+	else if (!fileExists && m == 'r')
+	{ 
+		*retvalOut = ZIP_ENOFILE; return nullptr;
+	}
+	/*else if (m == 'w')
 	{
 		if (fileExists) m = 'a'; // If file already exists, change to append mode
 	}
-	else
+	else if (m != 'w')
 	{
 		*retvalOut = ZIP_EINVMODE; return nullptr;
-	}
+	}*/
+	
+	// Check if file is already open as archive
+	// Standardize file path.
+	std::string zipStr = zipFile;
+	//std::replace(zipStr.begin(), zipStr.end(), '\\', '/'); // Ugh, Linux C++14 doesn't have these functions.  So try range loop.
+	//std::transform(zipStr.begin(), zipStr.end(), zipStr.begin(), js_StandardizeZipPath);
+	js_StandardizeZipPath(zipStr);
+	for (auto& i : Julian::mapZips)
+	{
+		if (i.second.zipStr == zipStr)
+		{ 
+			*retvalOut = ZIP_EFILEOPEN;
+			if (i.second.mode == m)
+				return i.first; 
+			else
+				return nullptr;
+		}
+	}			
 
 	// All set, try to open archive.
-	zip_t* zip = zip_open(zipFile, compressionLevel, m);
+	zip_t* zip = zip_open(zipFile, compressionLevel, (m=='w' && fileExists) ? 'a' : m);
 	if (zip)
 	{
 		Julian::mapZips[zip] = { zipStr, m, -1 };
