@@ -65,6 +65,7 @@ for:
         - job_name: macOS_64_ARM
     build_script:
       - clang -c -arch arm64 -fPIC -std=c11 -xc ./WDL/libpng/*.c 
+      - clang -c -arch arm64 -fPIC -std=c11 -xc ./WDL/libpng/arm/*.c
       - clang -c -arch arm64 -fPIC -std=c11 -xc ./WDL/jpeglib/*.c 
       - clang -c -arch arm64 -fPIC -std=c11 -xc ./WDL/zlib/*.c 
       - clang -c -arch arm64 -fPIC -std=c11 -xc ./kuba/*.c 
