@@ -23,11 +23,11 @@ environment:
   - job_name: linux_64
     appveyor_build_worker_image: ubuntu1604
     
-  - job_name: macOS_64
-    appveyor_build_worker_image: macos-mojave
+  #- job_name: macOS_64
+  #  appveyor_build_worker_image: macos-mojave
 
-  - job_name: macOS_64_ARM
-    appveyor_build_worker_image: macos-bigsur
+  #- job_name: macOS_64_ARM
+  #  appveyor_build_worker_image: macos-bigsur
 
 for:
   - matrix: 
