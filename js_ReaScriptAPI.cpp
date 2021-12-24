@@ -5079,12 +5079,12 @@ int JS_Zip_Close(const char* zipFile, void* zipHandleOptional)
 	{
 		if (Julian::mapZips.count((zip_t*)zipHandleOptional))
 		{
-			if (Julian::mapZips[(zip_t*)zipHandleOptional].mode != 'r')
+			/*if (Julian::mapZips[(zip_t*)zipHandleOptional].mode != 'r')
 			{
 				const char* name = zip_entry_name((zip_t*)zipHandleOptional);
 				if (name && *name)
 					zip_entry_close((zip_t*)zipHandleOptional);
-			}
+			}*/
 			zip_close((zip_t*)zipHandleOptional);
 			Julian::mapZips.erase((zip_t*)zipHandleOptional);
 			return 0;
@@ -5100,12 +5100,12 @@ int JS_Zip_Close(const char* zipFile, void* zipHandleOptional)
 		{
 			if (i.second.zipStr == zipStr)
 			{
-				if (i.second.mode != 'r')
+				/*if (i.second.mode != 'r')
 				{
 					const char* name = zip_entry_name(i.first);
 					if (name && *name)
 						zip_entry_close(i.first);
-				}
+				}*/
 				zip_close(i.first);
 				Julian::mapZips.erase(i.first);
 				return 0;
