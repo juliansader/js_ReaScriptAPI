@@ -4953,14 +4953,17 @@ void JS_Zip_ErrorString(int errorNum, char* errorStrOut, int errorStrOut_sz)
 	errorStrOut[errorStrOut_sz - 1] = 0;
 }
 
-char js_StandardizeZipPath(char c) {
+void js_StandardizeZipPath(std::string& zipStr) 
+{
+	for (char& c : zipStr)
+	{
 #ifdef _WIN32
-	if ('A' <= c && c <= 'Z')
-		return c - ('Z' - 'z'); // Windows isn't case sensitive, so make everything lower case. This doesn't catch non-ASCII uppercase letters (such as Ë), but better than nothing.
+		if ('A' <= c && c <= 'Z')
+			c = c - ('Z' - 'z'); // Windows isn't case sensitive, so make everything lower case. This doesn't catch non-ASCII uppercase letters (such as Ë), but better than nothing.
 #endif
-	if (c == '\\')
-		return '/';
-	return c;
+		if (c == '\\')
+			c = '/';
+	}
 }
 
 void* JS_Zip_Open(const char* zipFile, const char* mode, int compressionLevel, int* retvalOut)
@@ -4974,8 +4977,8 @@ void* JS_Zip_Open(const char* zipFile, const char* mode, int compressionLevel, i
 	std::string zipStr = zipFile;
 	//std::replace(zipStr.begin(), zipStr.end(), '\\', '/'); // Ugh, Linux C++14 doesn't have these function.  So try range loop.
 	//std::transform(zipStr.begin(), zipStr.end(), zipStr.begin(), js_StandardizeZipPath);
-	for (char& c : zipStr)
-		c = js_StandardizeZipPath(c);
+	js_StandardizeZipPath(zipStr);
+	ShowConsoleMsg(zipStr.c_str());
 	for (auto& i : Julian::mapZips)
 		if (i.second.zipStr == zipStr)
 			{ *retvalOut = ZIP_EFILEOPEN; return nullptr; }
@@ -5041,8 +5044,7 @@ int JS_Zip_Close(const char* zipFile, void* zipHandleOptional)
 	else if (zipFile && *zipFile)
 	{
 		std::string zipStr = zipFile;
-		for (char& c : zipStr)
-			c = js_StandardizeZipPath(c);
+		js_StandardizeZipPath(zipStr);
 		for (auto& i : Julian::mapZips)
 		{
 			if (i.second.zipStr == zipStr)
@@ -5220,8 +5222,7 @@ int JS_Zip_Extract(const char* zipFile, const char* outputFolder)
 {
 	// I'm not sure if this function may be called if archive is already open.  Be save by checking.
 	std::string zipStr = zipFile;
-	for (char& c : zipStr)
-		c = js_StandardizeZipPath(c);
+	js_StandardizeZipPath(zipStr);
 	for (auto& i : Julian::mapZips)
 		if (i.second.zipStr == zipStr)
 			return ZIP_EFILEOPEN;
