@@ -4939,14 +4939,42 @@ int JS_TabCtrl_GetCurSel(HWND hwnd)
 
 void JS_Zip_ErrorString(int errorNum, char* errorStrOut, int errorStrOut_sz)
 {
-	if (errorNum == ZIP_EZEROFORMAT)
-		strncpy(errorStrOut, "Format error in zero-separated and double-zero-terminated string\0", errorStrOut_sz - 1);
-	else if (errorNum == ZIP_EFILEEXISTS)
-		strncpy(errorStrOut, "File already exists; delete before creating new archive\0", errorStrOut_sz - 1);
-	else if (errorNum == ZIP_EFILEOPEN)
-		strncpy(errorStrOut, "Archive already open; close before re-opening\0", errorStrOut_sz - 1);
-	else
+	switch (errorNum)
 	{
+	case ZIP_EZEROFORMAT:
+		strncpy(errorStrOut, "Format error in string\0", errorStrOut_sz - 1);
+		break;
+	case ZIP_EFILEEXISTS:
+		strncpy(errorStrOut, "File already exists\0", errorStrOut_sz - 1);
+		break;
+	case ZIP_EFILEOPEN:
+		strncpy(errorStrOut, "Archive already open\0", errorStrOut_sz - 1);
+		break;
+	case ZIP_EENTRYOPEN:
+		strncpy(errorStrOut, "Entry already open\0", errorStrOut_sz - 1);
+		break;
+	case (-EACCES - 1000):
+		strncpy(errorStrOut, "Search permission is denied for a component of the path prefix\0", errorStrOut_sz - 1);
+		break;
+	case (-EIO - 1000):
+		strncpy(errorStrOut, "An error occurred while reading from the file system.\0", errorStrOut_sz - 1);
+		break;
+	case (-ELOOP - 1000):
+		strncpy(errorStrOut, "A loop exists in symbolic links encountered during resolution of the path argument\0", errorStrOut_sz - 1);
+		break;
+	case (-ENAMETOOLONG - 1000):
+		strncpy(errorStrOut, "The length of the path argument exceeds{ PATH_MAX } or a pathname component is longer than{ NAME_MAX }\0", errorStrOut_sz - 1);
+		break;
+	case (-ENOENT - 1000):
+		strncpy(errorStrOut, "A component of path does not name an existing file or path is an empty string\0", errorStrOut_sz - 1);
+		break;
+	case (-ENOTDIR - 1000):
+		strncpy(errorStrOut, "A component of the path prefix is not a directory\0", errorStrOut_sz - 1);
+		break;
+	case (-EOVERFLOW - 1000):
+		strncpy(errorStrOut, "The file size in bytes or the number of blocks allocated to the file or the file serial number cannot be represented correctly\0", errorStrOut_sz - 1);
+		break;
+	default:
 		const char* e = zip_strerror(errorNum);
 		strncpy(errorStrOut, e, errorStrOut_sz - 1);
 	}
@@ -4978,7 +5006,6 @@ void* JS_Zip_Open(const char* zipFile, const char* mode, int compressionLevel, i
 	//std::replace(zipStr.begin(), zipStr.end(), '\\', '/'); // Ugh, Linux C++14 doesn't have these function.  So try range loop.
 	//std::transform(zipStr.begin(), zipStr.end(), zipStr.begin(), js_StandardizeZipPath);
 	js_StandardizeZipPath(zipStr);
-	ShowConsoleMsg(zipStr.c_str());
 	for (auto& i : Julian::mapZips)
 		if (i.second.zipStr == zipStr)
 			{ *retvalOut = ZIP_EFILEOPEN; return nullptr; }
@@ -4986,6 +5013,7 @@ void* JS_Zip_Open(const char* zipFile, const char* mode, int compressionLevel, i
 	// Set mode. kuba--zip has three modes: r, w and a.  w automatically overwrites existing file, which I find dangerous.
 	// My implementation uses only tw modes: r and w.  If file already exists, w becomes a.
 	char m = (mode && *mode) ? tolower(*mode) : 0; // kuba--zip doesn't accept uppercase
+
 #ifdef _WIN32 
 	int wideCharLength = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, zipFile, -1, NULL, 0);
 	if (!wideCharLength) { *retvalOut = ZIP_EINVZIPNAME; return nullptr; }
@@ -4994,11 +5022,16 @@ void* JS_Zip_Open(const char* zipFile, const char* mode, int compressionLevel, i
 	MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, zipFile, -1, widePath, wideCharLength * 2);
 
 	struct __stat64 info;
+
 	bool fileExists = (_wstat64(widePath, &info) == 0); // { *retvalOut = ZIP_EFILEEXISTS; return nullptr; }
 #else
 	struct stat info;
 	bool fileExists = (stat(zipFile, &info) == 0); // { *retvalOut = ZIP_EFILEEXISTS; return nullptr; } // macOS Mojave C++14 doesn't yet have experimental::filesystem::exists
 #endif
+	// Three options: file exists, some error, or file simply doesn't exist.
+	if (!fileExists && errno != ENOENT) // Error.  Not simply that file doesn't exist.
+		{ *retvalOut = -1000-errno; return nullptr; }
+
 	if (m == 'r')
 	{
 		if (!fileExists) { *retvalOut = ZIP_ENOFILE; return nullptr; }

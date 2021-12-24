@@ -64,7 +64,6 @@ namespace Julian
 	// Zip objects (that may need to be closed before exit
 	struct zipInfo { std::string zipStr; char mode; int entry; };
 	std::map<zip_t*, zipInfo> mapZips;
-	//double tmpDouble = 0;
 
 	/////////////////////////////////////////////
 	// GDI Objects
