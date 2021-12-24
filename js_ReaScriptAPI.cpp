@@ -4996,7 +4996,8 @@ void js_StandardizeZipPath(std::string& zipStr)
 
 void* JS_Zip_Open(const char* zipFile, const char* mode, int compressionLevel, int* retvalOut)
 {
-	return zip_open(zipFile, compressionLevel, mode);
+	char m = *mode;
+	return zip_open(zipFile, compressionLevel, m);
 	/*
 	//int  c = compressionLevelOptional ? *compressionLevelOptional : ZIP_DEFAULT_COMPRESSION_LEVEL;
 
