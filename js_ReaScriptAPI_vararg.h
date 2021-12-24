@@ -93,7 +93,7 @@ static void* __vararg_JS_Zip_Extract(void** arglist, int numparms)
 
 static void* __vararg_JS_Zip_DeleteEntries(void** arglist, int numparms)
 {
-	return (void*)(intptr_t)JS_Zip_DeleteEntries(arglist[0], (char*)arglist[1], (int)(intptr_t)arglist[2]);
+	return (void*)(intptr_t)JS_Zip_DeleteEntries(arglist[0], (const char*)arglist[1], (int)(intptr_t)arglist[2]);
 }
 /*
 static void* __vararg_JS_Zip_Create(void** arglist, int numparms)

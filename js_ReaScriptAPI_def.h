@@ -333,7 +333,7 @@ APIdef aAPIdefs[] =
 	{ APIFUNC(JS_Zip_CountEntries), "int", "void*", "zipHandle", "", },
 	{ APIFUNC(JS_Zip_ListAllEntries), "int", "void*,char*,int", "zipHandle,listOutNeedBig,listOutNeedBig_sz", "Returns the number of entries and a zero-separated and double-zero-terminated string of entry names.\n\nOn error, returns a negative number (< 0).", },
 	{ APIFUNC(JS_Zip_Extract), "int", "const char*,const char*", "zipFile,outputFolder", "Extracts an existing Zip file to the specified folder.\n\nReturns the number of extracted files on success, negative number (< 0) on error.", },
-	{ APIFUNC(JS_Zip_DeleteEntries), "int", "void*,char*,int", "zipHandle,entryNames,entryNamesStrLen", "Deletes the specified entries from an existing Zip file.\n\nentryNames is zero-separated and double-zero-terminated.\n\nReturns the number of deleted entries on success, negative number (< 0) on error.", },
+	{ APIFUNC(JS_Zip_DeleteEntries), "int", "void*,const char*,int", "zipHandle,entryNames,entryNamesStrLen", "Deletes the specified entries from an existing Zip file.\n\nentryNames is zero-separated and double-zero-terminated.\n\nReturns the number of deleted entries on success, negative number (< 0) on error.", },
 	//{ APIFUNC(JS_Zip_Create), "int", "const char*,const char*,int", "zipFile,fileNames,fileNamesStrLen", "Creates a new Zip archive and compresses files into the archive.\n\nfileNames is zero-separated and double-zero-terminated.\n\nReturns 0 on success, negative number (< 0) on error.", },
 
 	{ APIFUNC(Xen_AudioWriter_Create), "AudioWriter*", "const char*,int,int", "filename,numchans,samplerate", "Creates writer for 32 bit floating point WAV", },

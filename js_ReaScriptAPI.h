@@ -20,7 +20,7 @@ int JS_Zip_Entry_ExtractToFile(void* zipHandle, const char* outputFile);
 int JS_Zip_CountEntries(void* zipHandle);
 int JS_Zip_ListAllEntries(void* zipHandle, char* listOutNeedBig, int listOutNeedBig_sz);
 int JS_Zip_Extract(const char* zipFile, const char* outputFolder);
-int JS_Zip_DeleteEntries(void* zipHandle, char* entryNames, int entryNamesStrLen);
+int JS_Zip_DeleteEntries(void* zipHandle, const char* entryNames, int entryNamesStrLen);
 int JS_Zip_Create(const char* zipFile, const char* fileNames, int fileNamesStrLen);
 
 //int   JS_Zip_AddFile(const char* zipPath, const char* inputPath, const char* storedPathOptional);

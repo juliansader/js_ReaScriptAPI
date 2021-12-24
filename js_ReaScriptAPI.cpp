@@ -5285,21 +5285,27 @@ int JS_Zip_Extract(const char* zipFile, const char* outputFolder)
 	if (ok < 0) return ok; else return countFiles;
 }
 
-int JS_Zip_DeleteEntries(void* zipHandle, char* entryNames, int entryNamesStrLen)
+int JS_Zip_DeleteEntries(void* zipHandle, const char* entryNames, int entryNamesStrLen)
 {
 	//if (!(entryNamesStrLen >= 2 && entryNames[entryNamesStrLen - 1] == 0 && entryNames[entryNamesStrLen - 2] == 0)) return ZIP_EZEROFORMAT;
 	if (!Julian::mapZips.count((zip_t*)zipHandle)) return ZIP_ENOINIT;
 	if (Julian::mapZips[(zip_t*)zipHandle].mode == 'r') return ZIP_EINVMODE;
+	char* buf = (char*)malloc(sizeof(char)*entryNamesStrLen); // Must copy because kuba--zip requires non-const char*. Use malloc instead of alloca in case of loooong list derived from ListAllEntries.
+	if (!buf) return ZIP_EOOMEM;
+	memcpy(buf, entryNames, sizeof(char)*entryNamesStrLen);
+
 	int countFiles = 0;
-	char* ptr = entryNames;
+	char* ptr = buf;
 	std::vector<char*> v;
-	while (ptr < entryNames+entryNamesStrLen-1 && *ptr != 0)
+	while (ptr < buf+entryNamesStrLen-1 && *ptr != 0)
 	{
 		v.push_back(ptr);
 		ptr += strnlen(ptr, entryNamesStrLen - (ptr - entryNames)) + 1;
 		countFiles++;
 	}
-	return zip_entries_delete((zip_t*)zipHandle, v.data(), countFiles);
+	int ok = zip_entries_delete((zip_t*)zipHandle, v.data(), countFiles);
+	free(buf);
+	return ok;
 }
 
 int JS_Zip_Create(const char* zipFile, const char* fileNames, int fileNameStrLen)
