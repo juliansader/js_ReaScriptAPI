@@ -4996,7 +4996,8 @@ void js_StandardizeZipPath(std::string& zipStr)
 
 void* JS_Zip_Open(const char* zipFile, const char* mode, int compressionLevel, int* retvalOut)
 {
-
+	return zip_open(zipFile, compressionLevel, m);
+	/*
 	//int  c = compressionLevelOptional ? *compressionLevelOptional : ZIP_DEFAULT_COMPRESSION_LEVEL;
 
 	// First check if file is already open as archive
@@ -5055,6 +5056,7 @@ void* JS_Zip_Open(const char* zipFile, const char* mode, int compressionLevel, i
 	}
 	else
 	{ *retvalOut = ZIP_EOPNFILE; return nullptr; }
+	*/
 }
 
 int JS_Zip_Close(const char* zipFile, void* zipHandleOptional)
@@ -5073,6 +5075,8 @@ int JS_Zip_Close(const char* zipFile, void* zipHandleOptional)
 			Julian::mapZips.erase((zip_t*)zipHandleOptional);
 			return 0;
 		}
+		else
+			return ZIP_ENOINIT;
 	}
 	else if (zipFile && *zipFile)
 	{
@@ -5093,8 +5097,10 @@ int JS_Zip_Close(const char* zipFile, void* zipHandleOptional)
 				return 0;
 			}
 		}
+		// No matches found during loop
+		return ZIP_ENOINIT;
 	}
-	return ZIP_ENOFILE;
+	return ZIP_EINVZIPNAME;
 }
 
 int JS_Zip_Entry_OpenByName(void* zipHandle, const char* entryName)
