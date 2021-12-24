@@ -4976,7 +4976,10 @@ void JS_Zip_ErrorString(int errorNum, char* errorStrOut, int errorStrOut_sz)
 		break;
 	default:
 		const char* e = zip_strerror(errorNum);
-		strncpy(errorStrOut, e, errorStrOut_sz - 1);
+		if (e)
+			strncpy(errorStrOut, e, errorStrOut_sz - 1);
+		else
+			strncpy(errorStrOut, "Unknown error code\0", errorStrOut_sz - 1);
 	}
 	errorStrOut[errorStrOut_sz - 1] = 0;
 }
@@ -4996,11 +4999,6 @@ void js_StandardizeZipPath(std::string& zipStr)
 
 void* JS_Zip_Open(const char* zipFile, const char* mode, int compressionLevel, int* retvalOut)
 {
-	char m = *mode;
-	return zip_open(zipFile, compressionLevel, m);
-	/*
-	//int  c = compressionLevelOptional ? *compressionLevelOptional : ZIP_DEFAULT_COMPRESSION_LEVEL;
-
 	// First check if file is already open as archive
 	// Standardize file path.
 	if (!(zipFile && *zipFile)) { *retvalOut = ZIP_EINVZIPNAME; return nullptr; }
@@ -5015,7 +5013,6 @@ void* JS_Zip_Open(const char* zipFile, const char* mode, int compressionLevel, i
 	// Set mode. kuba--zip has three modes: r, w and a.  w automatically overwrites existing file, which I find dangerous.
 	// My implementation uses only tw modes: r and w.  If file already exists, w becomes a.
 	char m = (mode && *mode) ? tolower(*mode) : 0; // kuba--zip doesn't accept uppercase
-
 #ifdef _WIN32 
 	int wideCharLength = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, zipFile, -1, NULL, 0);
 	if (!wideCharLength) { *retvalOut = ZIP_EINVZIPNAME; return nullptr; }
@@ -5024,7 +5021,6 @@ void* JS_Zip_Open(const char* zipFile, const char* mode, int compressionLevel, i
 	MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, zipFile, -1, widePath, wideCharLength * 2);
 
 	struct __stat64 info;
-
 	bool fileExists = (_wstat64(widePath, &info) == 0); // { *retvalOut = ZIP_EFILEEXISTS; return nullptr; }
 #else
 	struct stat info;
@@ -5040,7 +5036,7 @@ void* JS_Zip_Open(const char* zipFile, const char* mode, int compressionLevel, i
 	}
 	else if (m == 'w')
 	{
-		if (fileExists) m = 'a'; // If file already exists, append
+		if (fileExists) m = 'a'; // If file already exists, change to append mode
 	}
 	else
 	{
@@ -5057,7 +5053,6 @@ void* JS_Zip_Open(const char* zipFile, const char* mode, int compressionLevel, i
 	}
 	else
 	{ *retvalOut = ZIP_EOPNFILE; return nullptr; }
-	*/
 }
 
 int JS_Zip_Close(const char* zipFile, void* zipHandleOptional)
