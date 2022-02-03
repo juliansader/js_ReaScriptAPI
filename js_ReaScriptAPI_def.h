@@ -314,10 +314,10 @@ APIdef aAPIdefs[] =
 	{ APIFUNC(JS_ListView_SetItemText), "void", "void*,int,int,const char*", "listviewHWND,index,subItem,text", "Currently, this fuction only accepts ASCII text.", },
 	{ APIFUNC(JS_ListView_SetItemState), "void", "void*,int,int,int", "listviewHWND,index,state,mask", "The mask parameter specifies the state bits that must be set, and the state parameter specifies the new values for those bits.\n\n1 = focused, 2 = selected. On Windows only, cut-and-paste marked = 4, drag-and-drop highlighted = 8.\n\nWarning: this function uses the Win32 bitmask values, which differ from the values used by WDL/swell.", },
 
-	{ APIFUNC(JS_TabCtrl_GetItemCount), "int", "void*", "windowHWND", "", },
-	{ APIFUNC(JS_TabCtrl_DeleteItem), "int", "void*,int", "windowHWND,index", "", },
-	{ APIFUNC(JS_TabCtrl_SetCurSel), "int", "void*,int", "windowHWND,index", "", },
-	{ APIFUNC(JS_TabCtrl_GetCurSel), "int", "void*", "windowHWND", "", },
+	//{ APIFUNC(JS_TabCtrl_GetItemCount), "int", "void*", "windowHWND", "", },
+	//{ APIFUNC(JS_TabCtrl_DeleteItem), "int", "void*,int", "windowHWND,index", "", },
+	//{ APIFUNC(JS_TabCtrl_SetCurSel), "int", "void*,int", "windowHWND,index", "", },
+	//{ APIFUNC(JS_TabCtrl_GetCurSel), "int", "void*", "windowHWND", "", },
 
 	{ APIFUNC(JS_Zip_Open), "void*", "const char*,const char*,int,int*", "zipFile,mode,compressionLevel,retvalOut", "Opens a zip archive using the given mode, which can be either \"READ\" or \"WRITE\" (or simply 'r' or 'w').\n\n * READ: Opens an existing archive for reading/extracting.\n * WRITE: Opens an archive for writing/deleting. If the file doesn't exist, an empty archive will created.\n\ncompressionLevel is only relevant for WRITE mode, and ranges from 0 (fastest, no compression) to 9 (slowest, best compression), with a default of 6.\n\nIf successful, returns 0 and a handle to the Zip archive. If failed, returns a negative error code. If the file is already open -- in the given mode -- the existing handle will be returned.\n\nNOTES:\n * The Zip API functions support Unicode file names and entry names.\n * The original zip specification did not support Unicode. Some applications still use this outdated specification by default, or try to use the local code page. This may lead to incompatibility and incorrect retrieval of file or entry names.", },
 	{ APIFUNC(JS_Zip_Close), "int", "const char*,void*", "zipFile,zipHandleOptional", "Closes the zip archive, using either the file name or the zip handle. Finalizes entries and releases resources.", },
@@ -328,7 +328,7 @@ APIdef aAPIdefs[] =
 	{ APIFUNC(JS_Zip_Entry_Info), "int", "void*,char*,int,int*,int*,double*,double*", "zipHandle,nameOutNeedBig,nameOutNeedBig_sz,indexOut,isFolderOut,sizeOut,crc32Out", "Returns information about the zip archive's open entry.", },
 	{ APIFUNC(JS_Zip_Entry_CompressMemory), "int", "void*,const char*,int", "zipHandle,buf,buf_size", "Compresses the specified memory buffer into the zip archive's open entry.\n\nReturns 0 on success, negative number (< 0) on error.", },
 	{ APIFUNC(JS_Zip_Entry_CompressFile), "int", "void*,const char*", "zipHandle,inputFile", "Compresses the specified file into the zip archive's open entry.\n\nReturns 0 on success, negative number (< 0) on error.", },
-	{ APIFUNC(JS_Zip_Entry_ExtractToMemory), "int", "void*,char*,int", "zipHandle,contentsOutNeedBig,contentsOutNeedBig_sz", "Extracts and returns the zip archive's open entry.\n\nReturns 0 on success, negative number (< 0) on error.", },
+	{ APIFUNC(JS_Zip_Entry_ExtractToMemory), "int", "void*,char*,int", "zipHandle,contentsOutNeedBig,contentsOutNeedBig_sz", "Extracts and returns the zip archive's open entry.\n\nReturns the number of bytes extracted on success, negative number (< 0) on error.", },
 	{ APIFUNC(JS_Zip_Entry_ExtractToFile), "int", "void*,const char*", "zipHandle,outputFile", "Extracts the zip archive's open entry.\n\nReturns 0 on success, negative number (< 0) on error.", },
 	{ APIFUNC(JS_Zip_CountEntries), "int", "void*", "zipHandle", "", },
 	{ APIFUNC(JS_Zip_ListAllEntries), "int", "void*,char*,int", "zipHandle,listOutNeedBig,listOutNeedBig_sz", "Returns the number of entries and a zero-separated and double-zero-terminated string of entry names.\n\nOn error, returns a negative number (< 0).", },
