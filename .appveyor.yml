@@ -73,8 +73,8 @@ for:
       - clang++  -arch arm64 -fPIC -std=c++14 -dynamiclib -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" -I"./WDL/lice" -I"./WDL/jpeglib" -I"./WDL/libpng" -I"./WDL/zlib/" -I"./kuba/" js_ReaScriptAPI.cpp js_ReaScriptAPI_ObjC.mm *.o -framework AppKit -framework Cocoa -lc++ -stdlib=libc++ -o "reaper_js_ReaScriptAPI64_ARM.dylib"
       #- clang++  -arch arm64 -fPIC -dynamiclib -undefined dynamic_lookup -std=c++17 -DSWELL_PROVIDED_BY_APP -I"./WDL/swell/" -I"./WDL/lice" -I"./WDL/jpeglib" -I"./WDL/libpng" -I"./WDL/zlib/" -I"./kuba/" js_ReaScriptAPI.cpp js_ReaScriptAPI_ObjC.mm "./WDL/swell/swell-modstub.mm" "./WDL/lice/lice_png.cpp" "./WDL/lice/lice_png_write.cpp" "./WDL/lice/lice_jpg.cpp" "./WDL/lice/lice_jpg_write.cpp" "./WDL/lice/lice_colorspace.cpp" "./WDL/lice/lice.cpp" *.o -framework AppKit -framework Cocoa -lc++ -stdlib=libc++ -o "reaper_js_ReaScriptAPI64_ARM.dylib"
     test_script:
-      - file reaper_js_ReaScriptAPI64_ARM.dylib
-      - otool -L reaper_js_ReaScriptAPI64_ARM.dylib
+      - file reaper_js_ReaScriptAPI64ARM.dylib
+      - otool -L reaper_js_ReaScriptAPI64ARM.dylib
 
 deploy:
   - provider: GitHub
