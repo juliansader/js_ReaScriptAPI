@@ -4911,7 +4911,7 @@ int JS_ListView_ListAllSelItems(HWND listviewHWND, char* itemsOutNeedBig, int it
 HWND JS_ListView_GetHeader(HWND listviewHWND)
 {
 #ifdef _WDL_SWELL
-	if (!ValidatePtr(listviewHWND, "HWND")) return NULLPTR;
+	if (!ValidatePtr(listviewHWND, "HWND")) return nullptr;
 #endif
 	return ListView_GetHeader(listviewHWND);
 }
