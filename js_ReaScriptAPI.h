@@ -261,6 +261,10 @@ void  JS_ListView_HitTest(HWND listviewHWND, int clientX, int clientY, int* inde
 int   JS_ListView_ListAllSelItems(HWND listviewHWND, char* itemsOutNeedBig, int itemsOutNeedBig_sz);
 void  JS_ListView_SetItemText(HWND listviewHWND, int index, int subItem, const char* text);
 void  JS_ListView_SetItemState(HWND listviewHWND, int index, int state, int mask);
+HWND  JS_ListView_GetHeader(HWND listviewHWND);
+int   JS_Header_GetItemCount(HWND headerHWND);
+//bool  JS_Header_GetItem(HWND headerHWND, int column); // Not yet implemented in swell
+
 
 int JS_TabCtrl_GetItemCount(HWND hwnd);
 int JS_TabCtrl_DeleteItem(HWND hwnd, int idx);

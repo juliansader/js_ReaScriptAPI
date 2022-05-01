@@ -313,6 +313,9 @@ APIdef aAPIdefs[] =
 	{ APIFUNC(JS_ListView_ListAllSelItems), "int", "void*,char*,int", "listviewHWND,itemsOutNeedBig,itemsOutNeedBig_sz", "Returns the indices of all selected items as a comma-separated list.\n\n * retval: Number of selected items found; negative or zero if an error occured.", },
 	{ APIFUNC(JS_ListView_SetItemText), "void", "void*,int,int,const char*", "listviewHWND,index,subItem,text", "Currently, this fuction only accepts ASCII text.", },
 	{ APIFUNC(JS_ListView_SetItemState), "void", "void*,int,int,int", "listviewHWND,index,state,mask", "The mask parameter specifies the state bits that must be set, and the state parameter specifies the new values for those bits.\n\n1 = focused, 2 = selected. On Windows only, cut-and-paste marked = 4, drag-and-drop highlighted = 8.\n\nWarning: this function uses the Win32 bitmask values, which differ from the values used by WDL/swell.", },
+	{ APIFUNC(JS_ListView_GetHeader), "void*", "void*", "listviewHWND", "", },
+	{ APIFUNC(JS_Header_GetItemCount), "int", "void*", "headerHWND", "", },
+
 
 	//{ APIFUNC(JS_TabCtrl_GetItemCount), "int", "void*", "windowHWND", "", },
 	//{ APIFUNC(JS_TabCtrl_DeleteItem), "int", "void*,int", "windowHWND,index", "", },

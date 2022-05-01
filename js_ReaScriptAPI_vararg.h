@@ -1173,7 +1173,19 @@ static void* __vararg_JS_ListView_SetItemState(void** arglist, int numparms)
 	return nullptr;
 }
 
+static void* __vararg_JS_ListView_GetHeader(void** arglist, int numparms)
+{
+	return (void*)JS_ListView_GetHeader((HWND)arglist[0]);
+}
+
+static void* __vararg_JS_Header_GetItemCount(void** arglist, int numparms)
+{
+	return (void*)(intptr_t)JS_Header_GetItemCount((HWND)arglist[0]);
+}
+
+
 //////////////////////////////////////////////////////////////////////
+
 
 static void* __vararg_JS_TabCtrl_GetItemCount(void** arglist, int numparms)
 {

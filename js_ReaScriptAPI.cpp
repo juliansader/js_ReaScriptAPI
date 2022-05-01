@@ -2,7 +2,7 @@
 
 using namespace std;
 
-#define JS_REASCRIPTAPI_VERSION 1.301
+#define JS_REASCRIPTAPI_VERSION 1.310
 
 #ifndef _WIN32
 #define _WDL_SWELL 1 // So that I don't have to type #ifdef __linux__ and __APPLE__ everywhere
@@ -264,8 +264,12 @@ v1.220
 v1.300
  * New: Zip/Unzip functions.
  * New: JS_LICE_SetFontFXColor, so that SHADOW can be properly black.
- * New: TabCtrl functions.
+ //* New: TabCtrl functions.
  * Fixed: JS_ListView_SetItemState documentation.
+v1.310
+ * New: ListView_GetHeader, Header_GetItemCount.
+ * Fixed: On macOS, ListView_HitTest and ListView_GetItemRect uses client coordinates.
+ * New: dll (on Windows) and dylib (on macOS) have embedded version info.
 */
 
 
@@ -4786,12 +4790,10 @@ void JS_ListView_HitTest(HWND listviewHWND, int clientX, int clientY, int* index
 	if (!IsWindow(listviewHWND)) { *indexOut = -1; return; }
 	LVHITTESTINFO s;
 	s.pt = { clientX, clientY };
-	/*
 	// macOS uses screen coordinates
 #ifdef __APPLE__
 	ClientToScreen(listviewHWND, &s.pt);
 #endif
-*/
 	ListView_HitTest(listviewHWND, &s);
 	// WDL/swell defines the higher flags differently (and better than Win32). Change to Win32 format: 
 #ifdef _WDL_SWELL
@@ -4811,7 +4813,6 @@ bool JS_ListView_GetItemRect(HWND listviewHWND, int item, int* leftOut, int* top
 	bool OK = ListView_GetItemRect(listviewHWND, item, &r, LVIR_BOUNDS);
 	if (OK)
 	{
-		/*
 		// macOS uses screen coordinates
 #ifdef __APPLE__
 		POINT p{ r.left, r.top };
@@ -4823,11 +4824,15 @@ bool JS_ListView_GetItemRect(HWND listviewHWND, int item, int* leftOut, int* top
 		r.right = p.x;
 		r.bottom = p.y;
 #endif
-*/
 		if (r.bottom < r.top) {
 			int t = r.bottom;
 			r.bottom = r.top;
 			r.top = t;
+		}
+		if (r.right < r.left) {
+			int t = r.left;
+			r.left = r.right;
+			r.right = t;
 		}
 		*leftOut = r.left;
 		*topOut = r.top;
@@ -4902,6 +4907,23 @@ int JS_ListView_ListAllSelItems(HWND listviewHWND, char* itemsOutNeedBig, int it
 	}
 	return retval;
 }
+
+HWND JS_ListView_GetHeader(HWND listviewHWND)
+{
+#ifdef _WDL_SWELL
+	if (!ValidatePtr(listviewHWND, "HWND")) return NULLPTR;
+#endif
+	return ListView_GetHeader(listviewHWND);
+}
+
+int JS_Header_GetItemCount(HWND headerHWND)
+{
+#ifdef _WDL_SWELL
+	if (!ValidatePtr(headerHWND, "HWND")) return -1;
+#endif
+	return Header_GetItemCount(headerHWND);
+}
+
 
 ///////////////////////////////////////////////////////////////////////
 
